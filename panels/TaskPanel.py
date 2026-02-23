@@ -4,12 +4,10 @@ import wx.lib.dialogs
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-
 import logging
 # Get a logger instance (or the root logger)
 logger = logging.getLogger(__name__) # Or logging.getLogger() for the root logger
 logger.setLevel(logging.DEBUG)
-PLOT_LENGTH = 80000
 
 class ImagePanel(wx.Panel):
 

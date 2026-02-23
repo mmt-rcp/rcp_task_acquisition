@@ -21,7 +21,7 @@ class ControlsPanel(wx.Panel):
         self.cam_panel = CameraControlPanel(self, button_width)
         self.task_panel = self.get_task_panel(task) #VowelSpacePanel(self)
         self.task_panel.Enable(False)
-        self.hardware_test = ctrl_panel.setup_hardware_test(self)
+        self.hardware_test = ctrl_panel.create_hardware_test_panel(self)
         self.hardware_buttons = (ctrl_panel.contrast_test, ctrl_panel.focus_test)
         vertical_spacer.Add(self._set_up_tasks(task, button_width), pos=(vertical_position, 0), span=(0,5),flag=wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.BOTTOM, border=5)
         vertical_position+=1

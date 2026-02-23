@@ -165,7 +165,7 @@ class MainFrame(wx.Frame):
         vSplitter = wx.SplitterWindow(topSplitter)
         self.image_panel = ImagePanel(vSplitter)
         self.image_panel.updateImage(self.gui_size,camCt)
-        self.ctrl_panel = GraphPanel(vSplitter, self.gui_size, list(self.hardware_list[0]), list(self.hardware_list[2]))
+        self.ctrl_panel = GraphPanel(vSplitter, self.gui_size)
         self.widget_panel = ControlsPanel(topSplitter, self.ctrl_panel) #WidgetPanel(topSplitter)
         if self.guiDim == 0:
             vSplitter.SplitHorizontally(self.image_panel, self.ctrl_panel, sashPosition=int(self.gui_size[0]*0.31))
@@ -222,7 +222,8 @@ class MainFrame(wx.Frame):
         #labjack setup
         
         self.ctrl_panel.create_plot(PLOT_LENGTH)
-        self.labjack_stream_button, self.labjack_choices = self.ctrl_panel.getHandles()
+        self.labjack_stream_button = self.ctrl_panel.get_graph_button()
+        self.labjack_choices = self.ctrl_panel.get_graph_choices()
         
         self.labjack_timer = wx.Timer(self, wx.ID_ANY)
         self.lj = LabjackFrontend(PLOT_LENGTH, 
@@ -235,6 +236,9 @@ class MainFrame(wx.Frame):
         
         self.Bind(wx.EVT_TIMER, self.lj.labjack_event, self.labjack_timer)
         self.labjack_stream_button.Bind(wx.EVT_TOGGLEBUTTON, self.lj.labjack_stream)
+        
+
+        
         self.im = list()
         self.frmDims = [0,540,0,720]
         self.camIDlsit = list()
@@ -575,6 +579,7 @@ class MainFrame(wx.Frame):
             self.contrast_test.Enable(False)
             self.cam_test.value = True
             self.ctrl_panel.plot_hardware(self.cam_tests, 300)
+            self.ctrl_panel.setup_test_legend()
         else:
             self.ctrl_panel.remove_hardware()
             self.contrast_test.Enable(True)
@@ -587,6 +592,7 @@ class MainFrame(wx.Frame):
         if self.contrast_test.GetValue():
             self.focus_test.Enable(False)
             self.cam_test.value = True
+            self.ctrl_panel.setup_test_legend()
             self.ctrl_panel.plot_hardware(self.contrast_tests, 1)
         else:
             self.ctrl_panel.remove_hardware()
@@ -1337,9 +1343,6 @@ class MainFrame(wx.Frame):
         self.labjack_scan_rate = self.lj.stop_labjack()
         self.rest_timer.Stop()
         self.video_status.value = 4
-        # If all hardware visible
-        # if self.hardware_test:
-        #     self.liveFeed(event)
         if self.recording:
             self.stop_recording(event)
         if self.play.GetValue():
@@ -1361,6 +1364,7 @@ class MainFrame(wx.Frame):
             self.init.SetValue(False)
             self.initCams(event)
         self.Hide()
+        return True
         
     def recordCam(self, event):
         if self.rec.GetValue():
@@ -1514,6 +1518,7 @@ class MainFrame(wx.Frame):
                 self.trial_panel.syllable_pause_video_button.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
         self.video_status.value = 0
         self.Show()
+        return True
         
         
     

@@ -6,16 +6,9 @@ from pathlib import Path
 
 
 
-#Base dir
-# BASE_DIR = 
 BASEDIR = Path(__file__).resolve().parent.parent.parent
 CODE_DIR = os.path.join(BASEDIR, "rcp_task_acquisition")
-# STIM_CONFIG_FILE_PATH = '/home/rcp/task-acquisition/config_files'
-# STIM_CONFIG_FILE_NAME = 'visualStimulusConfig.yaml'
-# CONFIG_FILE_PATH = '/home/rcp/task-acquisition/config_files'
-# SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
-# DUMP_FOLDER_PATH = '/home/rld/Documents/RawDataLocal/Dump/'
-RAW_DATA_DIR = os.path.join(BASEDIR, "Documents/RawDataLocal")
+RAW_DATA_DIR = "/media/nvme/RawDataLocal" #os.path.join(BASEDIR, "Documents/RawDataLocal")
 COMPRESSED_VIDEO_DIR = os.path.join(BASEDIR, "Documents/CompressedData")
 DUMP_FOLDER_PATH =os.path.join(BASEDIR, 'Documents/RawDataLocal/Dump')
 STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(CODE_DIR, 'config_files')
@@ -24,9 +17,11 @@ SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
 VIDEO_DIR = os.path.join(BASEDIR, "Videos/task_videos")
 
 # constants for graphing
+DEFAULTS = ["Microphone 1", "Audio", "Microphone 2"]
 PLOT_CONSTANTS = ["Cameras", "Barcode", "Photodiode"]
-LINE_STYLES = ["--", "-.", ":"]
-COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+LINE_STYLES = ["-", "-", "-", "-"] #["--", "-", ":", "-."]
+COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#8c564b',  '#9467bd', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+PLOT_LENGTH = 80000
 
 # labjack constants
 SCANS_PER_READ = 5000

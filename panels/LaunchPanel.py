@@ -167,12 +167,23 @@ class LaunchPanel():
         
         self.is_hidden = False
         return self.dialog.Show()
-
-    def hide(self):
+    
+    
+    def get_metadata(self) -> None: 
+        self.protocol_button.Enable(False)
+        self.hardware_panel.Hide()
+        self.dialog.SetSize(self.regular_size)
+        self.panel.SetupScrolling(scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False)
+        self.hardware_button.Enable(False)
+        self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue() 
         self.metadata["participant_id"] = self.participant_id.GetValue()
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
+        
+    
+    def hide(self):
+
         print(self.metadata)
         self.dialog.Hide()
     

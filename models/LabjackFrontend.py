@@ -51,20 +51,21 @@ class LabjackFrontend():
         self.scan_rate = Value(ctypes.c_float, 0)
         self.hardware_test = hardware_test
         self.graph_panel = ctrl_panel
-        self.labjack_choices = self.graph_panel.get_choices()
+        self.labjack_choices = self.graph_panel.get_graph_choices()
         self.labjack_timer = timer
         self.press_count = press_count
         logger.debug(f"button {self.button_list}")
         self.graph_panel.set_constants(self.constants)
         for choice in self.labjack_choices:
             choice.Bind(wx.EVT_CHOICE, self._update_graph_list)
+        self.handshake = Value(ctypes.c_int, False)
         self.serial_state = 0
         self.serial_bool = False
         self.ser_success = False
 
 
     def labjack_stream(self, event):
-        labjack_button, junk = self.graph_panel.getHandles()
+        labjack_button = self.graph_panel.get_graph_button()
         if labjack_button.GetValue():
             labjack_button.SetLabel("Stop Labjack")
             self.stop_labjack()
@@ -76,7 +77,7 @@ class LabjackFrontend():
        
     def update_hardware(self,hardware_lists):
         self.all_hardware = hardware_lists
-        self.graph_panel.update_hardware(hardware_lists)
+        self.graph_panel.update_graph(hardware_lists)
         self.constant_index = []
         self.constants = []
         if list(hardware_lists[1]):
@@ -88,9 +89,7 @@ class LabjackFrontend():
         self.labjack_list = [item for item in list(hardware_lists[1]) if item not in self.constants] #list(args[1])
         self.hardware = [item for item in list(hardware_lists[0]) if item not in PLOT_CONSTANTS] #list(args[0])
         self.labjack_list = self.all_hardware[1]
-        self.hardware = self.all_hardware[0]      
-        # self.labjack_list = list(hardware_lists[1])
-        # self.hardware = list(hardware_lists[0])
+        self.hardware = self.all_hardware[0]
         self.digital_list = []
         self.analog_list = []
         self.button_list = []
@@ -132,16 +131,19 @@ class LabjackFrontend():
                                                  self.constant_index,
                                                  self.all_hardware[3],
                                                  self.stream_started,
-                                                 self.scan_rate)
+                                                 self.scan_rate,
+                                                 self.handshake)
         if self.labjack_process.is_successful():
-            
+            self.labjack_csv = "test.csv"
+            self.labjack_queue.put(self.labjack_csv)
+            self.labjack_is_csv.value = True
             self.labjack_process.start()
             self.labjack_timer.Start(200)
             return True
 
         else:
             Warning("labjack").display()
-            labjack_button, junk = self.graph_panel.getHandles()
+            labjack_button = self.graph_panel.get_graph_button()
             labjack_button.SetValue(False)
             return False
         
@@ -176,77 +178,57 @@ class LabjackFrontend():
         return self.scan_rate.value
 
     def labjack_event(self, event):
-
-        if not self.labjack_is_finished.value and self.stream_started.value:
-
-            arr_step = 0
-            y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), 'd', len(self.labjack_arr))
-            # print(np.isnan(y_plot_points[-1]))
-            if not np.isnan(y_plot_points[-1]) and self.serial_bool:
-                self.serial_state += 1
-                # print(self.serial_state)
-                if self.ser_success and self.serial_state > 0:
-                    # while not self.lj.is_ready:
-                    #     time.sleep(0.1)
-                    # msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
-                    self.ser.write(self.msg.encode())
-                    # time.sleep(1)
-                    self.ser_success = False
-                    self.serial_bool = False
-            
+        
+            if not self.labjack_is_finished.value and self.stream_started.value:
+                arr_step = 0
+                if self.handshake.value == 1:
+                    y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), 'd', len(self.labjack_arr))
+                else:
+                    return
+                if not np.isnan(y_plot_points[-1]) and self.serial_bool:
+                    self.serial_state += 1
+                    if self.ser_success and self.serial_state > 0:
+                        self.ser.write(self.msg.encode())
+                        self.ser_success = False
+                        self.serial_bool = False
+                        
                 
-            # print('here-2')
-            # print(y_plot_points[0], " ", y_plot_points[-1])
-            if not self.hardware_test.value:
-                for index, lj_input in enumerate(self.hardware_indices):
-                    # print("here-1")   
                     
-                    # print(lj_input.value, "plot: ", y_plot_points[arr_step], " ", y_plot_points[self.array_length-1])
-                    if lj_input.value == -1:
-                        # print("here")
-                        # self.graph_panel.set_visible(index, is_visible=False)
-                        self.graph_panel.update_yaxis([np.nan]*self.array_length, index, lj_input.value)
-                        y_plot_points[arr_step:arr_step+self.array_length] = np.nan
-                        arr_step+= self.array_length
-                        # print(f"input: {lj_input.value}")
-                        self.graph_panel.set_visible(index, False)
-                    else:
-                        # print("here1")
-                        # print(f"input: {lj_input.value}")
-                        # print(f"prev : {self.prev_graph_list[index]}")
-                        if lj_input.value != self.prev_graph_list[index]:
-                            # self.graph_panel.update_min_max(index, lj_input.value)
-                            self.prev_graph_list[index] = lj_input.value
-                            y_plot_points[arr_step:arr_step+self.array_length] = np.nan
+                if not self.hardware_test.value:
+                    # print("Start: array test")
+                    for index, lj_input in enumerate(self.hardware_indices):
+                        if lj_input.value == -1:
                             self.graph_panel.update_yaxis([np.nan]*self.array_length, index, lj_input.value)
-                            # logger.debug(f"Prev: {self.prev_graph_list}")
-                        # print("here2")
-                        self.graph_panel.update_yaxis(y_plot_points[arr_step:arr_step+self.array_length], index, lj_input.value)
-                        self.graph_panel.set_visible(index)
+                            y_plot_points[arr_step:arr_step+self.array_length] = np.nan
+                            # arr_step+= self.array_length
+                            self.graph_panel.set_visible(index, False)
+                            # print("in -1")
+                        else:
+                            if lj_input.value != self.prev_graph_list[index]:
+                                self.prev_graph_list[index] = lj_input.value
+                                y_plot_points[arr_step:arr_step+self.array_length] = np.nan
+                                self.graph_panel.update_yaxis([np.nan]*self.array_length, index, lj_input.value)
+                            self.graph_panel.update_yaxis(y_plot_points[arr_step:arr_step+self.array_length], index, lj_input.value)
+                            self.graph_panel.set_visible(index)
+                            # print("in else")
                         arr_step+= self.array_length
-                        # print("here3")
-                # print("constants", self.constants)
-                # print("arrStep: ",self.arr_step)
-            else:
-                for index, lj_input in enumerate(self.hardware_indices):
-                    self.graph_panel.set_visible(index, False)
-                arr_step = self.array_length*len(self.hardware_indices)
-                # print("hardwareStep: ", self.arr_step)
-            for index, constants_input in enumerate(self.constants):
-                # print("here4")
-                # print(arr_step)
-                # self.prev_graph_list[index] = constants_input
-                # y_plot_points[arr_step:arr_step+self.array_length] = np.nan
-                # self.graph_panel.update_constants([np.nan]*self.array_length, index, self.constant_index[index])
-                # print(self.constant_index[index], "plot: ", y_plot_points[arr_step], " ", y_plot_points[self.array_length-1])
-                self.graph_panel.update_constants(y_plot_points[arr_step:arr_step+self.array_length], index, self.constant_index[index])
-                self.graph_panel.set_visible_const(index)
-                arr_step+= self.array_length
-            # print('here5')
-            np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(len(y_plot_points.flatten()))[:] = y_plot_points.flatten()
-            
-            self.graph_panel.draw()
-
+                else:
+                    
+                    for index, lj_input in enumerate(self.hardware_indices):
+                        # print("in hardware")
+                        self.graph_panel.set_visible(index, False)
+                        arr_step += self.array_length
+                     
+                for index, constants_input in enumerate(self.constants):
+                    # print("in constants")
+                    self.graph_panel.update_constants(y_plot_points[arr_step:arr_step+self.array_length], index, self.constant_index[index])
+                    self.graph_panel.set_visible_const(index)
+                    arr_step+= self.array_length
+                if self.handshake.value == 1:    
+                    np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(len(y_plot_points.flatten()))[:] = y_plot_points.flatten()
+                    self.handshake.value = 0
+                self.graph_panel.draw()
+                
         
     def add_csv(self, labjack_file, ser_success, ser, msg):
         self.labjack_csv = labjack_file
@@ -289,8 +271,10 @@ class LabjackFrontend():
                 
                 if selection !=-1:
                     choice.SetSelection(new_options.index(selection))
-                #set the balue to all hardware list
+                #set the value to all hardware list
                 self.hardware_indices[index].value = original_selection
+                # print(f"choice = {self.labjack_choices}, index= {index}")
+                self.graph_panel.update_label(index, selection)
             except Exception as e:
                 logger.error(e)
     

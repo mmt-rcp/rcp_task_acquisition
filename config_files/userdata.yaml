@@ -16,7 +16,7 @@ cameras:
     gamma: 0.8
     in_use: true
   rightCamA:
-    serial: '25504068'
+    serial: '25504067'
     ismaster: false
     crop:
     - 40
@@ -44,7 +44,7 @@ cameras:
     nickname: leftCamB
     gain: 15
     gamma: 0.8
-    in_use: true
+    in_use: false
   rightCamB:
     serial: '25504067'
     ismaster: false
@@ -59,7 +59,7 @@ cameras:
     nickname: rightCamB
     gain: 15
     gamma: 0.8
-    in_use: true
+    in_use: false
 unitRef: unitME
 
 screen_settings:
