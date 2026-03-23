@@ -22,7 +22,8 @@ class MetadataPanel():
         self.panel = scrolled.ScrolledPanel(self.dialog, -1,style=wx.SUNKEN_BORDER)
         self.panel.SetupScrolling(scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False)
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        
+        # self.dialog.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.dialog.SetForegroundColour(wx.Colour(250,250,250))
         
         vertical_sizer.Add(self._setup_metadata(), 0, wx.ALIGN_LEFT | wx.TOP, 30)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)

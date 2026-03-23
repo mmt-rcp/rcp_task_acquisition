@@ -13,9 +13,13 @@ class Serial():
 
     def init_serial(self):
         self.serSuccess = False
+            
         for i in range(10):
             try:
-                self.ser = serial.Serial('/dev/ttyACM'+str(i), 
+                # self.ser = serial.Serial('/dev/ttyACM'+str(i), 
+                #                          baudrate=self.baudrate, 
+                #                          write_timeout = self.write_timeout)
+                self.ser = serial.Serial('COM'+str(i),
                                          baudrate=self.baudrate, 
                                          write_timeout = self.write_timeout)
                 self.serSuccess = True

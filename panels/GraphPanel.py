@@ -42,11 +42,14 @@ class GraphPanel(wx.Panel):
         else:
             ctrlsizer = wx.BoxSizer(wx.VERTICAL)
         self.figure = Figure(figsize=(3, 3))
-        self.figure.patch.set_facecolor((0.09, 0.09, 0.09))
+        # self.figure.patch.set_facecolor((0.09, 0.09, 0.09))
+        
+        self.figure.patch.set_facecolor((0.8, 0.8, 0.8))
         canvas = FigureCanvas(self, -1, self.figure)
         ctrlsizer.Add(canvas, 1, wx.ALL)
-        white_color = (0.9,0.9,0.9)
-        
+        white_color = (0.09, 0.09, 0.09) #(0.9,0.9,0.9)
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         # creating own x axis with a line/text so there is more control
         setup_axes = self.figure.add_subplot(1, 1, 1)
         setup_axes.set_position((0, 0, 1, 1))
@@ -313,10 +316,10 @@ class GraphPanel(wx.Panel):
             self.legend_labels[index+len(self.constants)] = new_label
             # self.lines[index].set_label(new_label)
         
-        self.axes.legend(self.legend_lines, self.legend_labels, loc="upper left", fontsize=8, labelcolor=(0.9,0.9,0.9),
-                         edgecolor=(0.9,0.9,0.9), facecolor=(0.1, 0.1, 0.1))
+        self.axes.legend(self.legend_lines, self.legend_labels, loc="upper left", fontsize=8, labelcolor=(0.1,0.1,0.1),
+                         edgecolor=(0.9,0.9,0.9), facecolor=(0.9, 0.9, 0.9))
         self.draw()
     
     def setup_test_legend(self) -> None:
-        self.axes.legend(self.test_legend_lines, self.test_legend_labels, loc="upper left", fontsize=8, labelcolor=(0.9,0.9,0.9),
-                         edgecolor=(0.9,0.9,0.9), facecolor=(0.1, 0.1, 0.1))
+        self.axes.legend(self.test_legend_lines, self.test_legend_labels, loc="upper left", fontsize=8, labelcolor=(0.1,0.1,0.1),
+                         edgecolor=(0.9,0.9,0.9), facecolor=(0.9, 0.9, 0.9))

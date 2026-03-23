@@ -93,7 +93,9 @@ class HardwarePanel(wx.Panel):
             self.row_list.append(f"userInput{user_input_count}")
             user_input_count+=1
             
-        super().__init__(parent) 
+        super().__init__(parent)
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_protocol(), 0, wx.EXPAND | wx.ALL, 10)
         vertical_sizer.Add(self._setup_camera_panel(), 0, wx.EXPAND | wx.ALL, 10)

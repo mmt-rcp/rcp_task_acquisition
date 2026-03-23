@@ -75,7 +75,7 @@ class VerbGeneration(bases.StimulusBase):
     
     def update_data(self, list_num):
         self.stim_list = []
-        self.list_num = list_num-1
+        self.list_num = int(list_num)-1
         print(self.list_num)
         print(self.lists[self.list_num])
         for word in self.lists[self.list_num]:

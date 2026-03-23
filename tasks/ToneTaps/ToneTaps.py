@@ -14,6 +14,7 @@ from tasks import bases
 from  utils.constants import GLOBAL_CLOCK, VOLUME
 from tasks.ToneTaps.constants import TAP_DURATION, TAP_FREQUENCY 
 from utils.logger import get_logger
+import winsound
 logger = get_logger("./tasks/ToneTapsClosed") 
 
 
@@ -116,7 +117,8 @@ class ToneTapsClosed(bases.StimulusBase):
             self.hand = hand    
         
     def play_tap(self):
-        os.system(f'play -nq -t alsa synth {TAP_DURATION} sine {TAP_FREQUENCY} vol {VOLUME}')
+        # os.system(f'play -nq -t alsa synth {TAP_DURATION} sine {TAP_FREQUENCY} vol {VOLUME}')
+        winsound.Beep(TAP_FREQUENCY, TAP_DURATION)
         
     def saveMetadata(self, name, sessionFolder):
         # sessionFolderPath = pl.Path(sessionFolder)

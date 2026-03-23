@@ -19,7 +19,7 @@ PARAMS = {
 
 class BasicTaps(bases.StimulusBase):
     def __init__(self, window, frame, is_finished, video_status):
-        super().__init__(window, frame, video_status)
+        super().__init__(window, frame, is_finished, video_status)
         self.finish = is_finished
         self.trial_count = 0
         self.hand= None

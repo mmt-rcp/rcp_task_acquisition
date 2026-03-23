@@ -19,44 +19,38 @@ from tasks.bases import StimulusBase
 from utils.logger import get_logger
 from queue import Empty
 logger = get_logger("./models/StimulusThread") 
+import json
+from multiprocessing import Process
 
 
-
-
-class StimulusThread(threading.Thread):
-    def __init__(self, msgq, finish, shared, frame, time, calculating_time, 
-                 screen_config, task, button, show_panel, press_count, video_status):
-        threading.Thread.__init__(self)
+class StimulusThread(Process):
+    def __init__(self, msgq, finish, shared, frame, 
+                 screen_config, task, button, press_count, video_status, resultsq):
+        
+        super().__init__()
         self.msgq = msgq
         self.screenConfig = screen_config
         self.shared = shared
         self.finish = finish
-        self.count = 1
         self.frame = frame
-        self.time = time
         self.button = button
-        self.calculating_time = calculating_time
-        self.sessionFolder = None
-        self.stimulusConfigFilename = "taskconfig.yaml"
-        self.stimulusConfig = files.get_stimulus_config(self.stimulusConfigFilename)
+        self.stimulusConfig = files.get_stimulus_config("taskconfig.yaml")
         self.totalStimFrames = 0
-        self.task = task
-        self.params = {}
         self.stimulus = None
-        self.show_panel = show_panel
+        self.resultsq = resultsq
         self.press_count = press_count
-        self.loaded_video= None
         self.video_status = video_status
-        self.alive = True
-           
-    
-            
+        self.alive = True  
+        
+        self.task = task
+        # self.params = params
+        
     def run(self):
         self.window = Window(
                     screen=self.screenConfig['screenNumber'],
                     fullScreen=self.screenConfig['fullScreen']
                     )
-        
+
         while self.alive:
             try:
                 msg = self.msgq.get(timeout=0.05)
@@ -64,16 +58,18 @@ class StimulusThread(threading.Thread):
             except Empty:
                 continue
             try:
+                print(self.task)
                 if msg=="init_stimulus":
                     self.params = {}
                     self.init_stimuli()
+                elif msg=="update_task":
+                    msg= self.msgq.get()
+                    self.task = msg
                 elif msg=="run_stimulus":
-                    # time.sleep(5)
                     self.shared.value = 0
                     print(self.finish.value)
                     # Main loop for presenting stimuli
                     tStart = time.time()
-                    print("start")
                     logger.info(f"Presenting {self.task}")
                     if self.shared.value == -1:
                         break
@@ -97,8 +93,6 @@ class StimulusThread(threading.Thread):
                 elif msg=="end_stimulus":
                     
                     self.end_stimulus()
-                elif "get_filename" in msg:
-                     self.stimulusConfigFilename = msg.split(":")[1] + ".yaml"
                 elif "play_instructions" in msg:
                     msg = self.msgq.get()
                     self.play_video(msg)
@@ -108,11 +102,19 @@ class StimulusThread(threading.Thread):
                     # self.setup_videos(video_filename_dict)
                 elif "hardware_test" in msg:
                     HardwareTest(self.window, self.finish, self.frame, self.video_status).present()
-                else:
-                    if self.task == "naturalistic_speech":
-                        self.stimulus.update_photo(msg)
-                    else:
-                        self.stimulus.get_choices(msg)
+                elif "update_data" in msg:
+                    trial_data = self.msgq.get()
+                    trial_data = trial_data.split(',')
+                    # trial_data = trial_data.replace("(", "")
+                    self.stimulus.update_data(trial_data)
+                elif "reset_task" in msg:
+                    self.stimulus.reset_task()
+                elif "vowel_space" in msg:
+                    results = self.stimulus.get_trial()
+                    logger.debug(results)
+                    self.resultsq.put(results)
+                elif "close" in msg:
+                    self.close_window()
             except SystemExit:
                 logger.debug("interrupted stimulus")
                 self.window.idle(time_list = [])
@@ -150,7 +152,7 @@ class StimulusThread(threading.Thread):
         
         elif self.task == "verb_generation":
             self.stimulus = VerbGeneration(self.window, self.frame, self.finish)
-        
+
         else:
             self.stimulus = StimulusBase(self.window, self.frame, self.finish)
             
@@ -160,53 +162,27 @@ class StimulusThread(threading.Thread):
     def end_stimulus(self):
         self.window.idle(time_list = [])
         if hasattr(self.stimulus, 'saveMetadata'):
-            
-            self.params = self.stimulus.saveMetadata(self.stimulusConfig[self.task], self.sessionFolder)
-        
-        self.stimulus_iterable = []
-        self.time.value = 0
-        self.calculating_time.value = True
-        
-    def reset_count(self):
-        self.count = 1
-        
-    def get_id(self):
-        # returns id of the respective thread
-        if hasattr(self, '_thread_id'):
-            return self._thread_id
-        for id, thread in threading._active.items():
-            if thread is self:
-                return id
+            # print(f"folder: {self.sessionFolder}, task: {self.task}, config: {self.stimulusConfig}")
+            results = self.stimulus.saveMetadata(self.stimulusConfig[self.task], None)
+            json_str = json.dumps(results)
+            self.resultsq.put(json_str)
     
     
     def close_window(self):
         self.alive = False
         self.window.close()
+        # self.p.join()
         
-        
-    def get_sess_dir(self, sessionFolder):
-        self.sessionFolder = sessionFolder
-    
-    def get_total_stim_flips(self):
-        if self.window.stimulus_frame != 0:
-            self.totalStimFrames+= self.window.stimulus_frame
-        return self.totalStimFrames
-    
     
     def get_params(self):
         return self.params
-    
-    def raise_exception(self):
-        thread_id = self.get_id()
-        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id),
-              ctypes.py_object(SystemExit))
-        if res > 1:
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id), 0)
-            logger.info('Stimulus thread exception raised')
 
     
     def setup_videos(self, video_filename_dict):
-        self.stimulus.setup_videos(video_filename_dict)
+        pass
+        # self.stimulus.setup_videos(video_filename_dict)
+        
+        
         
 
     def play_video(self, trial=None):

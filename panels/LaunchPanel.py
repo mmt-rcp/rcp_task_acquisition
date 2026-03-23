@@ -50,6 +50,8 @@ class LaunchPanel():
         
         self.panel = scrolled.ScrolledPanel(self.dialog, -1,style=wx.SUNKEN_BORDER)
         self.panel.SetupScrolling(scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False)
+        # self.panel.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.panel.SetForegroundColour(wx.Colour(250,250,250))
         self.hardware_panel = HardwarePanel(task_config, self.panel)
         self.hardware_panel.Hide()
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)

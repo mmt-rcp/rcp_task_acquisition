@@ -32,7 +32,8 @@ class ControlsPanel(wx.Panel):
         vertical_spacer.Add(ctrl_panel.create_labjack_panel(self), pos=(vertical_position,0), span=(0,5), flag=wx.ALIGN_LEFT | wx.ALL, border=5)
         vertical_position+=1
         vertical_spacer.Add(self.hardware_test, pos=(vertical_position,0), span=(0,5), flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALIGN_LEFT | wx.ALL, border=5)
-        
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.SetSizer(vertical_spacer)
         vertical_spacer.Fit(self)
         self.cam_panel.Hide()

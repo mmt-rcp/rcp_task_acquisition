@@ -94,8 +94,8 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
         
     def get_result(self):
-        image_path = os.path.join(c.IMG_DIR, self.image_names[self.selection])
-        return image_path, self.trial_number
+        image_path = self.image_names[self.selection] #os.path.join(c.IMG_DIR, self.image_names[self.selection])
+        return f"{image_path},{self.trial_number}"
 
     
     def reset(self, number):

@@ -21,7 +21,7 @@ def get_logger(name: str = "cart") -> logging.Logger:
     # Log file name
     log_filename =  CODE_DIR +"/logs/cart.log"
     if not os.path.exists(log_filename):
-        os.mknod(log_filename)
+        open(log_filename,'w').close()
 
     # Create logger
     logger = logging.getLogger(name)

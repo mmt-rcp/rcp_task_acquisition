@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from utils.logger import get_logger
+
 logger = get_logger("./models/CameraFrontend") 
 import multiCam_DLC.multiCam_DLC_utils_v2 as clara
 import numpy as np
@@ -7,7 +8,7 @@ import time
 from multiprocessing import Queue, Value, Array
 import os
 import shutil
-import multiCam_DLC.multiCam_DLC_PySpin_v1 as spin
+import models.CameraProcess as spin
 import cv2
 import ctypes
 import datetime
@@ -73,7 +74,9 @@ class Camera():
     
     def initialize(self, event):
         self.serial.init_serial()
+        print('before init')
         self.initThreads()
+        print('after init')
         try: 
             self.updateSettings(event)
         except:
@@ -240,6 +243,7 @@ class Camera():
                                                camID, self.camIdList,
                                                self.frmDims, self.camaq,
                                                self.frmaq, self.array4feed[ndx], self.frmGrab[ndx]))
+
             self.cam[ndx].start()
         time.sleep(1)
         for cam in self.unconnected:

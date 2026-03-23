@@ -5,7 +5,8 @@ from tasks import bases
 from utils.stimulus_utils import thread_event
 from utils.logger import get_logger
 logger = get_logger("./tasks/NaturalisticSpeech") 
-
+import os
+from tasks.NaturalisticSpeech.constants import IMG_DIR
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class NaturalisticSpeech(bases.StimulusBase):
@@ -25,13 +26,14 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.trial+=1
         logger.debug(self.photo)
         self.photo_dict[f"trial_{self.trial}"] = self.photo
-        stim = visual.ImageStim(self.display, image=self.photo, name=self.photo, size=[1200, 1200])
-        stim.draw()
+        stim = visual.ImageStim(self.display, image=self.photo, name=self.photo, size=[1200, 1200], units='pix')
         self.play_tone()
         #switch the photodiode patch to be "On" while the photo is being shown
         self.display.switch_patch()
         self.display.draw_patch()
+        stim.draw()
         self.display.flip()
+        
         while self.finish.value == 0:
             stim.draw()
             self.display.draw_patch()
@@ -42,6 +44,7 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.display.switch_patch()
         self.display.draw_patch()
         self.display.flip()
+        self.play_tone()
         
     def saveMetadata(self, name, sessionFolder):
         data = {"photo_paths": self.photo_dict}
@@ -49,5 +52,6 @@ class NaturalisticSpeech(bases.StimulusBase):
     
     
     def update_data(self, trial_data):
-        self.photo = trial_data[0]
+        self.photo = os.path.join(IMG_DIR, trial_data) #[0]
+        print("trialdata: ", self.photo)
         # self.trial = trial_data[1]

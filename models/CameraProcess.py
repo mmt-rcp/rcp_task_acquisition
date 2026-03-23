@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from math import floor
-from multiprocessing import Process
-from queue import Queue, Empty
+from multiprocessing import Process, Queue
+from queue import Empty
 import numpy as np
 import PySpin
 from multiCam_DLC import multiCam_DLC_utils_v2 as clara
@@ -15,8 +15,7 @@ logger = get_logger("./multiCam_DLC/multiCam_DLC_PySpin_v1")
         
 class multiCam_DLC_Cam(Process):
     def __init__(self, camq, camq_p2read, camID,
-                 idList, cpt, aq, frm, array4feed, frmGrab):
-        
+                 idList,cpt, aq, frm, array4feed, frmGrab):
         super().__init__()
         self.camID = camID
         self.camq = camq
@@ -32,6 +31,7 @@ class multiCam_DLC_Cam(Process):
         self.video_queue = Queue()
         self.video_list = []
         self.video_thread = None
+        
         
     def run(self):
         record = False

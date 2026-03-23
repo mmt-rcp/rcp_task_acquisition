@@ -11,6 +11,8 @@ class ImagePanel(wx.Panel):
     def __init__(self, parent, **kwargs):
 
         wx.Panel.__init__(self, parent, -1,style=wx.SUNKEN_BORDER)
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.figure = Figure()
         self.canvas = FigureCanvas(self, -1, self.figure)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -29,7 +31,7 @@ class ImagePanel(wx.Panel):
         self.figure.clf() 
         self.axes = list()
         self.figure.patch.set_facecolor('none')
-        props = dict(boxstyle='square', facecolor=(0.1, 0.1, 0.1), edgecolor=(0.1, 0.1, 0.1), alpha=0.75)
+        props = dict(boxstyle='square', facecolor=(0.8, 0.8, 0.8), edgecolor=(0.1, 0.1, 0.1), alpha=0.75)
         for c in range(int(column_count)):
             self.axes.append(self.figure.add_subplot(1, column_count, c+1, frameon=True))
             

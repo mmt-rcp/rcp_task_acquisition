@@ -49,15 +49,20 @@ class VideoThread(Thread):
                 self.num_frames+=1
         try:
             print(self.video_queue.qsize())
-            queue_list = self.video_queue.get(timeout=0.05)
-            # print(queue_list)
-            if type(queue_list) == int:
-                self.close_writers()
-                return
-            for frame in queue_list:
-                self.video_writer.write(frame)
-                # print(f"{self.name}: {self.num_frames}")
-                self.num_frames+=1
+            while True:
+                try:
+                    queue_list = self.video_queue.get(timeout=0.05)
+                except Empty:
+                    self.close_writers()
+                    return
+                # print(queue_list)
+                if type(queue_list) == int:
+                    self.close_writers()
+                    return
+                for frame in queue_list:
+                    self.video_writer.write(frame)
+                    # print(f"{self.name}: {self.num_frames}")
+                    self.num_frames+=1
         except Empty:
             pass
         

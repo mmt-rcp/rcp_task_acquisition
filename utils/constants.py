@@ -6,15 +6,15 @@ from pathlib import Path
 
 
 
-BASEDIR = Path(__file__).resolve().parent.parent.parent
-CODE_DIR = os.path.join(BASEDIR, "rcp_task_acquisition")
-RAW_DATA_DIR = "/media/nvme/RawDataLocal" #os.path.join(BASEDIR, "Documents/RawDataLocal")
-COMPRESSED_VIDEO_DIR = os.path.join(BASEDIR, "Documents/CompressedData")
-DUMP_FOLDER_PATH =os.path.join(BASEDIR, 'Documents/RawDataLocal/Dump')
+BASEDIR = Path(__file__).resolve().parent.parent.parent.parent
+CODE_DIR = os.path.join(BASEDIR, "Documents", "rcp_task_acquisition")
+RAW_DATA_DIR = os.path.join(BASEDIR, "Documents", "RawDataLocal")
+COMPRESSED_VIDEO_DIR = os.path.join(BASEDIR, "Documents", "CompressedData")
+DUMP_FOLDER_PATH =os.path.join(BASEDIR, "Documents", "RawDataLocal", "Dump")
 STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(CODE_DIR, 'config_files')
 STIM_CONFIG_FILE_NAME = 'visualStimulusConfig.yaml'
 SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
-VIDEO_DIR = os.path.join(BASEDIR, "Videos/task_videos")
+VIDEO_DIR = os.path.join(BASEDIR, "Videos", "task_videos")
 
 # constants for graphing
 DEFAULTS = ["Microphone 1", "Audio", "Microphone 2"]
@@ -39,6 +39,9 @@ ANALOG_RANGES = [11, 9.6, 4.8, 2.4, 1.2, 0.6, 0.3, 0.15, 0.075, 0.036, 0.015]
 
 
 
+#constants for gui layout
+RGB_COLOR = (54, 54, 54)
+
 
 # shorter name for the global clock
 GLOBAL_CLOCK = core.monotonicClock
@@ -48,8 +51,8 @@ GLOBAL_CLOCK = core.monotonicClock
 # sound constants
 VOLUME = 0.125       # range [0.0, 1.0]
 SAMPLING_RATE = 44100 # sampling rate, Hz
-DURATION = 1.0       # in seconds, can be a float
-FREQUENCY = 750.0    # sine frequency, Hz, can be a float
+DURATION = 1000# in seconds, can be a float
+FREQUENCY = 750   # sine frequency, Hz, can be a float
 
 
 

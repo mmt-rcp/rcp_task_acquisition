@@ -3,6 +3,7 @@ import numpy as np
 import os
 from  tasks.VowelSpace import constants as c
 from utils.logger import get_logger
+import winsound
 logger = get_logger("./tasks/VowelSpace") 
 
 
@@ -40,7 +41,7 @@ class VowelSpace(bases.StimulusBase):
     def get_trial(self):
         if self.trial >= (len(self.generated_trials)-1):
             self.is_finished=True
-        return self.trial, self.generated_trials[self.trial], self.is_finished
+        return f"{self.trial},{self.generated_trials[self.trial]},{self.is_finished}"
     
     
     def update_data(self, is_repeated):
@@ -85,7 +86,8 @@ class VowelSpace(bases.StimulusBase):
         try:
             file = c.VS_PATHS[trial]
             path =  os.path.join(c.STIM_DIR, file)
-            os.system(f'play -q {path} vol {c.VOLUME}')
+            # os.system(f'play -q {path} vol {c.VOLUME}')
+            winsound.PlaySound(path, winsound.SND_FILENAME)
         except:
             logger.warn("No file, continuing without....")
         

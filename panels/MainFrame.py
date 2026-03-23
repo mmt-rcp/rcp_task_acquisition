@@ -4,7 +4,7 @@ https://github.com/wryanw/CLARA
 W Williamson, wallace.williamson@ucdenver.edu
 
 """
-from multiprocessing import Value
+from multiprocessing import Value, Queue, Manager
 import wx
 import wx.lib.dialogs
 import os
@@ -13,7 +13,6 @@ import numpy as np
 import time, datetime
 import ctypes
 import shutil
-import queue
 import multiCam_DLC.multiCam_DLC_utils_v2 as clara
 from utils.file_utils import read_config
 from models.StimulusThread import StimulusThread
@@ -29,6 +28,7 @@ logger = get_logger("./multiCam_DLC_videoAcquisition_v1")
 from panels.ControlsPanel import ControlsPanel
 from panels.ImagePanel import ImagePanel
 from models.Serial import Serial
+import json
 from models.CameraFrontend import Camera
 
 class MainFrame(wx.Frame):
@@ -62,6 +62,8 @@ class MainFrame(wx.Frame):
         self.gui_size = (screenW-70, screenH-55)
         wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = 'Task Master Aquisition',
                             size = wx.Size(self.gui_size), pos = wx.DefaultPosition, style = wx.RESIZE_BORDER|wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.Maximize(True)
         self.statusbar = self.CreateStatusBar()
         self.statusbar.SetStatusText("")
@@ -76,7 +78,7 @@ class MainFrame(wx.Frame):
         self.widget_panel = ControlsPanel(topSplitter, self.ctrl_panel)
 
         vSplitter.SplitHorizontally(self.image_panel, self.ctrl_panel, sashPosition=int(self.gui_size[0]*0.31))
-        topSplitter.SplitVertically(vSplitter, self.widget_panel, sashPosition=int(self.gui_size[1]*1.45))
+        topSplitter.SplitVertically(vSplitter, self.widget_panel, sashPosition=int(self.gui_size[1]*1.5))
 
         topSplitter.SetSashGravity(0.5)
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -161,22 +163,21 @@ class MainFrame(wx.Frame):
         '''
         self.video_status = Value(ctypes.c_int, 0)
         self.threads = []
-        self.msgq =  queue.Queue()
+        self.msgq =  Queue()
         self.finish = Value(ctypes.c_byte, 0)
-        self.stimulus_time = Value(ctypes.c_double, 0)
-        self.time_calculating = Value(ctypes.c_bool, True)
-        self.thread = StimulusThread(self.msgq, 
+        self.resultsq = Queue()
+        
+        self.thread = StimulusThread( self.msgq, 
                                      self.finish, 
                                      self.shared, 
-                                     self.frmaq, 
-                                     self.stimulus_time, 
-                                     self.time_calculating, 
+                                     self.frmaq,  
                                      screen_settings, 
                                      self.task, 
                                      self.button_pressed,
-                                     self.stimulus_panel,
                                      self.press_count,
-                                     self.video_status)
+                                     self.video_status,
+                                     self.resultsq)
+                                     
         self.startingSession = False
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
@@ -193,7 +194,7 @@ class MainFrame(wx.Frame):
             self.trial_dict = {}
             self.start_time= str(f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}Z') 
             self.count = 0
-            self.thread.reset_count()
+            # self.thread.reset_count()
             self.finish.value = 0
             self.msgq.put("init_stimulus")
             self.create_file()
@@ -218,7 +219,12 @@ class MainFrame(wx.Frame):
             if self.task != "verbal_fluency":
                 self.setup_videos()
             if self.task == "vowel_space":
-                trial, syllable, finish = self.thread.stimulus.get_trial()
+                # trial, syllable, finish = self.thread.stimulus.get_trial()
+                self.msgq.put("vowel_space")
+                # trial, syllable, finish = self.thread.stimulus.get_trial()
+                trial_info = self.resultsq.get()
+                trial, syllable, finish = trial_info.split(",")
+                
                 self.trial_panel.repeat = True
                 self.trial_panel.update_trial(trial, syllable)
             self.trial_panel.start_new_trial()
@@ -235,7 +241,7 @@ class MainFrame(wx.Frame):
             self.trial_panel.hide()
             self.msgq.put('end_stimulus')
             self.labjack_scan_rate = self.lj.stop_labjack()
-            self.thread.stimulus.close_audio()
+            # self.thread.stimulus.close_audio()
             
             self.finish.value = 0
             self.labjack_stream_button.Enable(True)
@@ -245,7 +251,7 @@ class MainFrame(wx.Frame):
             self.labjack_stream_button.Enable(True)
             self.end_time= str(f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}Z') 
             self.add_metadata()
-            self.thread.stimulus.reset_task()
+            self.msgq.put("reset_task")
             self.labjack_timer.Start(200)
 
     
@@ -255,11 +261,20 @@ class MainFrame(wx.Frame):
             self.rest_timer.Start(1000)
             self.finish.value = 0
             try:
-                self.thread.stimulus.update_data(self.trial_panel.get_result())
-            except:
+                self.msgq.put("update_data")
+                
+                data = str(self.trial_panel.get_result())
+                self.msgq.put(data)
+            except Exception as e:
+                print("ERROR: ", e)
                 self.results_list.append(self.trial_panel.get_result())
             if self.task == "vowel_space":
-                trial, syllable, finish = self.thread.stimulus.get_trial()
+                # trial, syllable, finish = self.thread.stimulus.get_trial()
+                self.msgq.put("vowel_space")
+                # trial, syllable, finish = self.thread.stimulus.get_trial()
+                trial_info = self.resultsq.get()
+                trial, syllable, finish = trial_info.split(",")
+                
                 self.trial_panel.update_trial(trial, syllable)
                 if finish:
                    self.trial_button.Enable(True) 
@@ -267,8 +282,11 @@ class MainFrame(wx.Frame):
                 self.count =0
                 self.trial_button.SetLabel("Start Trial")
                 self.trial_panel.switch_panel()
+                self.msgq.put("update_data")
                 
-                self.thread.stimulus.update_data(self.trial_panel.get_result())
+                data = str(self.trial_panel.get_result())
+                self.msgq.put(data)
+                # self.thread.stimulus.update_data(self.trial_panel.get_result())
                 self.results_list.append(self.trial_panel.get_result())
                 self.setup_videos()
                 return
@@ -287,7 +305,14 @@ class MainFrame(wx.Frame):
             elif self.task == "verbal_fluency":
                 self.trial_panel.update_values()
             elif self.task == "vowel_space":
-                trial, syllable, finish = self.thread.stimulus.get_trial()
+                self.msgq.put("vowel_space")
+                # trial, syllable, finish = self.thread.stimulus.get_trial()
+                trial_info = self.resultsq.get()
+                print("trial info:", trial_info)
+                trial, syllable, finish = trial_info.split(",")
+                
+                
+                
                 if finish:
                     self.trial_panel.is_finish()
                     self.trial_button.Enable(False)
@@ -549,8 +574,9 @@ class MainFrame(wx.Frame):
             
             self.meta['task'] = self.task
             self.meta['task_settings'] = self.task_cfg[self.task]["settings"]
-            self.meta['trial_data'] = self.thread.get_params()
-
+            params = json.loads(self.resultsq.get())
+            self.meta['trial_data'] = params
+            print(self.meta['trial_data'])
             if self.task == "verbal_fluency":
                 self.meta["trial_data"]["categories"] = self.trial_panel.add_metadata()
             if self.task == "sara":
@@ -634,7 +660,8 @@ class MainFrame(wx.Frame):
         """
         logger.info('Close event called')
         try:
-            self.thread.close_window()
+            self.msgq.put("close")
+            # self.thrsead.close_window()
             self.thread.join()
         except:
             logger.debug('no current stimulus thread')
@@ -744,7 +771,9 @@ class MainFrame(wx.Frame):
         self.user_cfg = clara.read_config()
         self.task_cfg = read_config("taskconfig.yaml")
         self.task = launch_args["task"].strip()
-        self.thread.task = launch_args["task"].strip()
+        # self.thread.task = launch_args["task"].strip()
+        self.msgq.put("update_task")
+        self.msgq.put(launch_args["task"].strip())
         self.launch_args = launch_args
         args = {}
         self.video_status.value = 0

@@ -16,7 +16,8 @@ class ImagePanel(wx.Panel):
         wx.Panel.__init__(self, parent, -1,style=wx.SUNKEN_BORDER)
         
         self.draw_panel()
-        
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.figure = Figure()
         self.axes = list()
         self.figure.patch.set_facecolor('none')

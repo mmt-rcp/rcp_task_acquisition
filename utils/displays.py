@@ -1,4 +1,8 @@
 import numpy as np
+# from psychopy import prefs
+
+# # Must be set BEFORE importing visual or event modules
+# prefs.general['winType'] = 'pygame'
 from psychopy import monitors
 from psychopy.visual import Window
 from psychopy.visual import GratingStim
@@ -39,7 +43,6 @@ class Window(Window):
         self._mc = None
         self._pulsing = False 
         self._stream = None
-        #
         super().__init__(
             size=(self.width, self.height),
             screen=screen,
@@ -47,9 +50,10 @@ class Window(Window):
             gammaErrorPolicy='warn',
             useFBO=True,
             color=-1,
-            checkTiming=False,
+            # checkTiming=False,
             fullscr=fullScreen,
-            waitBlanking=True
+            waitBlanking=True,
+            winType="pyglet"
         )
         self._state = False
         self._patchCoords = patchCoords

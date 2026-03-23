@@ -84,7 +84,7 @@ class VowelSpacePanel(TrialPanel):
         '''
         
         self.current_text.SetLabel(f"Say {syllable} again")
-        self.trial_text.SetLabel(f"Trial # {trial+1}")
+        self.trial_text.SetLabel(f"Trial # {int(trial)+1}")
             
     
     def start_new_trial(self):

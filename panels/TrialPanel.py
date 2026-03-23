@@ -21,6 +21,8 @@ class TrialPanel(wx.Panel):
         self.video_title = None
         
         wx.Panel.__init__(self, parent, -1, size=wx.Size(-1,-1))
+        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
+        # self.SetForegroundColour(wx.Colour(250,250,250))
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)

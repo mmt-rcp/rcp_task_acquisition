@@ -2,7 +2,7 @@
 from psychopy import core #, visual
 from tasks import bases
 # from utils.logging import logger
-from tasks.Diadochokinesis.constants import DDK_TRIAL_TIME
+from tasks.Diadochokinesis.constants import DDK_TRIAL_TIME, DDK_PATHS
 import logging
 # Get a logger instance (or the root logger)
 logger = logging.getLogger(__name__) # Or logging.getLogger() for the root logger
@@ -20,8 +20,8 @@ PARAMS = {
 
 class Diadochokinesis(bases.StimulusBase):
     def __init__(self, window, frame, is_finished, video_status):
-        super().__init__(window, frame, video_status)
-        self.finish = is_finished
+        super().__init__(window, frame, is_finished, video_status)
+        # self.finish = is_finished
         self.round = 0
         self.trial_count = 0
         self.syllable = None
@@ -29,6 +29,7 @@ class Diadochokinesis(bases.StimulusBase):
         self.repeat = None 
         self.rest = False
         self.trial_dict = {}
+        self.instructions_dict = DDK_PATHS
         
         
     def present(self):

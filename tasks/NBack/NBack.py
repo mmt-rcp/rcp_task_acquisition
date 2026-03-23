@@ -462,6 +462,8 @@ class N_back(bases.StimulusBase):
 
         
     def update_data(self, selections):
+        # sel_list = selections.split(",")
+        print(f"SELL LIST: {selections}")
         self.is_real = True if selections[0] == "real" else False
         self.type = 1 if selections[1] == "1-back" else 2
         
