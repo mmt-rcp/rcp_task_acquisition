@@ -9,8 +9,11 @@ from utils.logger import get_logger
 logger = get_logger("./models/LabjackProcess") 
 import time
 import os
+<<<<<<< HEAD
 
 import win32api,win32process,win32con
+=======
+>>>>>>> 99dcc72d7419e8c3dc21f770d2ae910886ab8763
 # log_path = r"/home/rcp-2/Desktop/ljm_test_usb.log"   # change if needed
 # # Optional: clear old file
 # try:
@@ -127,10 +130,17 @@ class LabJackDataStream(Process):
         numAddresses = len(aScanList)
         print(f"handle: {self.handle}, scans: {SCANS_PER_READ}, num: {numAddresses}, ascan: {aScanList}, attempted: {self.attemptedscanRate}")
         self.actualscanRate.value = ljm.eStreamStart(self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate)
+<<<<<<< HEAD
         
         # print( ljm.eReadName(
             # self.handle,
             # "STREAM_BUFFER_SIZE_BYTES"))
+=======
+        self.aScanList = aScanList
+        print( ljm.eReadName(
+            self.handle,
+            "STREAM_BUFFER_SIZE_BYTES"))
+>>>>>>> 99dcc72d7419e8c3dc21f770d2ae910886ab8763
 
     def run(self):
 
@@ -208,6 +218,7 @@ class LabJackDataStream(Process):
                 first_write = False
             self.graph(results, digital_reshape)                   
         logger.debug("labjack stream stopped.\n")
+        
         self.stop()
 
 
@@ -242,9 +253,9 @@ class LabJackDataStream(Process):
             self.numpy_arr[graph_list_index] = np.roll(self.numpy_arr[graph_list_index], size)
             self.numpy_arr[graph_list_index][:size] = np.flip(np.asarray(new_results[constants_index]))
             graph_list_index += 1
-        if self.handshake.value == 0:
-            np.frombuffer(self.graph_arr.get_obj(), dtype=ctypes.c_double).reshape(len(self.numpy_arr.flatten()))[:] = self.numpy_arr.flatten()
-            self.handshake.value = 1
+        # if self.handshake.value == 0:
+        np.frombuffer(self.graph_arr.get_obj(), dtype=ctypes.c_double).reshape(len(self.numpy_arr.flatten()))[:] = self.numpy_arr.flatten()
+            # self.handshake.value = 1
 
 
     def write_csv(self, results, write_headers=False): 

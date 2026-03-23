@@ -42,6 +42,8 @@ class Diadochokinesis(bases.StimulusBase):
         
         clock = core.Clock() 
         while clock.getTime() < DDK_TRIAL_TIME:
+            
+            self.display.draw_patch()
             self.display.flip()
             if self.finish.value == 2:
                 break

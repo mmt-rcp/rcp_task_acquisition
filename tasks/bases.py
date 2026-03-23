@@ -3,7 +3,8 @@ import psychtoolbox as ptb
 import os
 import winsound
 from psychopy import visual
-from psychopy.visual.vlcmoviestim import VlcMovieStim
+from psychopy.visual import MovieStim
+# from psychopy.visual.vlcmoviestim import VlcMovieStim
 import numpy as np
 import pandas as pd
 from utils.constants import VIDEO_DIR, VOLUME, DURATION, FREQUENCY
@@ -16,7 +17,7 @@ class StimulusBase():
     """
     """
 
-    def __init__(self, display, frame, finish=None, video_status=None):
+    def __init__(self, display, frame,  video_status=None, finish=None,):
         self.display = display
         self.frame = frame
         self.prev_flip_time = None
@@ -153,10 +154,12 @@ class StimulusBase():
     #     pass
         
     
+
     # def setup_videos(self, video_filename_dict):
     #     if self.video_status == None:
     #         return 
     #     self.instructions_dict = video_filename_dict
+
 
     def reset_task(self):
         #placeholder
@@ -164,6 +167,9 @@ class StimulusBase():
     
     def play_instructional_video(self, trial_name):
         print(self.instructions_dict)
+        # for trial_name in video_filename_dict:
+        # print(self.display.size)
+        # print("DIR", VIDEO_DIR)
         if trial_name == "":
             file = self.instructions_dict
         else:
@@ -174,7 +180,7 @@ class StimulusBase():
             raise RuntimeError(f"Video File could not be found: {path}")
         
 
-        video = VlcMovieStim(
+        video = MovieStim(
                 self.display, 
                 path,
                 size=self.display.size,
@@ -183,8 +189,6 @@ class StimulusBase():
                 flipHoriz=False, 
                 loop=False
             )
-
-        print("starting video")
         video.play()
         while video.status != visual.FINISHED:
             if self.video_status.value == 2:
