@@ -11,7 +11,7 @@ import numpy as np
 from pynput.keyboard import Key, Listener
 
 def graph_csv():
-    with open('/media/rld/c87215a7-5f3c-4acf-bb4d-2b823140e003/RawDataLocal/20260317/unitME/session005/20260317_unitME_session005_labjack.txt', 'r') as csvfile:
+    with open('D:/RawDataLocal/20260401/unitME/session011/20260401_unitME_session011_labjack.txt', 'r') as csvfile:
         test_dict = {"PHOTODIODE": [],
          "CAMERA": []}
         reader = csv.reader(csvfile)
@@ -28,8 +28,7 @@ def graph_csv():
 
 step = 100000
 
-start = 100
-
+start = 13000000
 end = start+step
 
 def run_graph():

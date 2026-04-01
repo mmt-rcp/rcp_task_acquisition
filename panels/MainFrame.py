@@ -250,6 +250,7 @@ class MainFrame(wx.Frame):
     
     def trial_event(self, event):
         if self.trial_button.GetValue():
+            time.sleep(1)
             self.count +=1
             self.rest_timer.Start(1000)
             self.finish.value = 0

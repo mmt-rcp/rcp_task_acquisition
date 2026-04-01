@@ -173,12 +173,14 @@ class GraphPanel(wx.Panel):
     def update_constants(self, y_points, index: int, lj_value: int) -> None:
         # calculating a new scale for the constants so that they will show up 
         # on the top half of the graph, and then plotting them
-        min_new = 15-(index * self.constants_step)
-        max_new = 15-(index * self.constants_step + self.constants_step)
+        # min_new = 15-(index * self.constants_step)
+        # max_new = 15-(index * self.constants_step + self.constants_step)
+        # min_old = float(self.voltage[lj_value][0])
+        # max_old = float(self.voltage[lj_value][1])
+        max_new = 15-(index * self.constants_step)
+        min_new = 15-(index * self.constants_step + self.constants_step)
         min_old = float(self.voltage[lj_value][0])
         max_old = float(self.voltage[lj_value][1])
-        # min_new = 0
-        # max_new = 14
         y_points = np.array(y_points)
         y_points = (((y_points -min_old)* (max_new-min_new))/(max_old - min_old))  +min_new
 

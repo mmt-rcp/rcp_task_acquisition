@@ -3,7 +3,8 @@ import numpy as np
 import os
 from  tasks.VowelSpace import constants as c
 from utils.logger import get_logger
-import winsound
+# import winsound
+import simpleaudio as sima
 logger = get_logger("./tasks/VowelSpace") 
 
 
@@ -94,7 +95,12 @@ class VowelSpace(bases.StimulusBase):
             file = c.VS_PATHS[trial]
             path =  os.path.join(c.STIM_DIR, file)
             # os.system(f'play -q {path} vol {c.VOLUME}')
-            winsound.PlaySound(path, winsound.SND_FILENAME)
+            # winsound.PlaySound(path, winsound.SND_FILENAME)
+            wave_obj = sima.WaveObject.from_wave_file(path)
+            play_obj = wave_obj.play()
+    
+            # Wait until playback finishes
+            play_obj.wait_done()
         except:
             logger.warn("No file, continuing without....")
         

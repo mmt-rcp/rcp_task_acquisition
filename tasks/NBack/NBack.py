@@ -386,6 +386,7 @@ class N_back(bases.StimulusBase):
         answer_list = []
         intertrial_text =  self.intertrial_instructions()
         
+        
         #show intro based on data:
         if self.is_real:
             text = self.real_instructions()
@@ -400,7 +401,10 @@ class N_back(bases.StimulusBase):
                 trial_list.append(trials)
                 answer_list.append(answers)
 
-
+        PARAMS[f"trial_{self.trial}"]  = {"trials": list(trial_list),
+                                        "reps_per_trial":len(list(trial_list)),
+                                        "n_back_type": self.type,
+                                        "real": self.is_real}
         self.trial_list = trial_list
         for index, _ in enumerate(text):
             
@@ -421,10 +425,9 @@ class N_back(bases.StimulusBase):
         self.play_tone()
         core.wait(0.05)
         timeData, fixFlipTime =self.showAndLog(self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown")
-        PARAMS[f"trial_{self.trial}"] = list(trial_list)
+        # PARAMS[f"trial_{self.trial}"] = list(trial_list)
 
-        PARAMS[f"trial_{self.trial}"]  = {"trials": list(trial_list),
-                                        "reps_per_trial":len(list(trial_list))}
+
         for index, trial_set in enumerate(trial_list):
             for t_index, trial in enumerate(trial_set):
                 if self.finished.value == 2:
@@ -467,9 +470,11 @@ class N_back(bases.StimulusBase):
         timeData, fixFlipTime =self.showAndLog(self.display, timeData, 0, end_text, 2, "Trial_Shown") 
         self.is_real=None
         self.button_press = False
+        logger.debug(f"RUN PARAMS: {PARAMS}")
         
 
     def saveMetadata(self, name, sessionFolder):
+        logger.debug(f"PARAMS: {PARAMS}")
         return PARAMS
 
         
@@ -477,8 +482,8 @@ class N_back(bases.StimulusBase):
         self.is_real = True if selections[0] == "real" else False
         self.type = 1 if selections[1] == "1-back" else 2
         
-        PARAMS["n_back_type"] = self.type
-        PARAMS["real"] = self.is_real
+        # PARAMS["n_back_type"] = self.type
+        # PARAMS["real"] = self.is_real
          
     
     def intertrial_instructions(self):

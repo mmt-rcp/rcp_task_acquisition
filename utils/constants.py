@@ -26,7 +26,7 @@ COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#8c564b',  '#9467bd', '#e
 PLOT_LENGTH = 80000
 
 # labjack constants
-SCANS_PER_READ = 20000
+SCANS_PER_READ = 10000
 #Hardcoded the hardware and labjack bc its much easier than pulling from somewhere for now
 CAMERA_HEADERS = ["In Use","Name", "Is Primary", "Serial Number"]
 HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]#"Graph Min", "Graph Max"]
@@ -53,7 +53,7 @@ GLOBAL_CLOCK = core.monotonicClock
 # sound constants
 VOLUME = 0.125       # range [0.0, 1.0]
 SAMPLING_RATE = 44100 # sampling rate, Hz
-DURATION = 1000# in seconds, can be a float
+DURATION = 1# in seconds, can be a float
 FREQUENCY = 750   # sine frequency, Hz, can be a float
 
 

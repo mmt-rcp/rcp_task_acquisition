@@ -7,11 +7,12 @@ from psychopy.visual import MovieStim
 from psychopy.visual.vlcmoviestim import VlcMovieStim
 import numpy as np
 import pandas as pd
-from utils.constants import VIDEO_DIR, VOLUME, DURATION, FREQUENCY
+import simpleaudio as sima
+from utils.constants import VIDEO_DIR, VOLUME, DURATION, FREQUENCY, SAMPLING_RATE
 from utils.logger import get_logger
 logger = get_logger("./tasks/bases.py") 
 headerBreakLine = '-' * 40 + '\n'
-winsound.Beep(37, 5)
+# winsound.Beep(37, 5)
 
 
 
@@ -144,7 +145,8 @@ class StimulusBase():
         
         
     def play_tone(self):
-        winsound.Beep(int(FREQUENCY), DURATION)
+        # winsound.Beep(int(FREQUENCY), DURATION)
+        self.play_stone(FREQUENCY, DURATION, SAMPLING_RATE)
 
 
     def reset_task(self):
@@ -210,3 +212,24 @@ class StimulusBase():
 
     def update_data(self, data):
         pass
+    
+    def play_stone(self, frequency=440, duration=1.0, sample_rate=44100):
+        """
+        Generates and plays a sine wave tone.
+        """
+        try:
+            # Generate time values
+            t = np.linspace(0, duration, int(sample_rate * duration), False)
+    
+            # Generate sine wave
+            tone = np.sin(frequency * t * 2 * np.pi)
+    
+            # Normalize to 16-bit range
+            audio = (tone * 32767).astype(np.int16)
+    
+            # Play audio
+            play_obj = sima.play_buffer(audio, 1, 2, sample_rate)
+            play_obj.wait_done()
+    
+        except Exception as e:
+            print(f"Error generating tone: {e}")

@@ -5,7 +5,9 @@ from tasks import bases
 from  utils.constants import GLOBAL_CLOCK, VOLUME
 from tasks.ToneTaps.constants import TAP_DURATION, TAP_FREQUENCY, IVRY_TAPS_VIDEO_PATH 
 from utils.logger import get_logger
-import winsound
+# import winsound
+import simpleaudio as sima
+import numpy as np
 logger = get_logger("./tasks/ToneTapsClosed") 
 
 
@@ -103,7 +105,23 @@ class ToneTapsClosed(bases.StimulusBase):
         
     def play_tap(self):
         # os.system(f'play -nq -t alsa synth {TAP_DURATION} sine {TAP_FREQUENCY} vol {VOLUME}')
-        winsound.Beep(TAP_FREQUENCY, TAP_DURATION)
+        # winsound.Beep(TAP_FREQUENCY, TAP_DURATION)
+        # Generate time values
+        t = np.linspace(0, TAP_DURATION, int(44100 * TAP_DURATION), False)
+
+        # Generate sine wave
+        tone = np.sin(TAP_FREQUENCY * t * 2 * np.pi)
+
+        # Normalize to 16-bit range
+        audio = (tone * 32767).astype(np.int16)
+
+        # Play audio
+        play_obj = sima.play_buffer(audio, 1, 2,44100)
+        play_obj.wait_done()
+        
+        
+        
+        
         
     def saveMetadata(self, name, sessionFolder):
         # sessionFolderPath = pl.Path(sessionFolder)
