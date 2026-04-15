@@ -33,10 +33,38 @@ HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]#"Graph Min", "G
 HARDWARE_LIST = ["Audio", "Cameras", "Button", "Photodiode", 
                  "Grasp Button", "Microphone 1", "Microphone 2", 
                  "String Potentiometer", "Force Sensor X", "Force Sensor Y", 
-                 "Force Sensor Z", "Barcode", "TENS"]
+                 "Force Sensor Z", "Barcode", "TENS", "TENS-out"]
 LABJACK_PIN_LIST = ["AIN0", "AIN1", "AIN2", "AIN3", "AIN4", "AIN5", "AIN6", "AIN7", 
                     "FIO0", "FIO1", "FIO2", "FIO3", "FIO4", "FIO5", "FIO6", "FIO7",
                     "EIO0", "EIO1", "EIO2", "EIO3", "EIO4", "EIO5", "EIO6", "EIO7"]
+
+class LabjackPin(Enum):
+    AIN0 = "AIN0", 
+    AIN1 = "AIN1", 
+    AIN2 = "AIN2", 
+    AIN3 = "AIN3", 
+    AIN4 = "AIN4", 
+    AIN5 = "AIN5", 
+    AIN6 = "AIN6", 
+    AIN7 = "AIN7", 
+    FIO0 = "FIO0", 
+    FIO1 = "FIO1", 
+    FIO2 = "FIO2", 
+    FIO3 = "FIO3", 
+    FIO4 = "FIO4", 
+    FIO5 = "FIO5", 
+    FIO6 = "FIO6", 
+    FIO7 = "FIO7",
+    EIO0 = "EIO0", 
+    EIO1 = "EIO1", 
+    EIO2 = "EIO2",
+    EIO3 = "EIO3", 
+    EIO4 = "EIO4", 
+    EIO5 = "EIO5", 
+    EIO6 = "EIO6", 
+    EIO7 = "EIO7"
+    
+    
 ANALOG_RANGES = [11, 9.6, 4.8, 2.4, 1.2, 0.6, 0.3, 0.15, 0.075, 0.036, 0.015]
 
 
@@ -65,7 +93,6 @@ WRITE_TIMEOUT = 0.1
 
 # nBack constants
 NBACK_TYPES = ["1-back", "2-back"]
-
 
 
 

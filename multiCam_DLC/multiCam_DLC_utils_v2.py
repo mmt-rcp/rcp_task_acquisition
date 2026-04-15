@@ -185,6 +185,10 @@ def metadata_template():
     Creates a template for config.yaml file. This specific order is preserved while saving as yaml file.
     """
     yaml_str = """\
+# Version
+    version:
+    \n
+    
 # Cameras
     cameras:
     \n

@@ -2,10 +2,9 @@ import wx
 from dataclasses import dataclass
 from dataclasses import dataclass
 import wx.lib.scrolledpanel as scrolled
-import logging
-# Get a logger instance (or the root logger)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+from utils.logger import get_logger
+
+logger = get_logger("./panels/MetadataPanel") 
 
 @dataclass
 class WxObject:

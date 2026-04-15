@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm>=6"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcp-task-acquisition"
+dynamic = ["version"]
+readme = "README.md"
+
+[tool.setuptools_scm]

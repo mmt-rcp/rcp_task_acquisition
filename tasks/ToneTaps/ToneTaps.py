@@ -9,7 +9,7 @@ from utils.logger import get_logger
 import simpleaudio as sima
 import numpy as np
 logger = get_logger("./tasks/ToneTapsClosed") 
-
+import sounddevice as sd
 
 # Parameters
 PARAMS = {
@@ -104,21 +104,30 @@ class ToneTapsClosed(bases.StimulusBase):
             self.hand = hand    
         
     def play_tap(self):
-        # os.system(f'play -nq -t alsa synth {TAP_DURATION} sine {TAP_FREQUENCY} vol {VOLUME}')
-        # winsound.Beep(TAP_FREQUENCY, TAP_DURATION)
-        # Generate time values
         t = np.linspace(0, TAP_DURATION, int(44100 * TAP_DURATION), False)
 
         # Generate sine wave
-        tone = np.sin(TAP_FREQUENCY * t * 2 * np.pi)
+        sine_wave = np.sin(TAP_FREQUENCY * t * 2 * np.pi)
+        # sine_wave = volume * np.sin(2 * np.pi * f * t)
+    # Create a linear fade-in and fade-out with a flat middle
 
-        # Normalize to 16-bit range
-        audio = (tone * 32767).astype(np.int16)
+        taper_len = int(0.01 * len(sine_wave)) # 1% taper at each end
+        
+        taper = np.ones_like(sine_wave)
+        
+        taper[:taper_len] = np.linspace(0, 1, taper_len) # Fade in
+        
+        taper[-taper_len:] = np.linspace(1, 0, taper_len) # Fade out
+        
+        tapered_sine = sine_wave * taper
 
-        # Play audio
+        audio = (tapered_sine * 32767).astype(np.int16)
+
         play_obj = sima.play_buffer(audio, 1, 2,44100)
         play_obj.wait_done()
-        
+
+        # Play using sounddevice
+        # sd.play(tapered_sine, fs)
         
         
         

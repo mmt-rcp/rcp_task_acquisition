@@ -2,10 +2,10 @@ import wx
 import wx.lib.scrolledpanel as scrolled
 from panels.HardwarePanel import HardwarePanel
 from utils.file_utils import read_config
-import logging
-logger = logging.getLogger(__name__) 
+from utils.logger import get_logger
 
-logger.setLevel(logging.DEBUG)
+logger = get_logger("./panels/LaunchPanel") 
+
 
 class LaunchPanel():
     '''
@@ -45,13 +45,12 @@ class LaunchPanel():
         self.regular_size = wx.Size(650, 400)
         self.hardware_size = wx.Size(650,800)
         button_width = wx.Size(200, -1)
+        
         self.dialog = wx.Dialog(parent, id= wx.ID_ANY, title= 'Select Protocol',
                             size = self.regular_size, pos = (660, 275))
         
         self.panel = scrolled.ScrolledPanel(self.dialog, -1,style=wx.SUNKEN_BORDER)
         self.panel.SetupScrolling(scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False)
-        # self.panel.SetBackgroundColour(wx.Colour(54, 54, 54))
-        # self.panel.SetForegroundColour(wx.Colour(250,250,250))
         self.hardware_panel = HardwarePanel(task_config, self.panel)
         self.hardware_panel.Hide()
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -63,7 +62,7 @@ class LaunchPanel():
 
         
     def _setup_protocol(self, button_width):
-        text = wx.StaticText(self.panel, label='Protocol:')
+        self.protocol_text = wx.StaticText(self.panel, label='Protocol:')
         self.protocol_choice= wx.Choice(self.panel, 
                                        id=wx.ID_ANY, 
                                        choices=self.task_list,
@@ -73,28 +72,28 @@ class LaunchPanel():
         self.protocol_button = wx.Button(self.panel, size=button_width, label="Select Protocol")
         self.task_event("")
         grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        grid_sizer.Add(text, 0, flag= wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
+        grid_sizer.Add(self.protocol_text, 0, flag= wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
         grid_sizer.Add(self.protocol_choice, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
         grid_sizer.Add(self.protocol_button, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
         return grid_sizer
     
     
     def _setup_metadata(self):
-        administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
+        self.administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
         self.administrator_id =  wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         
-        participant_id_text = wx.StaticText(self.panel, label='Participant Id:')
+        self.participant_id_text = wx.StaticText(self.panel, label='Participant Id:')
         self.participant_id = wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         
-        participant_detail_text = wx.StaticText(self.panel, label='Participant Details:')
+        self.participant_detail_text = wx.StaticText(self.panel, label='Participant Details:')
         self.participant_detail = wx.TextCtrl(self.panel, size=wx.Size(450, 70), style=wx.TE_MULTILINE | wx.TE_LEFT, value="")
        
         grid_sizer = wx.GridBagSizer(4, 3)
-        grid_sizer.Add(administrator_text, pos=(0,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.administrator_text, pos=(0,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.administrator_id, pos=(0,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(participant_id_text, pos=(1,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_id_text, pos=(1,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_id, pos=(1,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(participant_detail_text, pos=(2,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_detail_text, pos=(2,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_detail, pos=(2,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         return grid_sizer
 
@@ -104,10 +103,9 @@ class LaunchPanel():
         self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.hardware_event)
         
         self.compress_button = wx.Button(self.panel, size=button_width, label="Compress Videos")
+        self.compress_button.Enable(False)
         
-        self.exit_button = wx.Button(self.panel, size=button_width, label="Exit")
-        # self.exit_button.Bind(wx.EVT_BUTTON, self.exit_event)
-        
+        self.exit_button = wx.Button(self.panel, size=button_width, label="Exit")        
         
         row_sizer = wx.BoxSizer(wx.HORIZONTAL)
         row_sizer.Add(self.hardware_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
@@ -115,14 +113,32 @@ class LaunchPanel():
         row_sizer.Add(self.exit_button, 0, wx.ALIGN_CENTER_VERTICAL)
         return row_sizer
     
-
-    def exit_event(self):
+    
+    def enable_gui(self, is_enabled) -> None:
+        self.hardware_button.Enable(is_enabled) 
+        # self.compress_button.Enable(is_enabled)
+        self.exit_button.Enable(is_enabled)
+        self.administrator_text.Enable(is_enabled)
+        self.administrator_id.Enable(is_enabled)
+        self.participant_id_text.Enable(is_enabled)
+        self.participant_id.Enable(is_enabled)
+        self.participant_detail_text.Enable(is_enabled)
+        self.participant_detail.Enable(is_enabled)
+        self.protocol_button.Enable(is_enabled)
+        self.protocol_choice.Enable(is_enabled)
+        self.protocol_text.Enable(is_enabled)
+        self.hardware_button.SetValue(False)
+        self.hardware_button.SetLabel("Update Hardware")
+        self.panel.Update()
+        
+        
+    def exit_event(self)-> None:
         logger.debug("exit")
         self.panel.Destroy()
         self.dialog.Destroy()
     
     
-    def protocol_event(self, event):
+    def protocol_event(self, event: wx.Event) -> None:
         '''
         Bound to select protocol event. Triggers starting the aquisition
         gui.
@@ -167,8 +183,7 @@ class LaunchPanel():
         self.hardware_panel.set_task(self.task)
 
 
-    def show(self):
-        
+    def Show(self):
         self.is_hidden = False
         return self.dialog.Show()
     
@@ -186,14 +201,9 @@ class LaunchPanel():
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
         
     
-    def hide(self):
-        self.hardware_button.SetValue(False)
-        self.hardware_button.SetLabel("Update Hardware")
-        
+    def Hide(self):
         self.dialog.Hide()
     
-    def get_task(self):
-        return self.task
-    
+
 
     

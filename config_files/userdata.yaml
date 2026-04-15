@@ -31,7 +31,7 @@ cameras:
     gamma: 0.8
     in_use: true
   leftCamB:
-    serial: '24043993'
+    serial: '25504066'
     ismaster: false
     crop:
     - 40
@@ -60,8 +60,69 @@ cameras:
     gain: 15
     gamma: 0.8
     in_use: true
+  leftCamC:
+    serial: '25502269'
+    ismaster: false
+    crop:
+    - 40
+    - 640
+    - 30
+    - 480
+    exposure: 1000
+    framerate: 120
+    bin: 2
+    nickname: leftCamC
+    gain: 15
+    gamma: 0.8
+    in_use: true
+  rightCamC:
+    serial: '25502268'
+    ismaster: false
+    crop:
+    - 40
+    - 640
+    - 30
+    - 480
+    exposure: 1000
+    framerate: 120
+    bin: 2
+    nickname: rightCamC
+    gain: 15
+    gamma: 0.8
+    in_use: true
+  leftCamD:
+    serial: '25502266'
+    ismaster: false
+    crop:
+    - 40
+    - 640
+    - 30
+    - 480
+    exposure: 1000
+    framerate: 120
+    bin: 2
+    nickname: leftCamD
+    gain: 15
+    gamma: 0.8
+    in_use: true
+  rightCamD:
+    serial: '25502267'
+    ismaster: false
+    crop:
+    - 40
+    - 640
+    - 30
+    - 480
+    exposure: 1000
+    framerate: 120
+    bin: 2
+    nickname: rightCamD
+    gain: 15
+    gamma: 0.8
+    in_use: true
 
 unitRef: unitME
+
 screen_settings:
   fullScreen: 1
   screenNumber: 1
@@ -135,6 +196,12 @@ hardware:
     graph: ''
   TENS:
     labjack_input: FIO6
+    voltage_range:
+    - 0
+    - 1
+    graph: ''
+  TENS-out:
+    labjack_input: FIO3
     voltage_range:
     - 0
     - 1

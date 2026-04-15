@@ -1,27 +1,11 @@
 import ruamel.yaml
 import shutil
 import os
-import datetime
-from pathlib import Path
-from utils.constants import (DUMP_FOLDER_PATH, STIM_CONFIG_FILE_NAME, 
-                             STIM_CONFIG_FILE_PATH,SCREEN_CONFIG_FILE_NAME,
+from utils.constants import (STIM_CONFIG_FILE_PATH,
+                             SCREEN_CONFIG_FILE_NAME,
                              CONFIG_FILE_PATH)
-
-# DUMP_FOLDER_PATH = '/home/rld/Documents/RawDataLocal/Dump/'
-# STIM_CONFIG_FILE_PATH = '/home/rcp/task-acquisition/config_files'
-# STIM_CONFIG_FILE_NAME = 'visualStimulusConfig.yaml'
-# CONFIG_FILE_PATH = '/home/rcp/task-acquisition/config_files'
-# SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
-
-# def create_temporary_session_folder():
-#     dumpFolderPath = Path(DUMP_FOLDER_PATH)
-#     if dumpFolderPath.exists() == False:
-#         dumpFolderPath.mkdir()
-#     currentDate = datetime.datetime.now().strftime('%Y-%m-%d')
-#     currentTime = datetime.datetime.now().strftime('%H:%M:%S') 
-#     sessionFolderPath = dumpFolderPath.joinpath(f'{currentDate}_{currentTime}_session00?')
-#     sessionFolderPath.mkdir()
-#     return str(sessionFolderPath)
+from utils.logger import get_logger
+logger = get_logger("./utils/file_utils") 
 
 def get_screen_config():
     userDataDir = os.path.realpath(CONFIG_FILE_PATH)

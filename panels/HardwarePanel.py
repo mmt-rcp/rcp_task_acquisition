@@ -1,5 +1,4 @@
 import wx
-import wx.lib.scrolledpanel as scrolled
 from dataclasses import dataclass
 from models.Warnings import Warning
 import PySpin
@@ -8,7 +7,9 @@ from multiprocessing import Process, Value
 from utils.file_utils import read_config, write_config
 from utils.constants import (CAMERA_HEADERS, HEADERS, HARDWARE_LIST,
                             LABJACK_PIN_LIST, ANALOG_RANGES)
+from utils.logger import get_logger
 
+logger = get_logger("./panels/HardwarePanel") 
 
 
 #keeping track of each row for the hardware/camera selection
@@ -18,8 +19,6 @@ class HardwareRow:
     name: wx.StaticText
     in_use: wx.CheckBox
     labjack: wx.Choice
-    # lj_min: wx.TextCtrl
-    # lj_max: wx.TextCtrl
     voltage_range: wx.Choice
     in_use_all: bool = False
     in_use_protocol: bool = False

@@ -24,17 +24,18 @@ from panels.MetadataPanel import MetadataPanel
 from utils.constants import RAW_DATA_DIR, PLOT_LENGTH
 # from utils.stimulus_utils import thread_event
 from utils.logger import get_logger
-logger = get_logger("./multiCam_DLC_videoAcquisition_v1") 
+logger = get_logger("./panels/MainFrame") 
 from panels.ControlsPanel import ControlsPanel
 from panels.ImagePanel import ImagePanel
 from models.SerialDevice import SerialDevice
 import json
 # import serial
 from models.CameraFrontend import Camera
+from utils.task_acquisistion_version import __version__
 
 class MainFrame(wx.Frame):
     """Contains the main GUI and button boxes"""
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         self.task_cfg = None
         self.task = None
         self.cam_cfg = {}
@@ -183,12 +184,13 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
         self.Bind(wx.EVT_TIMER, self.cams.vidPlayer, self.liveTimer)
         self.thread.start()
-        
+        self.task_active = False
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
     
     def run_task(self, event):
         self.Enable()
         if self.task_button.GetValue():
+            self.task_active = True
             self.trial_dict = {}
             self.start_time= str(f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}Z') 
             self.count = 0
@@ -209,7 +211,7 @@ class MainFrame(wx.Frame):
             self.lj.add_csv(lj_path, self.serial_device, msg)
             self.startingSession = True
             self.task_button.SetLabel("End Task")
-            self.hardware_button.Enable(False)
+            # self.hardware_button.Enable(False)
             if self.task == "vowel_space":
                 self.msgq.put("vowel_space")
                 trial_info = self.resultsq.get()
@@ -221,6 +223,7 @@ class MainFrame(wx.Frame):
             self.trial_panel.start_new_trial()
             self.trial_panel.show()
         else:
+            self.task_active = False
             self.serial_device.write("A")
             time.sleep(3)
             if self.trial_button.GetValue():
@@ -295,21 +298,6 @@ class MainFrame(wx.Frame):
             elif self.task == "verbal_fluency":
                 self.trial_panel.update_values()
             elif self.task == "vowel_space":
-            #     self.msgq.put("vowel_space")
-            #     trial_info = self.resultsq.get()
-            #     trial, syllable, finish = trial_info.split(",")
-            #     trial = int(trial)
-            #     finish = str(finish) == "True"
-                
-            #     if finish:
-            #         self.trial_panel.is_finish()
-            #         self.trial_button.Enable(False)
-            #         self.trial_button.SetLabel("Next Trial")
-            #         self.trial_panel.repeat_trial.Enable(True)    
-            #         self.trial_panel.repeat_trial.SetValue(False) 
-            #         self.cams.stop_recording(event)
-            #         self.liveTimer.Stop()
-            #         return
                 self.trial_panel.repeat_trial.Enable(True)
                 self.trial_button.SetLabel("Repeat Trial")
                 self.trial_panel.repeat_trial.SetValue(False)
@@ -433,7 +421,8 @@ class MainFrame(wx.Frame):
                 self.Enable()
                 self.hardware_test = True
                 self.hardware_test_panel.Show()
-                is_success = self.lj.start_labjack()
+                if not self.task_active:
+                    is_success = self.lj.start_labjack()
                 self.msgq.put("hardware_test")
                 if not is_success:
                     logger.error("Error loading labjack_stream")
@@ -471,12 +460,13 @@ class MainFrame(wx.Frame):
                 self.finish.value = 2
                 self.hardware_test_panel.Hide()
                 self.hardware_test = False
-                self.labjack_scan_rate = self.lj.stop_labjack()
-                self.labjack_stream_button.Enable(True)
-                if self.labjack_stream_button.GetValue():
-                    self.labjack_stream_button.SetValue(False)
-                    self.labjack_stream_button.SetLabel("Stream Labjack")
-                self.labjack_stream_button.Enable(True)
+                if self.task_active:
+                    self.labjack_scan_rate = self.lj.stop_labjack()
+                    self.labjack_stream_button.Enable(True)
+                    if self.labjack_stream_button.GetValue():
+                        self.labjack_stream_button.SetValue(False)
+                        self.labjack_stream_button.SetLabel("Stream Labjack")
+                    self.labjack_stream_button.Enable(True)
             buttons = [self.set_crop, self.rec, self.minRec, self.secRec, self.update_settings]
             self.enable_group(buttons, False)
         
@@ -488,14 +478,16 @@ class MainFrame(wx.Frame):
         if self.hardware_button.GetValue():
             self.hardware_test = True
             self.hardware_test_panel.Show()
-            is_success = self.lj.start_labjack()
             self.msgq.put("hardware_test")
-            if not is_success:
-                logger.error("Error loading labjack_stream")
-            else:
-                self.labjack_stream_button.SetValue(True)
-                self.labjack_stream_button.Enable(False)
-                self.labjack_stream_button.SetLabel("Stop Labjack")
+            if not self.task_active:
+                is_success = self.lj.start_labjack()
+            
+                if not is_success:
+                    logger.error("Error loading labjack_stream")
+                else:
+                    self.labjack_stream_button.SetValue(True)
+                    self.labjack_stream_button.Enable(False)
+                    self.labjack_stream_button.SetLabel("Stop Labjack")
             if not self.liveTimer.IsRunning():
                 self.cams.live_start()
                 self.liveTimer.Start(150)
@@ -526,12 +518,13 @@ class MainFrame(wx.Frame):
                 self.finish.value = 2
                 self.hardware_test_panel.Hide()
                 self.hardware_test = False
-                self.labjack_scan_rate = self.lj.stop_labjack()
-                self.labjack_stream_button.Enable(True)
-                if self.labjack_stream_button.GetValue():
-                    self.labjack_stream_button.SetValue(False)
-                    self.labjack_stream_button.SetLabel("Stream Labjack")
-                self.labjack_stream_button.Enable(True)
+                if not self.task_active:
+                    self.labjack_scan_rate = self.lj.stop_labjack()
+                    self.labjack_stream_button.Enable(True)
+                    if self.labjack_stream_button.GetValue():
+                        self.labjack_stream_button.SetValue(False)
+                        self.labjack_stream_button.SetLabel("Stream Labjack")
+                        self.labjack_stream_button.Enable(True)
             self.set_crop.Enable(True)
             self.rec.Enable(True)
             self.minRec.Enable(True)
@@ -542,10 +535,17 @@ class MainFrame(wx.Frame):
             
     def add_metadata(self):
         metadata = MetadataPanel()
+        params = None
+        try:
+            params = json.loads(self.resultsq.get())
+        except:
+            pass
         if metadata.show() == wx.ID_OK:
             self.meta,ruamelFile = clara.metadata_template()
             date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
             cameras = {}
+            print("vers", __version__)
+            self.meta["version"] = str(__version__)
             self.meta["actual_scan_rate"]=self.labjack_scan_rate
             for ndx, s in enumerate(self.cams.camStrList):
                 # framerate, exposure = self.cam[ndx].get_actual_settings()
@@ -574,7 +574,7 @@ class MainFrame(wx.Frame):
             
             self.meta['task'] = self.task
             self.meta['task_settings'] = self.task_cfg[self.task]["settings"]
-            params = json.loads(self.resultsq.get())
+            
             self.meta['trial_data'] = params
             if self.task == "verbal_fluency":
                 self.meta["trial_data"]["categories"] = self.trial_panel.add_metadata()
@@ -676,7 +676,7 @@ class MainFrame(wx.Frame):
         self.Destroy()
 
     
-    def hide(self, event):
+    def Hide(self, event):
         self.is_hidden = True
         self.lj.stop_labjack()
         
@@ -700,7 +700,7 @@ class MainFrame(wx.Frame):
         if self.init.GetValue():
             self.init.SetValue(False)
             self.initCams(event)
-        self.Hide()
+        super().Hide()
         return True
         
     
@@ -764,6 +764,7 @@ class MainFrame(wx.Frame):
         
     
     def show(self, launch_args, event):
+        # event = None!
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
@@ -817,7 +818,7 @@ class MainFrame(wx.Frame):
                 self.trial_panel.syllable_pause_video_button.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
             if self.task == "vowel_space":
                 self.trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
-        self.Show()
+        super().Show()
         return True
         
         

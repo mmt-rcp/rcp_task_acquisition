@@ -2,6 +2,7 @@ import threading
 import ctypes
 import time
 import math
+from enum import Enum
 import utils.file_utils as files
 from tasks.UpdrsTap.BasicTaps import BasicTaps
 from utils.displays import Window
@@ -21,6 +22,13 @@ from queue import Empty
 logger = get_logger("./models/StimulusThread") 
 import json
 from multiprocessing import Process
+
+
+class Msg(Enum):
+    INITIALIZE = "init_stimulus"
+    UPDATE_TASK = "update_task"
+    RUN_TASK = "run_stimulus"
+    CLOSE_THREAD = ""
 
 
 class StimulusThread(Process):
@@ -58,13 +66,13 @@ class StimulusThread(Process):
             except Empty:
                 continue
             try:
-                if msg=="init_stimulus":
+                if msg == Msg.INITIALIZE.value:
                     self.params = {}
                     self.init_stimuli()
-                elif msg=="update_task":
+                elif msg == Msg.UPDATE_TASK.value:
                     msg= self.msgq.get()
                     self.task = msg
-                elif msg=="run_stimulus":
+                elif msg == Msg.RUN_TASK.value:
                     self.shared.value = 0
                     # Main loop for presenting stimuli
                     tStart = time.time()
@@ -164,6 +172,7 @@ class StimulusThread(Process):
     def end_stimulus(self):
         self.window.idle(time_list = [])
         if hasattr(self.stimulus, 'saveMetadata'):
+            logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
             results = self.stimulus.saveMetadata(self.stimulusConfig[self.task], None)
             json_str = json.dumps(results)
             logger.debug(f"jsonstr: {json_str}")
