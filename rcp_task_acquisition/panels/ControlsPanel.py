@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import wx
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
@@ -11,6 +12,8 @@ from rcp_task_acquisition.tasks.ReachGrasp.panel import ReachGraspPanel
 from rcp_task_acquisition.tasks.ToneTaps.panel import ToneTapsClosedPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
 from rcp_task_acquisition.tasks.VerbGeneration.panel import VerbGenerationPanel
+
+
 
 class ControlsPanel(wx.Panel):
     def __init__(self,parent, ctrl_panel, task="task"):
@@ -32,8 +35,6 @@ class ControlsPanel(wx.Panel):
         vertical_spacer.Add(ctrl_panel.create_labjack_panel(self), pos=(vertical_position,0), span=(0,5), flag=wx.ALIGN_LEFT | wx.ALL, border=5)
         vertical_position+=1
         vertical_spacer.Add(self.hardware_test, pos=(vertical_position,0), span=(0,5), flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALIGN_LEFT | wx.ALL, border=5)
-        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
-        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.SetSizer(vertical_spacer)
         vertical_spacer.Fit(self)
         self.cam_panel.Hide()
@@ -43,12 +44,15 @@ class ControlsPanel(wx.Panel):
 
     def get_trial_panel(self):
         return self.task_panel
+
     
     def show_cams(self):
         return self.cam_panel.Show()
+
     
     def hide_cams(self):
         return self.cam_panel.Hide()
+
     
     def _set_up_tasks(self, task, button_width):
         vertical_position = 0
@@ -63,12 +67,10 @@ class ControlsPanel(wx.Panel):
         
         self.task_sizer.Add(self.task_panel, pos=(vertical_position,0), span=(0,5), flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALIGN_LEFT | wx.ALL, border=0)
         vertical_position+=1
-        
-        
+                
         self.camera_toggle = wx.Button(self, label="Toggle Cameras", size=(button_width*2, -1))
         self.task_sizer.Add(self.camera_toggle, pos=(vertical_position,0), span=(0,2), flag=wx.LEFT, border=white_space)
 
-        
         self.hardware_button = wx.ToggleButton(self, id=wx.ID_ANY, label="Hardware Test",size=(button_width*2, -1))
         self.task_sizer.Add(self.hardware_button, pos=(vertical_position,2), span=(0,2), flag=wx.LEFT, border=white_space)
         
@@ -78,8 +80,7 @@ class ControlsPanel(wx.Panel):
         self.task_sizer.Add(self.tens_button, pos=(vertical_position,0), span=(0,2), flag=wx.LEFT, border=white_space)
         
         vertical_position+=1
-        
-        
+                
         self.session_button = wx.ToggleButton(self, id=wx.ID_ANY, label="Start Task",size=(button_width*4+15, -1))
         self.task_sizer.Add(self.session_button, pos=(vertical_position,0), span=(0,4), flag=wx.LEFT, border=white_space)
         
@@ -90,6 +91,7 @@ class ControlsPanel(wx.Panel):
 
         return self.task_sizer
     
+    
     def get_cam_handles(self):
         return (self.cam_panel.init,self.cam_panel.reset,self.cam_panel.update_settings,self.cam_panel.play,self.cam_panel.rec,
                 self.cam_panel.exposure_button,self.cam_panel.set_crop,self.cam_panel.crop, self.cam_panel.minRec,self.cam_panel.secRec)
@@ -98,13 +100,12 @@ class ControlsPanel(wx.Panel):
     def get_hardware_handles(self): 
         return (self.hardware_buttons[0], self.hardware_buttons[1], self.hardware_test)
     
+    
     def get_task_handles(self):
-        # return (self.slider, self.hardware_button, self.session_button, self.quit)
         return (self.camera_toggle, self.hardware_button, self.session_button, self.quit, self.tens_button)
     
 
-    def update_task(self, task):
-        
+    def update_task(self, task):    
         task_title = task.replace("_", " ").title()
         self.task_text.SetLabel(f"{task_title}")
         self.task_panel.Destroy()
@@ -117,9 +118,7 @@ class ControlsPanel(wx.Panel):
         
     def get_task_panel(self, task):
         if task == "motor_task_finger_taps":
-            
             return FingerTapPanel(self)
-            
         elif task == "tone_taps":
             panel = FingerTapPanel(self)
             panel.seconds_text.Hide() 
@@ -145,10 +144,13 @@ class ControlsPanel(wx.Panel):
         else:
             basic_panel = TrialPanel(self)
             basic_panel.continue_button.Show()
-            return basic_panel #TrialPanel(self)
+            return basic_panel 
+    
     
     def close_task_panel(self):
         self.task_panel.Destroy()
+    
+    
     
 class CameraControlPanel(wx.Panel):
     def __init__(self, parent, button_width):
@@ -190,8 +192,7 @@ class CameraControlPanel(wx.Panel):
         self.crop = wx.CheckBox(self, id=wx.ID_ANY, label="Crop", size=(button_width, -1))
         camsizer.Add(self.crop, pos=(vpos,3), span=(0,3), flag=wx.TOP, border=0)
         self.crop.SetValue(True)
-        
-        
+            
         self.minRec = wx.TextCtrl(self, value='20', size=(50, -1))
         self.minRec.Enable(False)
         min_text = wx.StaticText(self, label='M:')
@@ -203,7 +204,6 @@ class CameraControlPanel(wx.Panel):
         sec_text = wx.StaticText(self, label='S:')
         camsizer.Add(self.secRec, pos=(vpos,10), span=(1,2), flag=wx.ALL, border=white_space)
         camsizer.Add(sec_text, pos=(vpos,9), span=(1,1), flag=wx.TOP, border=5)
-        
         
         bsizer.Add(camsizer, 1, wx.EXPAND | wx.ALL, 5)
         self.SetSizer(bsizer)

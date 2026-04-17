@@ -1,5 +1,5 @@
 import wx
-# from utils.logging import logger
+
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/LabjackFrontend") 
 

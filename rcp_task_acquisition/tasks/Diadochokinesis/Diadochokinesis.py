@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-from psychopy import core #, visual
+from psychopy import core
+
 from rcp_task_acquisition.tasks import bases
-# from utils.logging import logger
-from rcp_task_acquisition.tasks.Diadochokinesis.constants import DDK_TRIAL_TIME, DDK_PATHS, DDK_TRIALS_PER_SYLLABLE, DDK_TRIALS
+from rcp_task_acquisition.tasks.Diadochokinesis.constants import (DDK_TRIAL_TIME,
+                                                                  DDK_PATHS, 
+                                                                  DDK_TRIALS_PER_SYLLABLE, 
+                                                                  DDK_TRIALS)
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./tasks/Diadochokinesis") 
 

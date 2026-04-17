@@ -1,10 +1,10 @@
-from rcp_task_acquisition.tasks import bases
-import numpy as np
 import os
+import numpy as np
+import simpleaudio as sima
+
+from rcp_task_acquisition.tasks import bases
 from  rcp_task_acquisition.tasks.VowelSpace import constants as c
 from rcp_task_acquisition.utils.logger import get_logger
-# import winsound
-import simpleaudio as sima
 logger = get_logger("./tasks/VowelSpace") 
 
 
@@ -94,8 +94,6 @@ class VowelSpace(bases.StimulusBase):
         try:
             file = c.VS_PATHS[trial]
             path =  os.path.join(c.STIM_DIR, file)
-            # os.system(f'play -q {path} vol {c.VOLUME}')
-            # winsound.PlaySound(path, winsound.SND_FILENAME)
             wave_obj = sima.WaveObject.from_wave_file(path)
             play_obj = wave_obj.play()
     

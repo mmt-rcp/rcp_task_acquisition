@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
-
-# imports
 from __future__ import annotations
-
-from psychopy import core, visual, event
 import os
+import time
+from psychopy import core, visual, event
 import pandas as pd
 import random
-from rcp_task_acquisition.tasks import bases
 from pathlib import Path
-import time
+from typing import List, Tuple
+
+from rcp_task_acquisition.tasks import bases
 import rcp_task_acquisition.tasks.NBack.configs as cfg
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.constants import CODE_DIR
-from typing import List, Tuple
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./tasks/NBack") 
 

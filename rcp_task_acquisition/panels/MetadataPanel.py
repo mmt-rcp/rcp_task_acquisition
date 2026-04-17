@@ -1,10 +1,11 @@
 import wx
 from dataclasses import dataclass
-from dataclasses import dataclass
 import wx.lib.scrolledpanel as scrolled
-from rcp_task_acquisition.utils.logger import get_logger
 
+from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panels/MetadataPanel") 
+
+
 
 @dataclass
 class WxObject:

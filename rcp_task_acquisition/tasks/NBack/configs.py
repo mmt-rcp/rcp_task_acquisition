@@ -1,23 +1,9 @@
 # -*- coding: utf-8 -*-
-
-# ./src/utils/config.py
 from __future__ import annotations
 from pathlib import Path
+
 from rcp_task_acquisition.utils.enums import Answer, Status
 
-# ---------- Directories ----------
-
-# # root
-# BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-# # resources
-# RESOURCES_DIR = BASE_DIR / "resources"
-
-# # results
-# RESULTS_DIR = BASE_DIR / "results"
-
-# # logs
-# LOGS_DIR = BASE_DIR / "logs"
 
 
 # ---------- Default settings ----------

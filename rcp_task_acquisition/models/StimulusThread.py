@@ -1,8 +1,10 @@
-import threading
-import ctypes
 import time
 import math
 from enum import Enum
+from queue import Empty
+import json
+from multiprocessing import Process
+
 import rcp_task_acquisition.utils.file_utils as files
 from rcp_task_acquisition.tasks.UpdrsTap.BasicTaps import BasicTaps
 from rcp_task_acquisition.utils.displays import Window
@@ -18,23 +20,18 @@ from rcp_task_acquisition.tasks.HardwareTest import HardwareTest
 from rcp_task_acquisition.tasks.VerbGeneration.VerbGeneration import VerbGeneration
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.utils.logger import get_logger
-from queue import Empty
 logger = get_logger("./models/StimulusThread") 
-import json
-from multiprocessing import Process
 
 
 class Msg(Enum):
     INITIALIZE = "init_stimulus"
     UPDATE_TASK = "update_task"
     RUN_TASK = "run_stimulus"
-    CLOSE_THREAD = ""
 
 
 class StimulusThread(Process):
     def __init__(self, msgq, finish, shared, frame, 
                  screen_config, task, button, press_count, video_status, resultsq):
-        
         super().__init__()
         self.msgq = msgq
         self.screenConfig = screen_config
@@ -49,9 +46,8 @@ class StimulusThread(Process):
         self.press_count = press_count
         self.video_status = video_status
         self.alive = True  
-        
         self.task = task
-        # self.params = params
+        
         
     def run(self):
         self.window = Window(

@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import wx
 import json
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
-from rcp_task_acquisition.tasks.VerbalFluency.constants import (PHONEMIC_LIST, SEMANTIC_LIST, VERBAL_FLUENCY_PATHS,
-                            PHONEMIC_PHRASE, SEMANTIC_PHRASE)
+from rcp_task_acquisition.tasks.VerbalFluency.constants import (PHONEMIC_LIST, 
+                                                                SEMANTIC_LIST,
+                                                                PHONEMIC_PHRASE, 
+                                                                SEMANTIC_PHRASE)
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panels/VerbalFluencyPanel") 
 
@@ -68,7 +71,6 @@ class VerbalFluencyPanel(TrialPanel):
         self.seconds_text.SetLabel("Time: 60 secs")
         self.phonemic_list = json.loads(self.initial_list[self.phonemic_choice.GetSelection()])
         self.semantic = self.semantic_list[self.semantic_choice.GetSelection()]
-        print("List:", self.phonemic_list, ",", self.initial_list, ",", self.phonemic_choice.GetSelection())
         logger.debug(f"Trial Continued; {self.phonemic_list}, {self.semantic} selected")
         self.value = self.phonemic_list[self.trial_num]
         self.prompt_text.SetLabel(PHONEMIC_PHRASE.replace("*", self.value))

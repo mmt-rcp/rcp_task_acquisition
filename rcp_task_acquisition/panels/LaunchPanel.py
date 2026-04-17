@@ -1,9 +1,9 @@
 import wx
 import wx.lib.scrolledpanel as scrolled
+
 from rcp_task_acquisition.panels.HardwarePanel import HardwarePanel
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
-
 logger = get_logger("./panels/LaunchPanel") 
 
 

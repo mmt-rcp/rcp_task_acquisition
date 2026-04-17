@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-
 import wx
-# from utils.logging import logger
 from datetime import datetime
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.NBack.configs import NBACK_TYPES
 from rcp_task_acquisition.utils.logger import get_logger

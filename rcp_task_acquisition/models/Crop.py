@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
+import numpy as np
+import matplotlib.patches as patches
+
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/Crop") 
-import rcp_task_acquisition.multiCam_DLC.multiCam_DLC_utils_v2 as clara
-import numpy as np
-import wx
-import matplotlib.patches as patches
+
 
 
 class Crop():
@@ -67,8 +67,6 @@ class Crop():
         
         
     def adjust_crop(self, event, axes, cam_list, cam_config):
-        # print(f"event: {event.GetEventObject()}")
-        # if self.set_crop.GetValue():
         self.cropAxes = event.inaxes
         ndx = axes.index(event.inaxes)
         s = cam_list[ndx]

@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-from enum import Enum
 import os
 from psychopy import core
 from pathlib import Path
-
 
 
 
@@ -12,7 +10,6 @@ CODE_DIR = Path(__file__).resolve().parent.parent
 RAW_DATA_DIR = os.path.join( "D:", "RawDataLocal")
 
 STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(CODE_DIR.resolve().parent, 'config_files')
-print(STIM_CONFIG_FILE_PATH)
 STIM_CONFIG_FILE_NAME = 'visualStimulusConfig.yaml'
 SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
 VIDEO_DIR = os.path.join(BASEDIR, "Videos", "task_videos")

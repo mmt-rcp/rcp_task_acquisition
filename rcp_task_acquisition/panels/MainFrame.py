@@ -1,19 +1,20 @@
 """
-CLARA toolbox
-https://github.com/wryanw/CLARA
+file_utils toolbox
+https://github.com/wryanw/file_utils
 W Williamson, wallace.williamson@ucdenver.edu
 
 """
+import os
+import sys
+import time, datetime
 from multiprocessing import Value, Queue
 import wx
 import wx.lib.dialogs
-import os
-import sys
 import numpy as np
-import time, datetime
 import ctypes
 import shutil
-import rcp_task_acquisition.multiCam_DLC.multiCam_DLC_utils_v2 as clara
+
+import rcp_task_acquisition.utils.file_utils as file_utils
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.models.StimulusThread import StimulusThread
 from rcp_task_acquisition.models.LabjackFrontend import LabjackFrontend
@@ -22,16 +23,14 @@ from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.models.Warnings import Warning
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
 from rcp_task_acquisition.utils.constants import RAW_DATA_DIR, PLOT_LENGTH
-# from utils.stimulus_utils import thread_event
-from rcp_task_acquisition.utils.logger import get_logger
-logger = get_logger("./panels/MainFrame") 
 from rcp_task_acquisition.panels.ControlsPanel import ControlsPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
-import json
-# import serial
 from rcp_task_acquisition.models.CameraFrontend import Camera
 from rcp_task_acquisition.utils.task_acquisistion_version import __version__
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./panels/MainFrame") 
+
 
 class MainFrame(wx.Frame):
     """Contains the main GUI and button boxes"""
@@ -50,7 +49,7 @@ class MainFrame(wx.Frame):
         self.serial_device = SerialDevice()
         self.cam_crop = Crop()
         #setting up screen for stimulus thread
-        self.user_cfg = clara.read_config()
+        self.user_cfg = file_utils.read_config('userdata.yaml')
         screen_settings = self.user_cfg["screen_settings"]
         
         # Settting the GUI size and panels design
@@ -330,7 +329,6 @@ class MainFrame(wx.Frame):
         data = str(self.trial_panel.get_result())
         self.msgq.put("False")
         self.msgq.put("vowel_space")
-        print("here: ", data)
         trial_info = self.resultsq.get()
         trial, syllable, finish = trial_info.split(",")
         self.trial_button.SetLabel("Begin Trial")
@@ -550,10 +548,9 @@ class MainFrame(wx.Frame):
         except:
             pass
         if metadata.show() == wx.ID_OK:
-            self.meta,ruamelFile = clara.metadata_template()
+            self.meta,ruamelFile = file_utils.metadata_template()
             date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
             cameras = {}
-            print("vers", __version__)
             self.meta["version"] = str(__version__)
             self.meta["actual_scan_rate"]=self.labjack_scan_rate
             for ndx, s in enumerate(self.cams.camStrList):
@@ -594,7 +591,7 @@ class MainFrame(wx.Frame):
                 self.meta[data] = metadata.data[data]
                 logger.debug(data)
             self.meta['EndTime']= self.end_time
-            clara.write_metadata(self.meta, self.metapath)
+            file_utils.write_metadata(self.meta, self.metapath)
         else:
             #remove entire directory
             logger.debug(self.sess_dir)
@@ -757,7 +754,7 @@ class MainFrame(wx.Frame):
             # Write the new parameters to the user config file
             if self.set_crop.GetValue():
                 self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
-            clara.write_config(self.user_cfg)
+            file_utils.write_config(self.user_cfg)
             self.set_crop.SetValue(False)
             self.widget_panel.Enable(True)
             self.play.SetFocus() 
@@ -778,7 +775,7 @@ class MainFrame(wx.Frame):
         self.cams.reset_variables()
         self.hardware_test = False
         self.cam_test.value = False
-        self.user_cfg = clara.read_config()
+        self.user_cfg = file_utils.read_config('userdata.yaml')
         self.task_cfg = read_config("taskconfig.yaml")
         self.task = launch_args["task"].strip()
         self.msgq.put("update_task")

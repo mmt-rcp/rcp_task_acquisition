@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
+import time
 from math import floor
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 from queue import Empty
 import numpy as np
 import PySpin
-from rcp_task_acquisition.multiCam_DLC import multiCam_DLC_utils_v2 as clara
 import sys, linecache
-import time
-from rcp_task_acquisition.utils.camera_utils import identify_dropped_frames
-from rcp_task_acquisition.models.VideoThread import VideoThread
-from rcp_task_acquisition.utils.logger import get_logger
 import cv2
-logger = get_logger("./multiCam_DLC/multiCam_DLC_PySpin_v1") 
+
+import rcp_task_acquisition.utils.file_utils as file_utils
+from rcp_task_acquisition.utils.camera_utils import identify_dropped_frames
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./models/CameraProcess") 
 
         
 class multiCam_DLC_Cam(Process):
@@ -41,7 +41,7 @@ class multiCam_DLC_Cam(Process):
         isunconnected = False
         record_frame_rate = 30
         exposure_max = 4000
-        user_cfg = clara.read_config()["cameras"]
+        user_cfg = file_utils.read_config('userdata.yaml')["cameras"]
         test_num = 0
         camStrList = list()
         
@@ -284,7 +284,7 @@ class multiCam_DLC_Cam(Process):
                         cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
                         
                         # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
-                        user_cfg = clara.read_config()["cameras"]
+                        user_cfg = file_utils.read_config('userdata.yaml')["cameras"]
                         self.camq_p2read.put('done')
                         method = self.camq.get()
                         if method == 'crop':

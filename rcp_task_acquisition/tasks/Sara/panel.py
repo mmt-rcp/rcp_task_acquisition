@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import wx
 import wx.grid
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.Sara.constants import ASSESMENTS
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panels/SaraPanel") 
+
 
 
 class SaraPanel(TrialPanel):

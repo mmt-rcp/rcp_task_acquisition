@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import wx
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.ToneTaps.constants import IVRY_TAPS_VIDEO_PATH
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panel/ToneTaps")
+
 
 
 class ToneTapsClosedPanel(TrialPanel):

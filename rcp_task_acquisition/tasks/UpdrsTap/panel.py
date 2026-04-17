@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import wx
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH
 from rcp_task_acquisition.utils.logger import get_logger

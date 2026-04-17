@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-
-import wx
 import os
+import wx
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 import rcp_task_acquisition.tasks.NaturalisticSpeech.constants as c
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panels/NaturalisticSpeechPanel") 
+
 
 
 class NaturalisticSpeechPanel(TrialPanel):
@@ -28,7 +29,6 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.SetSizer(vertical_sizer)
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
-
      
 
     def _set_up_photo(self):

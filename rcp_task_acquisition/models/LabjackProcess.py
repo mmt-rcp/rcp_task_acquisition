@@ -1,29 +1,13 @@
 from multiprocessing import Process
 import numpy as np
 import ctypes
-from rcp_task_acquisition.models.Warnings import Warning
+import win32api,win32process,win32con
+
 from labjack import ljm
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
-from labjack.ljm import constants as LJMC
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/LabjackProcess") 
-import time
-import os
 
-import win32api,win32process,win32con
-# log_path = r"/home/rcp-2/Desktop/ljm_test_usb.log"   # change if needed
-# # Optional: clear old file
-# try:
-#     os.remove(log_path)
-# except FileNotFoundError:
-#     pass
-# # Enable debug logging
-# ljm.writeLibraryConfigStringS("LJM_DEBUG_LOG_FILE", log_path)
-# ljm.writeLibraryConfigS("LJM_DEBUG_LOG_MODE", 2)   # CONTINUOUS
-# ljm.writeLibraryConfigS("LJM_DEBUG_LOG_LEVEL", 1)  # LJM_STREAM_PACKET
-# ljm.writeLibraryConfigS("LJM_DEBUG_LOG_FILE_MAX_SIZE", 123456789)
-
- 
 
 
 class LabJackDataStream(Process):
@@ -61,7 +45,6 @@ class LabJackDataStream(Process):
             self.scan_num+=1 
         if self.extended_inputs:
             self.scan_num+=1
-        print("scan_num: ", self.scan_num)
         self.graph_arr = labjack_arr
         self.numpy_arr = np.empty((6, self.attemptedscanRate*2))
         self.numpy_arr.fill(np.nan)
@@ -81,7 +64,6 @@ class LabJackDataStream(Process):
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
         if self.digital_inputs:
             aScanList.append(2500)
-        # print("PID: ", os.getpid())
         if self.extended_inputs:
             aScanList.append(2501)
             self.extended = True
@@ -125,15 +107,11 @@ class LabJackDataStream(Process):
             self.extended = True
         logger.debug(aScanList)
         numAddresses = len(aScanList)
-        print(f"handle: {self.handle}, scans: {SCANS_PER_READ}, num: {numAddresses}, ascan: {aScanList}, attempted: {self.attemptedscanRate}")
+        logger.debug(f"handle: {self.handle}, scans: {SCANS_PER_READ}, num: {numAddresses}, ascan: {aScanList}, attempted: {self.attemptedscanRate}")
         self.actualscanRate.value = ljm.eStreamStart(self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate)
 
-        
-        # print( ljm.eReadName(
-            # self.handle,
-            # "STREAM_BUFFER_SIZE_BYTES"))
         self.aScanList = aScanList
-        print( ljm.eReadName(
+        logger.debug( ljm.eReadName(
             self.handle,
             "STREAM_BUFFER_SIZE_BYTES"))
 
@@ -204,8 +182,8 @@ class LabJackDataStream(Process):
             if self.button_list:
                 for button in self.button_list:
                     reshape_list = digital_reshape if button[1] == "f" else extended_reshape
-                    # print("button: ",  button)
-                    reshape_list = digital_reshape if button[1] == "f" else extended_reshape
+                    
+                    # reshape_list = digital_reshape if button[1] == "f" else extended_reshape
 
                     self.button_pressed.value = not np.all(reshape_list[button[0]])
                     if debounce == 0:
@@ -228,8 +206,6 @@ class LabJackDataStream(Process):
         new_list = []
         new_list = [digital[item] for item in self.digital_inputs]
         new_results = np.vstack((results[:-1], new_list))
-        # print(len(self.graph_indices))
-        # print(len(self.constants))
         for index, labjack_index in enumerate(self.graph_indices):
             
             if labjack_index.value == -1:
@@ -243,14 +219,12 @@ class LabJackDataStream(Process):
         graph_list_index = 0
 
         for index, labjack_index in enumerate(self.graph_indices):
-            # print("g")
             size = len(new_results[labjack_index.value])
             self.numpy_arr[index] = np.roll(self.numpy_arr[index], size)
             self.numpy_arr[index][:size] = np.flip(np.asarray(new_results[labjack_index.value]))
             self.prev_graphs[index] = labjack_index.value
             graph_list_index += 1
         for index, constants_index in enumerate(self.constants):
-            # print(new_results[constants_index][:5])
             size = len(new_results[constants_index])
             self.numpy_arr[graph_list_index] = np.roll(self.numpy_arr[graph_list_index], size)
             self.numpy_arr[graph_list_index][:size] = np.flip(np.asarray(new_results[constants_index]))

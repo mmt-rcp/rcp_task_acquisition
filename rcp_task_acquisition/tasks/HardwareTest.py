@@ -1,6 +1,6 @@
-from psychopy import core, sound #, visual
-from rcp_task_acquisition.tasks import bases
+from psychopy import core
 
+from rcp_task_acquisition.tasks import bases
 
 
 
@@ -22,7 +22,6 @@ class HardwareTest(bases.StimulusBase):
                 self.display.draw_patch()
                 self.display.flip()
                 if self.finish.value == 2:
-                    print(self.finish.value)
                     self.display.switch_patch()
                     self.display.draw_patch()
                     self.display.flip()

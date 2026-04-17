@@ -1,7 +1,6 @@
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
-logger = get_logger("./tasks/NaturalisticSpeech") 
-
+logger = get_logger("./tasks/ReachGrasp") 
 
 
 

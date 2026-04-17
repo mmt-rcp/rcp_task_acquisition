@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-
-# src/utils/enums.py
 from enum import Enum
 
 class Answer(Enum):

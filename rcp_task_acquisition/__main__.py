@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 import wx
-from rcp_task_acquisition.panels.SwitchPanel import SwitchPanel
 #set up matplotlib to be compatible on commandline/spyder
 import matplotlib
 matplotlib.use("qtagg")
+
+from rcp_task_acquisition.panels.SwitchPanel import SwitchPanel
 
 
 
 def run_app():
     app = wx.App()
-    main_panel = SwitchPanel()
+    SwitchPanel()
     app.MainLoop()
 
 

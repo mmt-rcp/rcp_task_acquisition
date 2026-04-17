@@ -1,11 +1,13 @@
 import wx
 import wx.lib.dialogs
-
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 
-class ImagePanel(wx.Panel):
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./panels/ImagePanel") 
 
+
+class ImagePanel(wx.Panel):
     def __init__(self, parent, **kwargs):
 
         wx.Panel.__init__(self, parent, -1,style=wx.SUNKEN_BORDER)

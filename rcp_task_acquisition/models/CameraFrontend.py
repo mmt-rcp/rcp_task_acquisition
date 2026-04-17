@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
-from rcp_task_acquisition.utils.logger import get_logger
-logger = get_logger("./models/CameraFrontend") 
-import rcp_task_acquisition.multiCam_DLC.multiCam_DLC_utils_v2 as clara
-import numpy as np
-import time
-from multiprocessing import Queue, Value, Array
+import datetime
 import os
+import time
+import numpy as np
 import shutil
-import rcp_task_acquisition.models.CameraProcess as spin
 import cv2
 import ctypes
-import datetime
+from multiprocessing import Queue, Value, Array
+
+import rcp_task_acquisition.models.CameraProcess as spin
+import rcp_task_acquisition.utils.file_utils as file_utils
 from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.models.Warnings import Warning
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./models/CameraFrontend") 
+
+
 
 class Camera():
     def __init__(self, serial, panel, image_panel, contrast_test, focus_test):
@@ -342,7 +345,7 @@ class Camera():
 
         
     def updateSettings(self, event):
-        self.user_cfg = clara.read_config()
+        self.user_cfg = file_utils.read_config('userdata.yaml')
         self.aqW = list()
         self.aqH = list()
         self.recSet = list()

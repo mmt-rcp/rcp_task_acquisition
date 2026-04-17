@@ -1,18 +1,14 @@
-import pathlib as pl
-import psychtoolbox as ptb
 import os
-import winsound
-from psychopy import visual
-from psychopy.visual import MovieStim
-from psychopy.visual.vlcmoviestim import VlcMovieStim
+import pathlib as pl
 import numpy as np
 import pandas as pd
 import simpleaudio as sima
-from rcp_task_acquisition.utils.constants import VIDEO_DIR, VOLUME, DURATION, FREQUENCY, SAMPLING_RATE
+from psychopy import visual
+from psychopy.visual.vlcmoviestim import VlcMovieStim
+
+from rcp_task_acquisition.utils.constants import VIDEO_DIR, DURATION, FREQUENCY, SAMPLING_RATE
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./tasks/bases.py") 
-headerBreakLine = '-' * 40 + '\n'
-# winsound.Beep(37, 5)
 
 
 
@@ -60,6 +56,7 @@ class StimulusBase():
     def prepareMetadataStream(self, sessionFolder, filename, header):
         """
         """
+        headerBreakLine = '-' * 40 + '\n'
 
         if self.metadata is None:
             return
@@ -232,4 +229,4 @@ class StimulusBase():
             play_obj.wait_done()
     
         except Exception as e:
-            print(f"Error generating tone: {e}")
+            logger.error(f"Error generating tone: {e}")

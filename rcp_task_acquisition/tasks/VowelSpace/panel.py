@@ -1,8 +1,10 @@
 import wx
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.VowelSpace.constants import VIDEO_PATHS
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panel/VowelSpace")
+
 
 
 class VowelSpacePanel(TrialPanel):
@@ -33,11 +35,6 @@ class VowelSpacePanel(TrialPanel):
         
         self.finish_text = wx.StaticText(self, label="")
         self.finish_text.Wrap(299)
-
-        # self.continue_button = wx.ToggleButton(self, label="Begin Trial")
-        
-        # self.repeat_trial = wx.ToggleButton(self, label="Repeat Trial")
-        # self.repeat_trial.Enable(False)
         
         self.continue_button = wx.ToggleButton(self, label="Begin Trial")
         self.next_button = wx.Button(self, label="Next Trial")
@@ -46,9 +43,7 @@ class VowelSpacePanel(TrialPanel):
         grid_sizer = wx.GridBagSizer(5, 6)
         grid_sizer.Add(self.trial_text, pos=(0, 0), span=(0,6), flag=wx.ALIGN_LEFT | wx.ALL, border=5)
         grid_sizer.Add(self.current_text, pos=(1, 0), span=(0,6), flag=wx.ALIGN_LEFT  | wx.ALL, border=5)
-        grid_sizer.Add(self.finish_text, pos=(2, 0), span=(0,6), flag=wx.ALIGN_LEFT | wx.ALL, border=5)
-        # grid_sizer.Add(self.repeat_trial, pos=(3,0), span=(0,2), flag=wx.ALIGN_LEFT  | wx.TOP, border=5)  
-        # grid_sizer.Add(self.continue_button, pos=(3,2), span=(0,2), flag=wx.ALIGN_LEFT  | wx.TOP, border=5)  
+        grid_sizer.Add(self.finish_text, pos=(2, 0), span=(0,6), flag=wx.ALIGN_LEFT | wx.ALL, border=5) 
         
         grid_sizer.Add(self.continue_button, pos=(3,0), span=(0,2), flag=wx.ALIGN_LEFT  | wx.TOP, border=5)  
         grid_sizer.Add(self.next_button, pos=(3,2), span=(0,2), flag=wx.ALIGN_LEFT  | wx.TOP, border=5)  

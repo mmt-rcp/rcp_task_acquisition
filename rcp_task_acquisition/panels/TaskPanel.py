@@ -5,16 +5,14 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./panels/TaskPanel") 
+
 
 class ImagePanel(wx.Panel):
-
     def __init__(self, parent, gui_size, axesCt, **kwargs):
-
         wx.Panel.__init__(self, parent, -1,style=wx.SUNKEN_BORDER)
-        
         self.draw_panel()
-        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
-        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.figure = Figure()
         self.axes = list()
         self.figure.patch.set_facecolor('none')
@@ -49,8 +47,8 @@ class ImagePanel(wx.Panel):
         self.SetSizer(self.sizer)
         self.Fit()
 
-    def updateImage(self,  gui_size, axesCt, **kwargs):
-        
+
+    def updateImage(self,  gui_size, axesCt, **kwargs):        
         self.figure = Figure()
         self.axes = list()
         self.figure.patch.set_facecolor('none')
@@ -92,4 +90,3 @@ class ImagePanel(wx.Panel):
         """
         return(self.figure,self.axes,self.canvas)
 
-#    

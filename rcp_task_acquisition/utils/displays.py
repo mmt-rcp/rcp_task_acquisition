@@ -1,12 +1,8 @@
+import time
 import numpy as np
-# from psychopy import prefs
-
-# # Must be set BEFORE importing visual or event modules
-# prefs.general['winType'] = 'pygame'
-from psychopy import monitors
 from psychopy.visual import Window
 from psychopy.visual import GratingStim
-import time
+
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./utils/displays") 
 

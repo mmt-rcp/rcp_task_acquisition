@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 import serial
+
 from rcp_task_acquisition.utils.constants import BAUDRATE, WRITE_TIMEOUT
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/Serial") 
+
+
 
 class SerialDevice():
     def __init__(self):        

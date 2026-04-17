@@ -1,14 +1,14 @@
 import wx
-from dataclasses import dataclass
-from rcp_task_acquisition.models.Warnings import Warning
 import PySpin
 import ctypes
+from dataclasses import dataclass
 from multiprocessing import Process, Value
+
+from rcp_task_acquisition.models.Warnings import Warning
 from rcp_task_acquisition.utils.file_utils import read_config, write_config
 from rcp_task_acquisition.utils.constants import (CAMERA_HEADERS, HEADERS, HARDWARE_LIST,
                             LABJACK_PIN_LIST, ANALOG_RANGES)
 from rcp_task_acquisition.utils.logger import get_logger
-
 logger = get_logger("./panels/HardwarePanel") 
 
 

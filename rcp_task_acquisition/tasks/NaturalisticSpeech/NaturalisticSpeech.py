@@ -1,9 +1,12 @@
-from psychopy import visual
 import os
+from psychopy import visual
+
+from rcp_task_acquisition.tasks.NaturalisticSpeech.constants import IMG_DIR
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./tasks/NaturalisticSpeech") 
-from rcp_task_acquisition.tasks.NaturalisticSpeech.constants import IMG_DIR
+
+
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class NaturalisticSpeech(bases.StimulusBase):

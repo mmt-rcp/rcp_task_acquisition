@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 import wx
-
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.lines import Line2D
+
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS, LINE_STYLES, COLORS, DEFAULTS
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/GraphPanel") 
+
 
 
 class GraphPanel(wx.Panel):
@@ -210,7 +211,6 @@ class GraphPanel(wx.Panel):
             max_new =7
             y_points = np.array(y_points)
             y_points = (((y_points -min_old)* (max_new-min_new))/(max_old - min_old))  +min_new
-            # print(y_points[:5])
             self.lines[index].set_ydata(y_points)
 
 
@@ -267,8 +267,7 @@ class GraphPanel(wx.Panel):
             self.test_lines.append(plot)
             self.color_index+=1
         y_coords = list(np.full(self.x_size, 0.5))
-        x_coords = list(np.arange(0, self.x_size))  
-        # print(self.test_focus)
+        x_coords = list(np.arange(0, self.x_size)) 
         plot, = self.axes.plot(x_coords, y_coords, color='white', lw=1, label="_Goal Focus" )
         self.test_legend_lines.append(Line2D([], [], lw=1, color="white"))
         self.test_legend_labels.append("Goal Setting")

@@ -2,21 +2,18 @@
 A class to store the labjack events and functions that are controlled from the 
 frontend. 
 '''
-
+import wx
+import time
 import numpy as np
 import ctypes
 from multiprocessing import Queue, Array, Value
+
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
-# from models.FlipDetection import FlipDetection
-import wx
-import time
-from rcp_task_acquisition.models.Warnings import Warning
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/LabjackFrontend") 
 
  
-
 
 class LabjackFrontend():
     def __init__(self, array_length, ctrl_panel, timer, args, button_pressed, press_count, hardware_test):

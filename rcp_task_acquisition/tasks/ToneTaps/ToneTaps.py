@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-from psychopy import visual
 import time
-from rcp_task_acquisition.tasks import bases
-from  rcp_task_acquisition.utils.constants import GLOBAL_CLOCK, VOLUME
-from rcp_task_acquisition.tasks.ToneTaps.constants import TAP_DURATION, TAP_FREQUENCY, IVRY_TAPS_VIDEO_PATH 
-from rcp_task_acquisition.utils.logger import get_logger
-# import winsound
 import simpleaudio as sima
 import numpy as np
-logger = get_logger("./tasks/ToneTapsClosed") 
+from psychopy import visual
+
+from rcp_task_acquisition.tasks import bases
+from  rcp_task_acquisition.utils.constants import GLOBAL_CLOCK
+from rcp_task_acquisition.tasks.ToneTaps.constants import TAP_DURATION, TAP_FREQUENCY, IVRY_TAPS_VIDEO_PATH 
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./tasks/ToneTaps") 
+
+
 
 # Parameters
 PARAMS = {

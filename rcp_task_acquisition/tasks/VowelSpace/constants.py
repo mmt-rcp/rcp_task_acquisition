@@ -1,5 +1,7 @@
 import os
+
 from rcp_task_acquisition.utils.constants import CODE_DIR
+
 
 
 PHRASE_LIST = ["hod", "heed", "who'd", "hoad"]

@@ -4,6 +4,7 @@ from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./tasks/Sara")
 
 
+
 # Sets up display window, fixation cross, text pages and image stimuli
 class Sara(bases.StimulusBase):
     def __init__(self, window, frame, finish):

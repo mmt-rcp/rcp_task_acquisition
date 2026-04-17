@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-
 import wx
+import csv
+
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./VerbGeneration/panel") 
-import csv
+
+
 
 class VerbGenerationPanel(TrialPanel):
     def __init__(self, parent=None):

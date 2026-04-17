@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+import csv
 from psychopy import visual,core
-import os
+
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 logger = get_logger("./tasks/VerbGeneration") 
-import csv
+
+
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class VerbGeneration(bases.StimulusBase):

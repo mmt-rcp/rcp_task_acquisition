@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 
 # ddk constants
 DDK_TRIAL_TIME = 10
@@ -17,5 +17,4 @@ DDK_PATHS = {
     "butterfly_1": "DDK/butterfly_instructions_captioned.mp4",
     "butterfly":   "DDK/butterfly_trials2and3_instructions_captioned.mp4"
     }
-# -*- coding: utf-8 -*-
 
