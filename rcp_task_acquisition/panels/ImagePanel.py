@@ -1,9 +1,7 @@
 import wx
 import wx.lib.dialogs
-import numpy as np
 
 from matplotlib.figure import Figure
-import matplotlib.patches as patches
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 
 class ImagePanel(wx.Panel):
@@ -11,8 +9,6 @@ class ImagePanel(wx.Panel):
     def __init__(self, parent, **kwargs):
 
         wx.Panel.__init__(self, parent, -1,style=wx.SUNKEN_BORDER)
-        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
-        # self.SetForegroundColour(wx.Colour(250,250,250))
         self.figure = Figure()
         self.canvas = FigureCanvas(self, -1, self.figure)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -66,5 +62,12 @@ class ImagePanel(wx.Panel):
         self.Refresh()
         self.Update()
     
+    
     def draw(self):
         self.figure.canvas.draw()
+    
+    def reset_sizing(self):
+        self.canvas.ClearBackground()
+        self.canvas.draw()
+        self.Refresh()
+        self.Update()

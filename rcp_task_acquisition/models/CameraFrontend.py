@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from rcp_task_acquisition.utils.logger import get_logger
-
 logger = get_logger("./models/CameraFrontend") 
 import rcp_task_acquisition.multiCam_DLC.multiCam_DLC_utils_v2 as clara
 import numpy as np
@@ -71,6 +70,7 @@ class Camera():
             self.cam_crop.update_crop(ndx, self.axes[ndx], self.frmDims)
         self.image_panel.update_names([self.camStrList[self.cam_pointer], self.camStrList[self.cam_pointer+1]])
         self.image_panel.draw()
+    
     
     def initialize(self, event):
         self.serial.init_serial()
@@ -386,25 +386,26 @@ class Camera():
 
             actual_rate = self.camq_p2read[camID].get()
             self.rate.append(actual_rate)
+
             
     def update_crop(self, value):
         self.crop = value
         
         
     def update_cameras_viewed(self, event):
+        #switching which 2 cameras are seen
         if self.cam_pointer+2 >=  len(self.camStrList):
             self.cam_pointer = 0
         else:
             self.cam_pointer+=2
-        self.im[0] = self.axes[0].imshow(self.frame[self.cam_pointer])
-        self.im[0].set_clim(0,255)
+        self.im[0].set_data(self.frame[self.cam_pointer])
         if len(self.camStrList) <= self.cam_pointer+1:
-            self.im[1] = self.axes[1].imshow(np.zeros(self.shape, dtype='ubyte')) 
+            self.im[1].set_data(np.zeros(self.shape, dtype='ubyte')) 
             self.image_panel.update_names([self.camStrList[self.cam_pointer], " "])
         else:
-            self.im[1] = self.axes[1].imshow(self.frame[self.cam_pointer+1]) 
-            self.im[1].set_clim(0,255)
+            self.im[1].set_data(self.frame[self.cam_pointer+1])
             self.image_panel.update_names([self.camStrList[self.cam_pointer], self.camStrList[self.cam_pointer+1]])
+
 
     def reset_variables(self):
         self.labjack_scan_rate = None

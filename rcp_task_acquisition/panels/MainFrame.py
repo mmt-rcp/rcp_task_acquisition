@@ -188,6 +188,13 @@ class MainFrame(wx.Frame):
         self.thread.start()
         self.task_active = False
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
+        
+        self.Bind(wx.EVT_SIZE, self.on_resize)
+
+    def on_resize(self, event):
+        wx.CallAfter(self.image_panel.reset_sizing)
+        event.Skip() 
+        # pass
     
     def run_task(self, event):
         self.Enable()
