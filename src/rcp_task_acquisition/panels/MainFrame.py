@@ -13,6 +13,7 @@ import wx.lib.dialogs
 import numpy as np
 import ctypes
 import shutil
+import json
 
 import rcp_task_acquisition.utils.file_utils as file_utils
 from rcp_task_acquisition.utils.file_utils import read_config
@@ -770,7 +771,6 @@ class MainFrame(wx.Frame):
         
     
     def show(self, launch_args, event):
-        # event = None!
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False

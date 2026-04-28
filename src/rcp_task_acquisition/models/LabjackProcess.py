@@ -32,19 +32,16 @@ class LabJackDataStream(Process):
         self.stream_started = stream_started
         self.actualscanRate = scan_rate
         self.handshake = handshake
-        # try:
-        #     self.handle = ljm.openS("ANY", "ANY", "ANY")
-        # except:
-        #     warning = Warning("labjack")
-        #     warning.display()
-        #     self.is_success = False
-        # if self.is_success:
-        self.scan_list = self.analog_inputs#labjack_list
+        for item in self.extended_inputs:
+            self.digital_inputs.append(item+8)
+        logger.debug(f"analog: {self.analog_inputs}, digital: {self.digital_inputs}, extended: {self.extended_inputs}")
+
+        self.scan_list = self.analog_inputs
         self.scan_num = len(self.scan_list) 
         if self.digital_inputs:
-            self.scan_num+=1 
-        if self.extended_inputs:
             self.scan_num+=1
+        logger.debug(self.extended_inputs)
+        logger.debug(self.digital_inputs)
         self.graph_arr = labjack_arr
         self.numpy_arr = np.empty((6, self.attemptedscanRate*2))
         self.numpy_arr.fill(np.nan)
@@ -62,13 +59,9 @@ class LabJackDataStream(Process):
         self.extended = False
         self.voltage_ranges = []
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
-        if self.digital_inputs:
-            aScanList.append(2500)
-        if self.extended_inputs:
-            aScanList.append(2501)
-            self.extended = True
-        logger.debug(aScanList)
-        numAddresses = len(aScanList)
+        if self.digital_inputs or self.extended_inputs:
+            aScanList.append(2580)
+
         input_names = []
         voltage_ranges = []
         for key in self.voltage_range:
@@ -78,42 +71,7 @@ class LabJackDataStream(Process):
         voltage_ranges.append(0)
         self.input_names = input_names
         self.voltage_ranges = voltage_ranges
-        # ########
-        # ljm.eWriteName(
-        #     self.handle,
-        #     "STREAM_BUFFER_SIZE_BYTES",
-        #     1)# 16384)
-        
-        # ########
-        # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 65535)
-        # # try:
-        # ljm.eWriteNames(self.handle, len(input_names), input_names, voltage_ranges)
-        # except:
-        #     logger.debug("labjack stream has already started")
-        #     ljm.closeAll()
-        #     self.handle = ljm.openS("T8", "ANY", "ANY")   
-        #     ljm.eStreamStop(self.handle)
-            
-        #     ljm.eWriteNames(self.handle, len(input_names), input_names, voltage_ranges)
-        
-    
-    def start_stream(self):
-        aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
-        if self.digital_inputs:
-            aScanList.append(2500)
-    
-        if self.extended_inputs:
-            aScanList.append(2501)
-            self.extended = True
-        logger.debug(aScanList)
-        numAddresses = len(aScanList)
-        logger.debug(f"handle: {self.handle}, scans: {SCANS_PER_READ}, num: {numAddresses}, ascan: {aScanList}, attempted: {self.attemptedscanRate}")
-        self.actualscanRate.value = ljm.eStreamStart(self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate)
 
-        self.aScanList = aScanList
-        logger.debug( ljm.eReadName(
-            self.handle,
-            "STREAM_BUFFER_SIZE_BYTES"))
 
     def run(self):
 
@@ -127,15 +85,11 @@ class LabJackDataStream(Process):
         data_2 = None
         debounce = 0
         min_off_samples = int(round(self.attemptedscanRate*0.01)) # minimum button release duration
-        # self.start_stream()
+
        
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
-        if self.digital_inputs:
-            aScanList.append(2500)
-    
-        if self.extended_inputs:
-            aScanList.append(2501)
-            self.extended = True
+        if self.digital_inputs or self.extended_inputs:
+            aScanList.append(2580)
         logger.debug(aScanList)
         numAddresses  = len(aScanList)
         try:
@@ -169,22 +123,16 @@ class LabJackDataStream(Process):
             if int(data[1]) > 48:
                 logger.debug(f"buffer value:  {data[1]}")
             results = self.results.reshape((self.scan_num, SCANS_PER_READ), order="F")
-            if self.extended:
-                extended_vals = np.array(results[-1], dtype=np.uint8)
-                extended_reshape = np.unpackbits( extended_vals.view(np.uint8)).reshape(8, SCANS_PER_READ, order = "F")[::-1]
-                digital = np.array(results[-2], dtype=np.uint8)
-                digital_reshape =np.unpackbits( digital.view(np.uint8)).reshape(8, SCANS_PER_READ, order = "F")[::-1]
-            else:
-                digital = np.array(results[-1], dtype=np.uint8)
-                digital_reshape =np.unpackbits( digital.view(np.uint8)).reshape(8, SCANS_PER_READ, order = "F")[::-1]
-            
-            
+
+            ints = results[-1].astype(np.uint16)
+            new_list = np.unpackbits(ints.view(np.uint8), bitorder="little").reshape(16, SCANS_PER_READ, order = "F")#[::-1]
+
+            logger.debug(self.button_list)
             if self.button_list:
                 for button in self.button_list:
-                    reshape_list = digital_reshape if button[1] == "f" else extended_reshape
+                    reshape_list = new_list
+                    logger.debug(f"in button list, {button}")
                     
-                    # reshape_list = digital_reshape if button[1] == "f" else extended_reshape
-
                     self.button_pressed.value = not np.all(reshape_list[button[0]])
                     if debounce == 0:
                         if self.button_pressed.value:
@@ -196,15 +144,18 @@ class LabJackDataStream(Process):
             if write_to_csv:
                 self.write_csv( results, first_write)
                 first_write = False
-            self.graph(results, digital_reshape)                   
-        logger.debug("labjack stream stopped.\n")
+            self.graph(results, new_list) #digital_reshape, extended_reshape)                   
+            logger.debug("labjack stream stopped.\n")
+
         
         self.stop()
 
 
-    def graph(self, results, digital): 
+    def graph(self, results, digital): #, extended): 
         new_list = []
         new_list = [digital[item] for item in self.digital_inputs]
+        
+
         new_results = np.vstack((results[:-1], new_list))
         for index, labjack_index in enumerate(self.graph_indices):
             
@@ -214,6 +165,8 @@ class LabJackDataStream(Process):
             else:
                 if labjack_index.value != self.prev_graphs[index]:
                     self.numpy_arr[index].fill(np.nan)
+                    
+            
                 size = len(new_results[labjack_index.value])
             self.prev_graphs[index] = labjack_index.value
         graph_list_index = 0
@@ -229,9 +182,9 @@ class LabJackDataStream(Process):
             self.numpy_arr[graph_list_index] = np.roll(self.numpy_arr[graph_list_index], size)
             self.numpy_arr[graph_list_index][:size] = np.flip(np.asarray(new_results[constants_index]))
             graph_list_index += 1
-        # if self.handshake.value == 0:
+
         np.frombuffer(self.graph_arr.get_obj(), dtype=ctypes.c_double).reshape(len(self.numpy_arr.flatten()))[:] = self.numpy_arr.flatten()
-            # self.handshake.value = 1
+
 
 
     def write_csv(self, results, write_headers=False): 

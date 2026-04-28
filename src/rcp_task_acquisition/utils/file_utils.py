@@ -67,12 +67,10 @@ def read_config(config_name):
         config = ruamelFile.load(config_file)
     return config
 
-def write_metadata(folder, file_name, data):
-    metadata_path = os.path.join(folder, file_name)
-    with open(metadata_path, 'w') as metadata_file:
+def write_metadata(data, file_path):
+    with open(file_path, 'w') as metadata_file:
         ruamelFile = ruamel.yaml.YAML()
         ruamelFile.dump(data, metadata_file)
-
 
 def cam_config_template():
     """
