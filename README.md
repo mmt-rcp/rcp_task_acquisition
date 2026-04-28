@@ -48,14 +48,15 @@ This is the outline for installing this program with the expected hardware confi
 
 ### Installing Code
 1. In the search bar at the bottom of the screen, search for and select **Anaconda Prompt**
-2. The code can be installed in any part of computer but for following this installation, it will be installed in **Desktop**
-    - `cd Desktop`
-    - `conda create -n rcp_task_acquisition python=3.10`
-    - `conda activate rcp_task_acquisition` - Note: This line will always need to be ran when running system in future
+2. The code can be installed in any part of computer but for following this installation, it will be installed in **Documents**
+    - `cd Documents`
+    - `conda create -n rcp-task-acquisition python=3.10`
+    - `conda activate rcp-task-acquisition` - Note: You must run this line each time before launching the program from the command line.
     - `git clone https://github.com/mmt-rcp/rcp_task_acquisition.git`
-    - `cd rcp_task_acquisition`
-    - `pip install .`
-3. Once installed, run with `python -m rcp_task_acquisition`
+    - `pip install -e rcp_task_acquisition\`
+    - `create-shortcut`
+3. The final step in the terminal (`create-shortcut`) creates an icon on the Desktop which can be selected to run the code.
+    - Alternatively, to run the program from command line, use `rcp-task-acquisition` (making sure you are in the conda environment)
 
 ### First Run Setup
 Note- in order to correctly run the program, all hardware must be installed

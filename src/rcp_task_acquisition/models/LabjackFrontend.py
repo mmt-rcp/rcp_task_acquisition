@@ -90,17 +90,23 @@ class LabjackFrontend():
         self.button_list = []
         self.extended_list = []
         for index, item in enumerate(list(self.all_hardware[1])):
+            print(f"self.all_hardware: {item}")
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
                 logger.debug(f"hardware: {self.all_hardware[1][index]}")
                 if "Button" in self.all_hardware[0][index]:
                     self.button_list.append((int(item[-1]), "f")) 
             elif "E" in item:
-                self.extended_list.append(int(item[-1]))
+                self.digital_list.append(int(item[-1])+8)
                 if "Button" in self.all_hardware[0][index]:
-                    self.button_list.append((int(item[-1]), "e")) 
+                    self.button_list.append((int(item[-1])+8, "e")) 
+            # elif "E" in item:
+            #     self.extended_list.append(int(item[-1]))
+            #     if "Button" in self.all_hardware[0][index]:
+            #         self.button_list.append((int(item[-1]), "e")) 
             else:
                 self.analog_list.append(item)
+        print(f"digital: {self.digital_list}, extended: {self.extended_list}, Analog: {self.analog_list}, button: {self.button_list}")
         self.inputs_list = [self.analog_list, self.digital_list, self.extended_list]     
         logger.debug(self.button_list)
         self._update_graph_list('')
@@ -110,6 +116,8 @@ class LabjackFrontend():
         if not self.labjack_is_finished.value:
             logger.info("labjack is currently runninng")
             return True
+        logger.debug(self.hardware)
+        logger.debug(self.hardware_indices)
         self.scan_rate.value = 0
         self.labjack_is_finished.value = False
         self.labjack_process = LabJackDataStream(self.array_length, 
@@ -235,7 +243,7 @@ class LabjackFrontend():
         selected_list = []
 
         for choice in self.labjack_choices:
-            if choice.GetSelection() !=-1 and choice.GetSelection() !=0:
+            if choice.GetSelection() !=-1 and choice.GetSelection() != 0:
                 selection = choice.GetSelection()
                 choices =  choice.GetStrings()
                 selection = choices[selection]

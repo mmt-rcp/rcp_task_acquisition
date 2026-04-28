@@ -11,11 +11,9 @@ readme = "README.md"
 requires-python = ">=3.10, <3.11"
 
 
-[tool.setuptools]
-py-modules = ["task_files"]
-
 
 [project.scripts]
-run_tasks = "__main__:run_app"
+rcp-task-acquisition = "rcp_task_acquisition.__main__:run_app"
+create-shortcut = "rcp_task_acquisition.utils.shortcut:create_shortcut"
 
 [tool.setuptools_scm]
