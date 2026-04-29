@@ -1,8 +1,7 @@
 import wx
 import PySpin
-import ctypes
 from dataclasses import dataclass
-from multiprocessing import Process, Value
+from multiprocessing import Process, Queue
 
 from rcp_task_acquisition.models.Warnings import Warning
 from rcp_task_acquisition.utils.file_utils import read_config, write_config
@@ -30,6 +29,8 @@ class CameraRow:
     in_use: wx.CheckBox
     is_primary: wx.RadioButton
     serial: wx.Choice
+    gig_e: wx.CheckBox
+    flip_vid: wx.CheckBox
     in_use_all: bool = False
     in_use_protocol: bool = False
     
@@ -44,9 +45,9 @@ class CamProcess(Process):
         cam_serial_numbers (list): a list of the cameras that pyspin can currently
                                    access.
     '''
-    def __init__(self, cam_list):
+    def __init__(self, cam_queue):
         super().__init__()
-        self.cam_serial_numbers = cam_list
+        self.cam_queue = cam_queue
     
     def run(self):
         system = PySpin.System.GetInstance()
@@ -56,11 +57,13 @@ class CamProcess(Process):
             nodemap_tldevice = camera.GetTLDeviceNodeMap()
             node_device_serial_number = PySpin.CStringPtr(nodemap_tldevice.GetNode('DeviceSerialNumber'))
             if PySpin.IsReadable(node_device_serial_number):
-                self.cam_serial_numbers[count].value = int(node_device_serial_number.GetValue())
+                self.cam_queue.put(node_device_serial_number.GetValue())
                 count+=1
             camera.DeInit()
             del camera
+        self.cam_queue.put("done")
         cam_list.Clear()
+        
         system.ReleaseInstance()
 
 
@@ -85,7 +88,6 @@ class HardwarePanel(wx.Panel):
         self.task = None
         self.border = 10
         self.task_list = list(self.task_config.keys())
-        self.cam_list = [Value(ctypes.c_int, -1), Value(ctypes.c_int, -1), Value(ctypes.c_int, -1),  Value(ctypes.c_int, -1),  Value(ctypes.c_int, -1),  Value(ctypes.c_int, -1),  Value(ctypes.c_int, -1),  Value(ctypes.c_int, -1)]
         
         user_input_count = 1
         while len(self.row_list) < len(LABJACK_PIN_LIST)+1:
@@ -93,8 +95,6 @@ class HardwarePanel(wx.Panel):
             user_input_count+=1
             
         super().__init__(parent)
-        # self.SetBackgroundColour(wx.Colour(54, 54, 54))
-        # self.SetForegroundColour(wx.Colour(250,250,250))
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_protocol(), 0, wx.EXPAND | wx.ALL, 10)
         vertical_sizer.Add(self._setup_camera_panel(), 0, wx.EXPAND | wx.ALL, 10)
@@ -153,12 +153,7 @@ class HardwarePanel(wx.Panel):
                                 choices=LABJACK_PIN_LIST)
             labjack.Bind(wx.EVT_CHOICE, self._on_choice_labjack)
             labjack.Enable(False)
-            
-            # min_graph = "" # wx.TextCtrl(self, value="-11")
-            # # min_graph.Enable(False)
-            # max_graph = "" #wx.TextCtrl(self, value="11")
-            # max_graph.Enable(False)
-            
+
             
             analog_strings = [str(volt_range) for volt_range in ANALOG_RANGES]
             voltage_ranges = wx.Choice(self, 
@@ -167,20 +162,15 @@ class HardwarePanel(wx.Panel):
             voltage_ranges.SetSelection(0)
             voltage_ranges.Enable(False)
             voltage_ranges.Hide()
-            #adding the labjack items to the panel
             labjack_sizer.Add(in_use, pos=(vertical_pos,0), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=self.border)
             labjack_sizer.Add(name, pos=(vertical_pos,1), span=(0,1), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=self.border)
             labjack_sizer.Add(labjack, pos=(vertical_pos,2), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=self.border)
             
             labjack_sizer.Add(voltage_ranges, pos=(vertical_pos,3), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=self.border)
-            # labjack_sizer.Add(min_graph, pos=(vertical_pos,3), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=self.border)
-            # labjack_sizer.Add(max_graph, pos=(vertical_pos,4), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=self.border)
             vertical_pos+=1
 
             new_hardware = HardwareRow(name, in_use, labjack, voltage_ranges) #min_graph, max_graph, voltage_ranges)
             if hardware in hardware_config.keys():
-                # min_graph.Enable(True)
-                # max_graph.Enable(True)
                 labjack.Enable(True)
                 name.Enable(True)
                 in_use.SetValue(True)
@@ -192,17 +182,11 @@ class HardwarePanel(wx.Panel):
                     volt_index = ANALOG_RANGES.index(hardware_config[hardware]["voltage_range"][1])
                     voltage_ranges.SetSelection(volt_index)
                     
-                # else:
-                #     voltage_ranges.SetSelection(0)
-                # min_graph.SetValue(hardware_config[hardware]["graph"][0])
-                # max_graph.SetValue(hardware_config[hardware]["graph"][1])
             elif "user" in hardware.lower() and user_input_count < len(user_input_list):
                 voltage_ranges.Enable(True)
                 if "voltage_range" in hardware_config[hardware].keys():
                     voltage_ranges.SetSelection(hardware_config[hardware]["voltage_range"])
 
-                # min_graph.Enable(True)
-                # max_graph.Enable(True)
                 labjack.Enable(True)
                 name.Enable(True)
                 in_use.SetValue(True)
@@ -211,9 +195,6 @@ class HardwarePanel(wx.Panel):
                 name.SetValue(user_input_list[user_input_count])
                 labjack_value = LABJACK_PIN_LIST.index(hardware_config[user_input_list[user_input_count]]["labjack_input"])
                 labjack.SetSelection(labjack_value)
-                # min_max = hardware_config[user_input_list[user_input_count]]["graph"]
-                # min_graph.SetValue(min_max[0])
-                # max_graph.SetValue(min_max[1])
                 user_input_count+=1
         
             self.hardware_list.append(new_hardware)
@@ -224,13 +205,19 @@ class HardwarePanel(wx.Panel):
         hardware_sizer.Add(labjack_sizer, 1, wx.EXPAND | wx.ALL, 15)
         return hardware_sizer
 
-
+    def _get_serial_numbers(self):
+        cam_queue = Queue()
+        camera = CamProcess(cam_queue)
+        while True:
+            serial_number = cam_queue.get()
+            if serial_number == "done":
+                break
+            self.cam_serial_numbers.append(serial_number)
+        camera.join()
+        
+        
     def _setup_camera_panel(self):   
         first_cam = True
-        camera = CamProcess(self.cam_list)
-        camera.start()
-        camera.join()
-        self.cam_serial_numbers = [str(cam.value) for cam in self.cam_list]
         cam_config = self.user_config["cameras"]
         grid_sizer = wx.GridBagSizer(len(CAMERA_HEADERS), len(self.cam_serial_numbers))
         vertical_pos = 0
@@ -245,10 +232,9 @@ class HardwarePanel(wx.Panel):
         for key in cam_config: 
             
             in_use = wx.CheckBox(self, id=wx.ID_ANY)
-           
             in_use.Bind(wx.EVT_CHECKBOX, self.update_options)
             
-            name = wx.StaticText(self, label=cam_config[key]["nickname"])
+            name = wx.StaticText(self, label=key)
             name.Enable(False)
             
             serial = wx.Choice(self, choices=self.cam_serial_numbers)
@@ -257,15 +243,24 @@ class HardwarePanel(wx.Panel):
 
             is_primary = (wx.RadioButton(self, style=wx.RB_GROUP) 
                           if first_cam else wx.RadioButton(self))
+            
+            gig_e = wx.CheckBox(self, id=wx.ID_ANY)
+            gig_e.Enable(False)
+            
+            flip_vid = wx.CheckBox(self, id=wx.ID_ANY)
+            flip_vid.Enable(False)
+            
             first_cam= False
             is_primary.Enable(False)
             
-            new_camera = CameraRow(name, in_use, is_primary, serial)
+            new_camera = CameraRow(name, in_use, is_primary, serial, gig_e, flip_vid)
             
             grid_sizer.Add(in_use, pos=(vertical_pos,0), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             grid_sizer.Add(name, pos=(vertical_pos,1), span=(0,1), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
             grid_sizer.Add(is_primary, pos=(vertical_pos,2), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             grid_sizer.Add(serial, pos=(vertical_pos,3), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
+            grid_sizer.Add(gig_e, pos=(vertical_pos, 4), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
+            grid_sizer.Add(flip_vid, pos=(vertical_pos, 5), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             vertical_pos +=1
 
             if cam_config[key]["in_use"] and (cam_config[key]["serial"] in self.cam_serial_numbers): 
@@ -274,6 +269,9 @@ class HardwarePanel(wx.Panel):
                 name.Enable(True)
                 serial.Enable(True)
                 is_primary.Enable(True)
+                gig_e.Enable(True)
+                flip_vid(True)
+                gig_e.SetValue(cam_config[key]["gig_e"])
                 is_primary.SetValue(cam_config[key]["ismaster"])
                 cam_index = self.cam_serial_numbers.index(cam_config[key]["serial"])
                 serial.SetSelection(cam_index)
@@ -285,7 +283,6 @@ class HardwarePanel(wx.Panel):
         camera_sizer = wx.StaticBoxSizer(camera_box, wx.HORIZONTAL)
         camera_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, 15)
         
-        # self._update_lists(self.camera_list, is_labjack=False)
         return camera_sizer
            
 
@@ -317,8 +314,6 @@ class HardwarePanel(wx.Panel):
             hardware.in_use.SetValue(False)
             hardware.voltage_range.Enable(False)
             hardware.labjack.Enable(False)
-            # hardware.lj_min.Enable(False)
-            # hardware.lj_max.Enable(False)
         for camera in self.camera_list:
             if not camera.in_use.GetValue():
                 camera.in_use.Enable(False)
@@ -329,6 +324,8 @@ class HardwarePanel(wx.Panel):
             camera.in_use.SetValue(False)
             camera.serial.Enable(False)
             camera.is_primary.Enable(False)
+            camera.gig_e.Enable(False)
+            camera.flip_vid.Enable(False)
         
         self.update_task()
         self._update_lists(self.hardware_list)
@@ -354,27 +351,26 @@ class HardwarePanel(wx.Panel):
                     hardware.name.Enable(True)
                     hardware.labjack.Enable(True)
                     hardware.voltage_range.Enable(True)
-                    # hardware.lj_min.Enable(True)
-                    # hardware.lj_max.Enable(True)
                 else:
                     hardware.name.Enable(False)
                     hardware.labjack.Enable(False)
                     hardware.voltage_range.Enable(False)
                     hardware.labjack.SetSelection(-1)
-                    labjack_list = hardware.labjack.GetStrings()
                     hardware.voltage_range.Hide()
-                    # hardware.lj_min.Enable(False)
-                    # hardware.lj_max.Enable(False)
             for camera in self.camera_list:
                 if camera.in_use.GetValue():
                     camera.name.Enable(True)
                     camera.is_primary.Enable(True)
                     camera.serial.Enable(True)
+                    camera.gig_e.Enable(True)
+                    camera.flip_vid.Enable(True)
                     
                 else:
                     camera.name.Enable(False)
                     camera.serial.Enable(False)
                     camera.is_primary.Enable(False)
+                    camera.gig_e.Enable(False)
+                    camera.flip_vid.Enable(False)
                     camera.serial.SetSelection(-1)
             self._update_lists(self.hardware_list)
             self._update_lists(self.camera_list, is_labjack=False)
@@ -395,18 +391,14 @@ class HardwarePanel(wx.Panel):
         if self.select_protocol:
             self.args = []
             
-            # self.task = self.task_list [self.protocol_choice.GetCurrentSelection()]
             for hardware in self.hardware_list:
                 if hardware.in_use.GetValue():
                     name = self._get_name(hardware)
-                    # self.args["hardware"][name] = hardware_dict[name]
                     self.args.append(name)
             for camera in self.camera_list:
                 if camera.in_use.GetValue():
                     name = self._get_name(camera)
-                    # self.args["cameras"][name] = camera_dict[name]
                     self.args.append(name)
-            # self.args = task_hardware
             self.task_config[self.task]["settings"] = self.args
             write_config("taskconfig.yaml", self.task_config)
         write_config("userdata.yaml", self.user_config)
@@ -449,10 +441,19 @@ class HardwarePanel(wx.Panel):
                     camera_dict[self._get_name(camera)]["ismaster"] = camera.is_primary.GetValue()
                     camera_dict[self._get_name(camera)]["serial"] = camera.serial.GetStrings()[serial]
                     camera_dict[self._get_name(camera)]["in_use"] = camera.in_use_all
+                    if camera.gig_e.GetValue():
+                        camera_dict[self._get_name(camera)]["framerate"] = int(240/2)
+                    else:
+                        camera_dict[self._get_name(camera)]["framerate"] = int(240)
+                    camera_dict[self._get_name(camera)]["gig_e"] = camera.gig_e.GetValue()
+                    camera_dict[self._get_name(camera)]["flip"] = camera.flip_vid.GetValue()
+                
                 else:
                     camera_dict[self._get_name(camera)] = {"ismaster": camera.is_primary.GetValue(),
                                                                     "serial": camera.serial.GetStrings()[serial],
-                                                                    "in_use": camera.in_use_all}
+                                                                    "in_use": camera.in_use_all,
+                                                                    "gig_e": camera.gig_e.GetValue(),
+                                                                    "flip": camera.flip_vid.GetValue}
                                                                     
             else:
                 camera_dict[self._get_name(camera)]["in_use"] = False
@@ -461,28 +462,18 @@ class HardwarePanel(wx.Panel):
     
     
     def protocol_event(self, event):
-        # self.args = {"hardware": {},
-        #              "cameras": {}}
         self.args = []
-        # self.task = self.task_list [self.protocol_choice.GetCurrentSelection()]
-        # camera_dict = self._create_camera_dict()
-        # hardware_dict = self._create_hardware_dict()
         for hardware in self.hardware_list:
             if hardware.in_use.GetValue():
                 name = self._get_name(hardware)
-                # self.args["hardware"][name] = hardware_dict[name]
                 self.args.append(name)
         for camera in self.camera_list:
             if camera.in_use.GetValue():
                 name = self._get_name(camera)
-                # self.args["cameras"][name] = camera_dict[name]
                 self.args.append(name)
-        # self.args = task_hardware
         self.task_config[self.task]["settings"] = self.args
         write_config("taskconfig.yaml", self.task_config)
         self.update()
-        # self.dialog.EndModal(wx.ID_OK)
-        # self.dialog.Destroy()
         self.close(wx.ID_OK)
     
     
@@ -543,8 +534,7 @@ class HardwarePanel(wx.Panel):
             for camera in self.camera_list:
                 camera.in_use.Enable(False)
                 camera.name.Enable(False)
-        elif self.select_protocol:
-            # task = self.task_list[self.protocol_choice.GetCurrentSelection()] 
+        elif self.select_protocol: 
             for hardware in self.hardware_list:
                 name = self._get_name(hardware)
                 if name in self.task_config[self.task]["settings"] and hardware.in_use_all:
@@ -576,6 +566,7 @@ class HardwarePanel(wx.Panel):
     def show(self):
         return self.dialog.ShowModal()
     
+    
     def set_task(self, task):
         self.task = task
         #update to show available hardware for task
@@ -592,8 +583,6 @@ class HardwarePanel(wx.Panel):
                     hardware.in_use.Enable(True)
                 hardware.in_use.SetValue(False)
                 hardware.labjack.Enable(False)
-                # hardware.lj_min.Enable(False)
-                # hardware.lj_max.Enable(False)
             for camera in self.camera_list:
                 if not camera.in_use_all:
                     camera.in_use.Enable(False)
@@ -609,6 +598,7 @@ class HardwarePanel(wx.Panel):
             self.update_task()
             self._update_lists(self.hardware_list)
             self._update_lists(self.camera_list, is_labjack=False)
+
 
     def reset_hardware(self):
         if not self.hardware_radio.GetValue():

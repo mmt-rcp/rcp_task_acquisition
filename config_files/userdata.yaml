@@ -1,7 +1,10 @@
-isunconnected: false
+cam_configs:
+  framerate: 240
+  framerate_decrease_factor: 2
+  is_unconnected: true
 cameras:
-  leftCamA:
-    serial: 
+  leftCamTop:
+    serial: '24041797'
     ismaster: true
     crop:
     - 40
@@ -9,14 +12,15 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: leftCamA
     gain: 15
     gamma: 0.8
+    gig_e: false
+    flip: false
     in_use: true
-  rightCamA:
-    serial: 
+  
+  rightCamTop:
+    serial: '24044011'
     ismaster: false
     crop:
     - 40
@@ -24,14 +28,15 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: rightCamA
     gain: 15
     gamma: 0.8
+    gig_e: false
+    flip: false
     in_use: true
-  leftCamB:
-    serial: 
+  
+  leftCamFace:
+    serial: '25504066'
     ismaster: false
     crop:
     - 40
@@ -39,14 +44,15 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: leftCamB
     gain: 15
-    gamma: 0.8
+    gamma: 
+    gig_e: false
+    flip: false
     in_use: true
-  rightCamB:
-    serial:
+  
+  rightCamFace:
+    serial: '23531686'
     ismaster: false
     crop:
     - 40
@@ -54,14 +60,15 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: rightCamB
     gain: 15
     gamma: 0.8
+    gig_e: false
+    flip: false
     in_use: true
-  leftCamC:
-    serial:
+  
+  leftCamTripod:
+    serial: '25502268'
     ismaster: false
     crop:
     - 40
@@ -69,14 +76,15 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: leftCamC
     gain: 15
     gamma: 0.8
+    gig_e: false
+    flip: false
     in_use: true
-  rightCamC:
-    serial: 
+  
+  rightCamTripod:
+    serial: '25502266'
     ismaster: false
     crop:
     - 40
@@ -84,49 +92,20 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: rightCamC
     gain: 15
     gamma: 0.8
+    gig_e: false
+    flip: false
     in_use: true
-  leftCamD:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: leftCamD
-    gain: 15
-    gamma: 0.8
-    in_use: false
-  rightCamD:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: rightCamD
-    gain: 15
-    gamma: 0.8
-    in_use: false
-
+  
 unitRef: unitME
 
 screen_settings:
   fullScreen: 1
-  screenNumber: 1
+  screenNumber: 0
   vflipMovies: 1
+  
 hardware:
   Audio:
     labjack_input: AIN2

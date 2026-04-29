@@ -801,7 +801,7 @@ class MainFrame(wx.Frame):
         sorted_hardware = sorted(hardware_tuple, key=lambda item: item[1])
         hardware_lists = list(zip(*sorted_hardware))
         self.hardware_list = hardware_lists
-        self.cams.setup(self.cam_cfg, self.user_cfg['isunconnected'])
+        self.cams.setup(self.cam_cfg, self.user_cfg['is_unconnected'])
         self.init.SetValue(True)
         self.widget_panel.update_task(self.task)
         self.trial_panel = self.widget_panel.get_trial_panel()

@@ -26,7 +26,7 @@ PLOT_LENGTH = 80000
 # labjack constants
 SCANS_PER_READ = 10000
 #Hardcoded the hardware and labjack bc its much easier than pulling from somewhere for now
-CAMERA_HEADERS = ["In Use","Name", "Is Primary", "Serial Number"]
+CAMERA_HEADERS = ["In Use","Name", "Is Primary", "Serial Number", "GigE", "Flip Image"]
 HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]#"Graph Min", "Graph Max"]
 HARDWARE_LIST = ["Audio", "Cameras", "Button", "Photodiode", 
                  "Grasp Button", "Microphone 1", "Microphone 2", 

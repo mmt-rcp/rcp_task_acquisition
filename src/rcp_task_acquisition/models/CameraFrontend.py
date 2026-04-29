@@ -34,12 +34,17 @@ class Camera():
         self.contrast_test = contrast_test
         self.focus_test= focus_test
         self.warning = Warning()
+        self.unconnected = list()
+        self.camStrList = list()
 
 
     def setup(self, config, is_unconnected):
         self.cam_cfg = config
         if is_unconnected:
-            self.unconnected = [str(self.cam_cfg[s]['serial']) for s in self.camStrList]
+            for s in self.cam_cfg:
+                self.unconnected.append(str(self.cam_cfg[s]['serial']))
+                self.camStrList.append(s)
+            # self.unconnected = [str(self.cam_cfg[s]['serial']) for s in self.camStrList]
         else:
             for s in self.cam_cfg:
                 if not self.cam_cfg[s]["in_use"]:
