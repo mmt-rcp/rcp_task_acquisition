@@ -2,15 +2,23 @@
 import os
 from psychopy import core
 from pathlib import Path
-
-
+import ruamel.yaml
 
 BASEDIR = Path(__file__).resolve().parent.parent.parent.parent.parent
 CODE_DIR = Path(__file__).resolve().parent.parent
-RAW_DATA_DIR = os.path.join( "D:", "RawDataLocal")
-
 
 STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(CODE_DIR.resolve().parent.parent, 'config_files')
+config_path = os.path.join(CONFIG_FILE_PATH, "userdata.yaml")
+ruamelFile = ruamel.yaml.YAML()
+
+with open(config_path, 'r') as config_file:
+    config = ruamelFile.load(config_file)
+
+
+
+RAW_DATA_DIR = Path(config["RawDataDir"])
+print("RAW DATA DIR", RAW_DATA_DIR)
+
 
 STIM_CONFIG_FILE_NAME = 'visualStimulusConfig.yaml'
 SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"

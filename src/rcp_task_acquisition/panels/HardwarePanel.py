@@ -57,6 +57,7 @@ class CamProcess(Process):
             nodemap_tldevice = camera.GetTLDeviceNodeMap()
             node_device_serial_number = PySpin.CStringPtr(nodemap_tldevice.GetNode('DeviceSerialNumber'))
             if PySpin.IsReadable(node_device_serial_number):
+                logger.debug(node_device_serial_number.GetValue())
                 self.cam_queue.put(node_device_serial_number.GetValue())
                 count+=1
             camera.DeInit()
@@ -208,6 +209,7 @@ class HardwarePanel(wx.Panel):
     def _get_serial_numbers(self):
         cam_queue = Queue()
         camera = CamProcess(cam_queue)
+        camera.start()
         while True:
             serial_number = cam_queue.get()
             if serial_number == "done":
@@ -218,6 +220,7 @@ class HardwarePanel(wx.Panel):
         
     def _setup_camera_panel(self):   
         first_cam = True
+        self._get_serial_numbers()
         cam_config = self.user_config["cameras"]
         grid_sizer = wx.GridBagSizer(len(CAMERA_HEADERS), len(self.cam_serial_numbers))
         vertical_pos = 0
@@ -270,7 +273,7 @@ class HardwarePanel(wx.Panel):
                 serial.Enable(True)
                 is_primary.Enable(True)
                 gig_e.Enable(True)
-                flip_vid(True)
+                flip_vid.Enable(True)
                 gig_e.SetValue(cam_config[key]["gig_e"])
                 is_primary.SetValue(cam_config[key]["ismaster"])
                 cam_index = self.cam_serial_numbers.index(cam_config[key]["serial"])

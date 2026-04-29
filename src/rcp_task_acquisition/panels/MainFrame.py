@@ -797,11 +797,11 @@ class MainFrame(wx.Frame):
                     args[hardware] = self.user_cfg["hardware"][hardware]
                 elif hardware in self.user_cfg["cameras"].keys():
                     self.cam_cfg[hardware] = self.user_cfg["cameras"][hardware]
-        hardware_tuple = [(arg, args[arg]["labjack_input"], args[arg]["graph"], args[arg]["voltage_range"]) for arg in args]
+        hardware_tuple = [(arg, args[arg]["labjack_input"], "", args[arg]["voltage_range"]) for arg in args]
         sorted_hardware = sorted(hardware_tuple, key=lambda item: item[1])
         hardware_lists = list(zip(*sorted_hardware))
         self.hardware_list = hardware_lists
-        self.cams.setup(self.cam_cfg, self.user_cfg['is_unconnected'])
+        self.cams.setup(self.cam_cfg, self.user_cfg['cam_config']['is_unconnected'])
         self.init.SetValue(True)
         self.widget_panel.update_task(self.task)
         self.trial_panel = self.widget_panel.get_trial_panel()

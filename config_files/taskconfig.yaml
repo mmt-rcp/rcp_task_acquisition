@@ -8,17 +8,19 @@ n_back:
   - Barcode
   - TENS
   - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 naturalistic_speech:
   settings:
   - Audio
-  - leftCamA
-  - rightCamA
-  - leftCamB
-  - rightCamB
-  - leftCamC
-  - rightCamC
+  - Cameras
+  - Photodiode
+  - Microphone 1
+  - Microphone 2
+  - Barcode
+  - TENS
+  - leftCamTop
+  - rightCamTop
 motor_task_finger_taps:
   settings:
   - Audio

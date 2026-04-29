@@ -46,6 +46,7 @@ class multiCam_DLC_Cam(Process):
         user_cfg = config["cameras"]
         test_num = 0
         camStrList = list()
+        
         for s in user_cfg:
             if not user_cfg[s]["in_use"]:
                 continue
@@ -54,6 +55,7 @@ class multiCam_DLC_Cam(Process):
                 camStr = s
         logger.debug(camStr)
         # camCt = len(self.camStrList)
+        
         
         gig_e = user_cfg[camStr]['gig_e']
         if gig_e:
@@ -213,7 +215,16 @@ class multiCam_DLC_Cam(Process):
                     elif msg == 'updateSettings':
                         nodemap = cam.GetNodeMap()
                         binsize = user_cfg[camStr]['bin']
+                        # Horizontal Flip
+                        reverseX = PySpin.CBooleanPtr(nodemap.GetNode('ReverseX'))
+                        if PySpin.IsAvailable(reverseX) and PySpin.IsWritable(reverseX):
+                            reverseX.SetValue(user_cfg[camStr]['flip'])
                         
+                        # Vertical Flip
+                        reverseY = PySpin.CBooleanPtr(nodemap.GetNode('ReverseY'))
+                        if PySpin.IsAvailable(reverseY) and PySpin.IsWritable(reverseY):
+                            reverseY.SetValue(user_cfg[camStr]['flip'])
+
                         cam.BinningHorizontal.SetValue(int(binsize))
                         cam.BinningVertical.SetValue(int(binsize))
                         
@@ -377,7 +388,7 @@ class multiCam_DLC_Cam(Process):
 
                         # max_exposure = cam.ExposureTime.GetMax()
                         # self.camq_p2read.put(exposure_time_to_set)
-                        logger.info(f"frame rate {user_cfg[camStr]['nickname']}: {str(round(record_frame_rate))}")
+                        logger.info(f"frame rate {camStr}: {str(round(record_frame_rate))}")
                         # self.camq_p2read.put(max_exposure)
                         self.camq_p2read.put(record_frame_rate)
                         self.camq_p2read.put(node_width.GetValue())
