@@ -82,6 +82,9 @@ class LaunchPanel():
         self.administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
         self.administrator_id =  wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         
+        
+        # self.participane_type_text = wx.StaticText(self.panel, label="Participant:")
+        # self.
         self.participant_id_text = wx.StaticText(self.panel, label='Participant Id:')
         self.participant_id = wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         

@@ -129,9 +129,8 @@ class multiCam_DLC_Cam(Process):
                         handling_mode_entry = handling_mode.GetEntryByName('OldestFirst')
                         handling_mode.SetIntValue(handling_mode_entry.GetValue())
                         logger.debug(path_base)
-                        avi = PySpin.SpinVideo()
+                        # avi = PySpin.SpinVideo()
                         option = PySpin.AVIOption()
-                        
                         option.frameRate = write_frame_rate
                         self.height = aqH
                         self.width = aqW
@@ -473,4 +472,4 @@ class multiCam_DLC_Cam(Process):
     
     def prepare_writers(self):
         video_file = self.video_file
-        self.video_writer = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc('d', 'i', 'v', 'x'), self.fps, (self.width, self.height))
+        self.video_writer = cv2.VideoWriter(video_file, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), self.fps, (self.width, self.height))
