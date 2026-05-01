@@ -107,7 +107,7 @@ screen_settings:
   vflipMovies: 1
 hardware:
   Audio:
-    labjack_input: AIN2
+    labjack_input: AIN1
     voltage_range:
     - -0.075
     - 0.075
@@ -119,34 +119,34 @@ hardware:
     - 1
     graph: ''
   Button:
-    labjack_input: FIO4
+    labjack_input: EIO0
     voltage_range:
     - 0
     - 1
     graph: ''
   Photodiode:
-    labjack_input: FIO5
+    labjack_input: AIN0
     voltage_range:
-    - 0
-    - 1
+    - -0.015
+    - 0.015
     graph: ''
   Grasp Button:
-    labjack_input: EIO1
+    labjack_input: FIO1
     voltage_range:
     - 0
     - 1
     graph: ''
   Microphone 1:
-    labjack_input: EIO2
+    labjack_input: AIN2
     voltage_range:
-    - 0
-    - 1
+    - -0.6
+    - 0.6
     graph: ''
   Microphone 2:
-    labjack_input: FIO2
+    labjack_input: AIN3
     voltage_range:
-    - 0
-    - 1
+    - -0.6
+    - 0.6
     graph: ''
   Force Sensor X:
     labjack_input: AIN5

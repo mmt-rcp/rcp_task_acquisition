@@ -127,11 +127,9 @@ class LabJackDataStream(Process):
             ints = results[-1].astype(np.uint16)
             new_list = np.unpackbits(ints.view(np.uint8), bitorder="little").reshape(16, SCANS_PER_READ, order = "F")#[::-1]
 
-            logger.debug(self.button_list)
             if self.button_list:
                 for button in self.button_list:
                     reshape_list = new_list
-                    logger.debug(f"in button list, {button}")
                     
                     self.button_pressed.value = not np.all(reshape_list[button[0]])
                     if debounce == 0:
@@ -144,8 +142,7 @@ class LabJackDataStream(Process):
             if write_to_csv:
                 self.write_csv( results, first_write)
                 first_write = False
-            self.graph(results, new_list) #digital_reshape, extended_reshape)                   
-            logger.debug("labjack stream stopped.\n")
+            self.graph(results, new_list) #digital_reshape, extended_reshape)           
 
         
         self.stop()

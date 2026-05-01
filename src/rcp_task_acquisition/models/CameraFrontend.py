@@ -225,7 +225,7 @@ class Camera():
             camID = str(self.cam_cfg[s]['serial'])
             self.camq[camID].put('recordPrep')
             date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-            name_base = f"{date_string}_{unit_ref}_{sess_string}_{self.cam_cfg[s]['nickname']}_trial{count}" #% (date_string, self.user_cfg['unitRef'], self.sess_string, self.cam_cfg[s]['nickname'])
+            name_base = f"{date_string}_{unit_ref}_{sess_string}_{s}_trial{count}" #% (date_string, self.user_cfg['unitRef'], self.sess_string, self.cam_cfg[s]['nickname'])
             path_base = os.path.join(sess_dir,name_base)
             self.camq[camID].put(path_base)
             self.camq_p2read[camID].get()

@@ -562,7 +562,7 @@ class MainFrame(wx.Frame):
                       'exposure': self.cam_cfg[s]['exposure'],
                       'framerate': self.cam_cfg[s]['framerate'],
                       'bin': self.cam_cfg[s]['bin'],
-                      'nickname': self.cam_cfg[s]['nickname'],
+                      'nickname': s,
                       'actual_framerate': self.cams.rate[ndx],
                       'actual_exposure': self.cams.exposure[ndx]}
                 cameras[s] = camset

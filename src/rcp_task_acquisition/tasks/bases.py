@@ -2,10 +2,9 @@ import os
 import pathlib as pl
 import numpy as np
 import pandas as pd
-import simpleaudio as sima
 from psychopy import visual
 from psychopy.visual.vlcmoviestim import VlcMovieStim
-
+import pyaudio
 from rcp_task_acquisition.utils.constants import VIDEO_DIR, DURATION, FREQUENCY, SAMPLING_RATE
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./tasks/bases.py") 
@@ -223,10 +222,21 @@ class StimulusBase():
     
             # Normalize to 16-bit range
             audio = (tone * 32767).astype(np.int16)
-    
+            
+            p = pyaudio.PyAudio()
+            stream = p.open(format=pyaudio.paInt16,
+                channels=1,
+                rate=sample_rate,
+                output=True)
             # Play audio
-            play_obj = sima.play_buffer(audio, 1, 2, sample_rate)
-            play_obj.wait_done()
+            stream.write(audio.tobytes())
+
+            # 5. Clean up
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            # play_obj = sima.play_buffer(audio, 1, 2, sample_rate)
+            # play_obj.wait_done()
     
         except Exception as e:
             logger.error(f"Error generating tone: {e}")
