@@ -143,6 +143,7 @@ class multiCam_DLC_Cam(Process):
                         start_time = 0
                         capture_duration = 0
                         record = True
+                        f.write("frame_id,timestamp\n")
                         self.camq_p2read.put('done')
                     elif msg == 'Start':
                         cam.BeginAcquisition()
@@ -169,11 +170,13 @@ class multiCam_DLC_Cam(Process):
                                 self.video_writer.write(frame_results_rgb)
                                 if start_time == 0:
                                     start_time = image_result.GetTimeStamp()
+                                    time_test = 0
                                 else:
                                     time_test = image_result.GetTimeStamp()
                                     capture_duration = time_test- start_time
                                     start_time = time_test #image_result.GetTimeStamp()
-                                    f.write("%s\n" % round(capture_duration))
+                                frame_id = image_result.GetFrameID()
+                                f.write("%s,%s\n" % (frame_id, round(capture_duration)))
                             
                             image_result.Release()     
                             if self.aq.value == 1:
