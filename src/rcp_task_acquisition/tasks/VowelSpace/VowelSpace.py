@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import simpleaudio as sima
 
 from rcp_task_acquisition.tasks import bases
 from  rcp_task_acquisition.tasks.VowelSpace import constants as c
@@ -92,13 +91,35 @@ class VowelSpace(bases.StimulusBase):
         
         logger.debug(trial)
         try:
+            CHUNK = 1024
             file = c.VS_PATHS[trial]
+            import wave
+            import pyaudio
             path =  os.path.join(c.STIM_DIR, file)
-            wave_obj = sima.WaveObject.from_wave_file(path)
-            play_obj = wave_obj.play()
-    
-            # Wait until playback finishes
-            play_obj.wait_done()
+            wf = wave.open(path, 'rb')
+
+            # 2. Instantiate PyAudio
+            p = pyaudio.PyAudio()
+            
+            # 3. Open a stream with correct parameters from the file
+            stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                            channels=wf.getnchannels(),
+                            rate=wf.getframerate(),
+                            output=True)
+            
+            # 4. Read data in chunks and write to the stream
+            data = wf.readframes(CHUNK)
+            
+            while len(data) > 0:
+                stream.write(data)
+                data = wf.readframes(CHUNK)
+            
+            # 5. Stop, close, and clean up
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+            
+        
         except:
             logger.warn("No file, continuing without....")
         

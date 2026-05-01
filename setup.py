@@ -15,10 +15,10 @@ if __name__ == "__main__":
             "psychopy>=2026.1",
             "numpy==1.26.4",
             "ruamel.yaml",
-            "simpleaudio>=1.0",
             "labjack-ljm==1.23",
             "setuptools_scm",
             "pyshortcuts",
+            "pyaudio",
             f"spinnaker_python @ {local_path}"
         ]
     )

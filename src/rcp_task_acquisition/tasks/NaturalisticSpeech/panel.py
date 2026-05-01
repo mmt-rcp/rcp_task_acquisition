@@ -18,6 +18,7 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.trial_number = 1
         self.timestamps ={}
         self.countdown_start = 0
+        self.image_path = []
         self.button_width = 76
         self.border = 5
         self.photo = None
@@ -27,6 +28,7 @@ class NaturalisticSpeechPanel(TrialPanel):
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._set_up_photo(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
+        
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
      
@@ -43,10 +45,7 @@ class NaturalisticSpeechPanel(TrialPanel):
         for image in self.image_names:
             try:
                 image_path = os.path.join(c.IMG_DIR, image)
-                wx_image = wx.Image(image_path, wx.BITMAP_TYPE_ANY)
-                wx_image = wx_image.Scale(250, 250)
-                self.image_list.append( wx_image.ConvertToBitmap())
-                
+                self.image_path.append(image_path)
             except Exception as e:
                 logger.error(f"Unable to load {image}, Error: {e}")
         
@@ -56,7 +55,12 @@ class NaturalisticSpeechPanel(TrialPanel):
                                        size=(310, -1))
         
         self.image_choice.SetSelection(self.selection)
-        self.shown_image = wx.StaticBitmap(self, wx.ID_ANY, self.image_list[self.selection])
+       
+        wx_image = wx.Image(self.image_path[self.selection], wx.BITMAP_TYPE_ANY)
+        wx_image = wx_image.Scale(250, 150)
+        # self.image_list.append( wx_image.ConvertToBitmap())
+        self.shown_image = wx.StaticBitmap(self, wx.ID_ANY, wx_image)
+        
         self.image_choice.Bind(wx.EVT_CHOICE, self.update_image)
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         
@@ -117,8 +121,14 @@ class NaturalisticSpeechPanel(TrialPanel):
 
 
     def update_image(self,event):
+        
         self.selection = self.image_choice.GetSelection()
-        self.shown_image.SetBitmap(self.image_list[self.selection])
+        wx_image = wx.Image(self.image_path[self.selection], wx.BITMAP_TYPE_ANY)
+        wx_image = wx_image.Scale(250, 150)
+        wx_image.ConvertToBitmap()
+        
+        # self.selection = self.image_choice.GetSelection()
+        self.shown_image.SetBitmap(wx_image) #self.image_list[self.selection])
         self.Layout()
 
 

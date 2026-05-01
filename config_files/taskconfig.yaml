@@ -2,23 +2,25 @@ n_back:
   settings:
   - Audio
   - Cameras
+  - Button
   - Photodiode
   - Microphone 1
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 naturalistic_speech:
   settings:
   - Audio
-  - leftCamA
-  - rightCamA
-  - leftCamB
-  - rightCamB
-  - leftCamC
-  - rightCamC
+  - Cameras
+  - Photodiode
+  - Microphone 1
+  - Microphone 2
+  - Barcode
+  - TENS
+  - leftCamTop
+  - rightCamTop
 motor_task_finger_taps:
   settings:
   - Audio
@@ -28,9 +30,8 @@ motor_task_finger_taps:
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 diadochokinesis:
   settings:
   - Audio
@@ -40,9 +41,8 @@ diadochokinesis:
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 verbal_fluency:
   settings:
   - Audio
@@ -52,9 +52,8 @@ verbal_fluency:
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 vowel_space:
   settings:
   - Audio
@@ -64,9 +63,8 @@ vowel_space:
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 reach_grasp:
   settings:
   - Audio
@@ -80,11 +78,10 @@ reach_grasp:
   - Force Sensor Z
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
-  - leftCamB
-  - rightCamB
+  - leftCamTop
+  - rightCamTop
+  - leftCamTripod
+  - rightCamTripod
 tone_taps_closed:
   settings:
   - Audio
@@ -95,9 +92,8 @@ tone_taps_closed:
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop
 sara:
   settings:
   - Audio
@@ -107,11 +103,8 @@ sara:
   - Microphone 2
   - Barcode
   - TENS
-  - TENS-out
-  - leftCamA
-  - rightCamA
-  - leftCamB
-  - rightCamB
+  - leftCamTop
+  - rightCamTop
 verb_generation:
   settings:
   - Audio
@@ -121,5 +114,5 @@ verb_generation:
   - Microphone 2
   - Barcode
   - TENS
-  - leftCamA
-  - rightCamA
+  - leftCamTop
+  - rightCamTop

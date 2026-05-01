@@ -1,7 +1,26 @@
-isunconnected: false
+cam_config:
+  framerate: 240
+  framerate_decrease_factor: 2
+  is_unconnected: false
 cameras:
-  leftCamA:
-    serial: 
+  leftCamTop:
+    serial: '24044011'
+    ismaster: false
+    crop:
+    - 40
+    - 640
+    - 30
+    - 480
+    exposure: 1000
+    bin: 2
+    gain: 15
+    gamma: 0.8
+    gig_e: false
+    flip: false
+    in_use: true
+    framerate: 240
+  rightCamTop:
+    serial: '24041797'
     ismaster: true
     crop:
     - 40
@@ -9,119 +28,78 @@ cameras:
     - 30
     - 480
     exposure: 1000
-    framerate: 240
     bin: 2
-    nickname: leftCamA
     gain: 15
     gamma: 0.8
+    gig_e: false
+    flip: false
     in_use: true
-  rightCamA:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: rightCamA
-    gain: 15
-    gamma: 0.8
-    in_use: true
-  leftCamB:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: leftCamB
-    gain: 15
-    gamma: 0.8
-    in_use: true
-  rightCamB:
-    serial:
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: rightCamB
-    gain: 15
-    gamma: 0.8
-    in_use: true
-  leftCamC:
-    serial:
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: leftCamC
-    gain: 15
-    gamma: 0.8
-    in_use: true
-  rightCamC:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: rightCamC
-    gain: 15
-    gamma: 0.8
-    in_use: true
-  leftCamD:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: leftCamD
-    gain: 15
-    gamma: 0.8
-    in_use: false
-  rightCamD:
-    serial: 
-    ismaster: false
-    crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
-    framerate: 240
-    bin: 2
-    nickname: rightCamD
-    gain: 15
-    gamma: 0.8
-    in_use: false
 
+    leftCamFace:
+      serial:
+      ismaster: true
+      crop:
+      - 40
+      - 640
+      - 30
+      - 480
+      exposure: 1000
+      bin: 2
+      gain: 15
+      gamma: 0.8
+      gig_e: false
+      flip: false
+      in_use: true
+    rightCamFace:
+      serial:
+      ismaster: false
+      crop:
+      - 40
+      - 640
+      - 30
+      - 480
+      exposure: 1000
+      bin: 2
+      gain: 15
+      gamma: 0.8
+      gig_e: true
+      flip: false
+      in_use: true
+
+    leftCamTripod:
+      serial:
+      ismaster: true
+      crop:
+      - 40
+      - 640
+      - 30
+      - 480
+      exposure: 1000
+      bin: 2
+      gain: 15
+      gamma: 0.8
+      gig_e: false
+      flip: false
+      in_use: true
+    rightCamTripod:
+      serial:
+      ismaster: false
+      crop:
+      - 40
+      - 640
+      - 30
+      - 480
+      exposure: 1000
+      bin: 2
+      gain: 15
+      gamma: 0.8
+      gig_e: true
+      flip: false
+      in_use: true
+
+    framerate: 240
 unitRef: unitME
+RawDataDir: C:\Users\Public\Documents\RawDataLocal
 
 screen_settings:
   fullScreen: 1
@@ -129,7 +107,7 @@ screen_settings:
   vflipMovies: 1
 hardware:
   Audio:
-    labjack_input: AIN2
+    labjack_input: AIN1
     voltage_range:
     - -0.075
     - 0.075
@@ -141,34 +119,34 @@ hardware:
     - 1
     graph: ''
   Button:
-    labjack_input: FIO4
+    labjack_input: EIO0
     voltage_range:
     - 0
     - 1
     graph: ''
   Photodiode:
-    labjack_input: FIO5
+    labjack_input: AIN0
     voltage_range:
-    - 0
-    - 1
+    - -0.015
+    - 0.015
     graph: ''
   Grasp Button:
-    labjack_input: EIO1
+    labjack_input: FIO1
     voltage_range:
     - 0
     - 1
     graph: ''
   Microphone 1:
-    labjack_input: EIO2
+    labjack_input: AIN2
     voltage_range:
-    - 0
-    - 1
+    - -0.6
+    - 0.6
     graph: ''
   Microphone 2:
-    labjack_input: FIO2
+    labjack_input: AIN3
     voltage_range:
-    - 0
-    - 1
+    - -0.6
+    - 0.6
     graph: ''
   Force Sensor X:
     labjack_input: AIN5

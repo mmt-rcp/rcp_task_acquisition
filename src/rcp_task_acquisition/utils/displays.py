@@ -17,13 +17,13 @@ class Window(Window):
     # patchCoords=(600, -325, 200),
     def __init__(
         self,
-        size=(1280, 1080),
+        size=(2560, 1440),
         fov=(180, 100),
         fps=60,
         screen=1,
         color=-1,
         fullScreen=False, #-900
-        patchCoords=(-850, 530, 150),
+        patchCoords=(1205, 645, 150),
         textureShape=(16, 16)
         ):
         """

@@ -27,6 +27,7 @@ class multiCam_DLC_Cam(Process):
         self.frm = frm
         self.array4feed = array4feed
         self.frmGrab = frmGrab
+        self.framerate = None
         self.actual_exposure = None
         self.actual_frame_rate = None
         self.video_thread = None
@@ -41,7 +42,8 @@ class multiCam_DLC_Cam(Process):
         isunconnected = False
         record_frame_rate = 30
         exposure_max = 4000
-        user_cfg = file_utils.read_config('userdata.yaml')["cameras"]
+        config = file_utils.read_config('userdata.yaml')
+        user_cfg = config["cameras"]
         test_num = 0
         camStrList = list()
         
@@ -53,8 +55,13 @@ class multiCam_DLC_Cam(Process):
                 camStr = s
         logger.debug(camStr)
         # camCt = len(self.camStrList)
-
         
+        
+        gig_e = user_cfg[camStr]['gig_e']
+        if gig_e:
+            self.framerate = round(int(config['cam_config']['framerate'])/int(config['cam_config']['framerate_decrease_factor']))
+        else:
+            self.framerate =int(config['cam_config']['framerate'])
         current_exposure_time = int(user_cfg[camStr]['exposure'])
         frameSml = np.zeros([user_cfg[camStr]['crop'][3],user_cfg[camStr]['crop'][1]],'ubyte')
         aqW = self.cpt[3]
@@ -185,7 +192,7 @@ class multiCam_DLC_Cam(Process):
                             f.close()
                             self.video_writer.release()
                             dropped_frame, total_frames, files_len = identify_dropped_frames(file_path, 
-                                                                    int(user_cfg[camStr]['framerate']))
+                                                                    self.framerate) #int(user_cfg["cam_config"]['framerate']))
                             percentage_dropped = int(np.ceil((dropped_frame/total_frames)*100))
                             logger.debug(f"{self.camID}: total: {total_frames}, dropped: {dropped_frame}, len: {files_len}")
                             logger.debug(f"{dropped_frame} of camera frames dropped for {self.camID}")
@@ -208,7 +215,16 @@ class multiCam_DLC_Cam(Process):
                     elif msg == 'updateSettings':
                         nodemap = cam.GetNodeMap()
                         binsize = user_cfg[camStr]['bin']
+                        # Horizontal Flip
+                        reverseX = PySpin.CBooleanPtr(nodemap.GetNode('ReverseX'))
+                        if PySpin.IsAvailable(reverseX) and PySpin.IsWritable(reverseX):
+                            reverseX.SetValue(user_cfg[camStr]['flip'])
                         
+                        # Vertical Flip
+                        reverseY = PySpin.CBooleanPtr(nodemap.GetNode('ReverseY'))
+                        if PySpin.IsAvailable(reverseY) and PySpin.IsWritable(reverseY):
+                            reverseY.SetValue(user_cfg[camStr]['flip'])
+
                         cam.BinningHorizontal.SetValue(int(binsize))
                         cam.BinningVertical.SetValue(int(binsize))
                         
@@ -291,7 +307,7 @@ class multiCam_DLC_Cam(Process):
                                 
                             roi = self.cpt
                             
-                            record_frame_rate = int(user_cfg[camStr]['framerate'])
+                            record_frame_rate = self.framerate #int(user_cfg['cam_config']['framerate'])
                             # Set width
                             node_width = PySpin.CIntegerPtr(nodemap.GetNode('Width'))
                             width_max = node_width.GetMax()
@@ -372,7 +388,7 @@ class multiCam_DLC_Cam(Process):
 
                         # max_exposure = cam.ExposureTime.GetMax()
                         # self.camq_p2read.put(exposure_time_to_set)
-                        logger.info(f"frame rate {user_cfg[camStr]['nickname']}: {str(round(record_frame_rate))}")
+                        logger.info(f"frame rate {camStr}: {str(round(record_frame_rate))}")
                         # self.camq_p2read.put(max_exposure)
                         self.camq_p2read.put(record_frame_rate)
                         self.camq_p2read.put(node_width.GetValue())

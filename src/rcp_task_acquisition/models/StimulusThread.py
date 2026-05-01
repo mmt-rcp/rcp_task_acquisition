@@ -187,7 +187,6 @@ class StimulusThread(Process):
     
     def setup_videos(self, video_filename_dict):
         pass
-        # self.stimulus.setup_videos(video_filename_dict)
         
         
         

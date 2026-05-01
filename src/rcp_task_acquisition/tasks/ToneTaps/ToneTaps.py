@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import time
-import simpleaudio as sima
+import pyaudio
 import numpy as np
 from psychopy import visual
 
@@ -106,11 +106,7 @@ class ToneTapsClosed(bases.StimulusBase):
         
     def play_tap(self):
         t = np.linspace(0, TAP_DURATION, int(44100 * TAP_DURATION), False)
-
-        # Generate sine wave
         sine_wave = np.sin(TAP_FREQUENCY * t * 2 * np.pi)
-        # sine_wave = volume * np.sin(2 * np.pi * f * t)
-    # Create a linear fade-in and fade-out with a flat middle
 
         taper_len = int(0.01 * len(sine_wave)) # 1% taper at each end
         
@@ -124,11 +120,17 @@ class ToneTapsClosed(bases.StimulusBase):
 
         audio = (tapered_sine * 32767).astype(np.int16)
 
-        play_obj = sima.play_buffer(audio, 1, 2,44100)
-        play_obj.wait_done()
+        p = pyaudio.PyAudio()
+        stream = p.open(format=pyaudio.paInt16,
+            channels=1,
+            rate=44100,
+            output=True)
+        # Play audio
+        stream.write(audio.tobytes())
 
-        # Play using sounddevice
-        # sd.play(tapered_sine, fs)
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
         
         
         

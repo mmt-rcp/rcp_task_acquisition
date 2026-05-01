@@ -2,19 +2,26 @@
 import os
 from psychopy import core
 from pathlib import Path
-
-
+import ruamel.yaml
 
 BASEDIR = Path(__file__).resolve().parent.parent.parent.parent.parent
 CODE_DIR = Path(__file__).resolve().parent.parent
-RAW_DATA_DIR = os.path.join( "D:", "RawDataLocal")
-
 
 STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(CODE_DIR.resolve().parent.parent, 'config_files')
+config_path = os.path.join(CONFIG_FILE_PATH, "userdata.yaml")
+ruamelFile = ruamel.yaml.YAML()
+
+with open(config_path, 'r') as config_file:
+    config = ruamelFile.load(config_file)
+
+
+
+RAW_DATA_DIR = Path(config["RawDataDir"])
+
 
 STIM_CONFIG_FILE_NAME = 'visualStimulusConfig.yaml'
 SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
-VIDEO_DIR = os.path.join(BASEDIR, "Videos", "task_videos")
+VIDEO_DIR = Path.home() / "Videos" / "task_videos" #os.path.join(BASEDIR, "Videos", "task_videos")
 
 # constants for graphing
 DEFAULTS = ["Microphone 1", "Audio", "TENS"]
@@ -26,7 +33,7 @@ PLOT_LENGTH = 80000
 # labjack constants
 SCANS_PER_READ = 10000
 #Hardcoded the hardware and labjack bc its much easier than pulling from somewhere for now
-CAMERA_HEADERS = ["In Use","Name", "Is Primary", "Serial Number"]
+CAMERA_HEADERS = ["In Use","Name", "Is Primary", "Serial Number", "GigE", "Flip Image"]
 HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]#"Graph Min", "Graph Max"]
 HARDWARE_LIST = ["Audio", "Cameras", "Button", "Photodiode", 
                  "Grasp Button", "Microphone 1", "Microphone 2", 
