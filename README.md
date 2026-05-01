@@ -41,9 +41,6 @@ This is the outline for installing this program with the expected hardware confi
     - Labjack (LabJack_2025-05-07.exe)
     - Git (Git-2.53.0.2-64-bit.exe)
     - VLC (vlc-3.0.23-win64.exe)
-    - Visual Studio 2026
-        - Download Installer at https://visualstudio.microsoft.com/downloads/
-        - **Select Visual Studio Build Tools 2026** and select **Install**
 5. Once all apps are installed, restart computer. You can now unplug the flash drive
 
 ### Installing Code
@@ -63,4 +60,5 @@ Note- in order to correctly run the program, all hardware must be installed
 1. In **Select Protocol** panel select **Update Hardware**
 2. Under **In Use** select each camera, assign their correct serial numbers, and select the primary/master camera
 3. Select **Save Hardware Settings** and select **Close Hardware Panel**
+4. On first run, a folder will be created (RawLocalData) to store logs and session data. This folder will be in "C:\Users\Public\Documents".
 
