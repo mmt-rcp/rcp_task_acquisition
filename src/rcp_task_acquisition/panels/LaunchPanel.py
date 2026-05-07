@@ -3,6 +3,7 @@ import wx.lib.scrolledpanel as scrolled
 
 from rcp_task_acquisition.panels.HardwarePanel import HardwarePanel
 from rcp_task_acquisition.utils.file_utils import read_config
+from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./panels/LaunchPanel") 
 
@@ -55,7 +56,7 @@ class LaunchPanel():
         self.hardware_panel.Hide()
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_protocol(button_width), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.BOTTOM, 10)
-        vertical_sizer.Add(self._setup_metadata(), 0, wx.EXPAND | wx.ALL, 10)
+        vertical_sizer.Add(self._setup_metadata(button_width), 0, wx.EXPAND | wx.ALL, 10)
         vertical_sizer.Add(self._setup_buttons(button_width), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         vertical_sizer.Add(self.hardware_panel, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         self.panel.SetSizerAndFit(vertical_sizer)
@@ -78,7 +79,7 @@ class LaunchPanel():
         return grid_sizer
     
     
-    def _setup_metadata(self):
+    def _setup_metadata(self, button_width):
         self.administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
         self.administrator_id =  wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         
@@ -88,6 +89,9 @@ class LaunchPanel():
         self.participant_id_text = wx.StaticText(self.panel, label='Participant Id:')
         self.participant_id = wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         
+        self.participant_add = wx.Button(self.panel, size=button_width, label= "Add New Participant")
+        self.participant_search = wx.Button(self.panel, size=button_width, label="Search Participants")
+        self.participant_add.Bind(wx.EVT_BUTTON, self.add_participant)
         self.participant_detail_text = wx.StaticText(self.panel, label='Participant Details:')
         self.participant_detail = wx.TextCtrl(self.panel, size=wx.Size(450, 70), style=wx.TE_MULTILINE | wx.TE_LEFT, value="")
        
@@ -96,8 +100,11 @@ class LaunchPanel():
         grid_sizer.Add(self.administrator_id, pos=(0,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_id_text, pos=(1,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_id, pos=(1,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_detail_text, pos=(2,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_detail, pos=(2,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_search, pos=(2,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_add, pos=(2,1), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        
+        grid_sizer.Add(self.participant_detail_text, pos=(3,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_detail, pos=(3,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         return grid_sizer
 
 
@@ -140,6 +147,10 @@ class LaunchPanel():
         self.panel.Destroy()
         self.dialog.Destroy()
     
+    def add_participant(self, event):
+        participant_panel = ParticipantPanel(None)
+        participant_panel.show()
+        
     
     def protocol_event(self, event: wx.Event) -> None:
         '''

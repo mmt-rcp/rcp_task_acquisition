@@ -103,7 +103,7 @@ RawDataDir: C:\Users\Public\Documents\RawDataLocal
 
 screen_settings:
   fullScreen: 1
-  screenNumber: 1
+  screenNumber: 0
   vflipMovies: 1
 hardware:
   Audio:
