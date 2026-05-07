@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import sqlite3
 
-
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./models/ParticipantDatabase") 
 
 class ParticipantDatabase():
     def __init__(self):
@@ -17,7 +18,7 @@ class ParticipantDatabase():
         create_table = '''
         CREATE TABLE IF NOT EXISTS Participants (
             ParticipantId VARCHAR(255) PRIMARY KEY,
-            LastName VARCHAR(255) NOT NULL,
+            LastName VARCHAR(255),
             FirstName VARCHAR(255),
             Age VARCHAR(255),
             Diagnosis VARCHAR(255)
@@ -25,6 +26,7 @@ class ParticipantDatabase():
         '''
         self.cursor.execute(create_table)
         self.connection.commit()
+    
     
     def get_all_rows(self):
         select = "SELECT * FROM Participants;"
@@ -39,7 +41,6 @@ class ParticipantDatabase():
     
     
     def add_participant(self, participant_id, first_name, last_name, age, diagnosis):
-        print(f"p: {type(participant_id)}, f: {type(first_name)}, l: {last_name}, a: {age}, d: {diagnosis}")
         row_str = ""
         col_str= "ParticipantId"
         row_str+="'"+participant_id +"'"
@@ -57,18 +58,16 @@ class ParticipantDatabase():
             row_str+= ",'" + diagnosis +"'"
             col_str+=",Diagnosis"
             
-        print(row_str)
-        print(col_str)
         insert = f"INSERT INTO Participants ({col_str}) VALUES ({row_str});"
                  
         try:
             self.cursor.execute(insert)
             self.connection.commit()
-            return True
+            logger.info("sucessfully added row to DB")
+            return True, participant_id
         except Exception as e:
-            print("ERROR")
-            print(e)
-            return False
+            logger.info(f"error adding to db: {e}")
+            return False, ""
     
     
     def close(self):

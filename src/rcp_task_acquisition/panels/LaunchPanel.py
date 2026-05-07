@@ -100,8 +100,8 @@ class LaunchPanel():
         grid_sizer.Add(self.administrator_id, pos=(0,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_id_text, pos=(1,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_id, pos=(1,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_search, pos=(2,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_add, pos=(2,1), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_search, pos=(2,1), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_add, pos=(2,2), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         
         grid_sizer.Add(self.participant_detail_text, pos=(3,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         grid_sizer.Add(self.participant_detail, pos=(3,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)

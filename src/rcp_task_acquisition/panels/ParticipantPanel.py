@@ -63,22 +63,17 @@ class ParticipantPanel():
     
     
     def cancel_event(self, event):
-        # logger.debug("Cancel Pressed")
-        # dlg = wx.MessageDialog(None, 
-        #                        "Are you sure you want to delete this session?", 
-        #                        "", 
-        #                        wx.YES_NO | wx.ICON_QUESTION)
-        # if dlg.ShowModal() == wx.ID_NO: 
-        #     return
-        self.dialog.EndModal(wx.CANCEL)
+        self.dialog.Close()
         self.dialog.Destroy()
     
+    
     def show_error(self):
-        self.dialog = wx.MessageDialog(None, 
+        error = wx.MessageDialog(None, 
                                "Participant ID Required", 
                                "", 
                                wx.OK | wx.ICON_WARNING)
-        self.dialog.ShowModal()
+        error.ShowModal()
+        error.Destroy()
 
     
     def add_event(self, event):
@@ -95,20 +90,28 @@ class ParticipantPanel():
         last_name  = self.last_name_box.GetValue()
         age        = self.age_box.GetValue()
         diagnosis  = self.diagnosis_box.GetValue()
-        results = participantDB.add_participant(participant_id,
+        add_success, participant_id = participantDB.add_participant(participant_id,
                                                 first_name,
                                                 last_name,
                                                 age,
                                                 diagnosis)
-        if not results:
+
+        if not add_success:
             logger.debug("Error adding participant")
-        self.dialog.EndModal(wx.OK)
-        self.dialog.Destroy()
+            error = wx.MessageDialog(None, 
+                                   "Participant ID in use, please use different ID", 
+                                   "", 
+                                   wx.OK | wx.ICON_WARNING)
+            error.ShowModal()
+            error.Destroy()
+        else:
+            self.dialog.Close()
+            self.dialog.Destroy()
         participantDB.close()
         
     
     def show(self):
-        return self.dialog.ShowModal()
+        self.dialog.ShowModal()
     
 
 
