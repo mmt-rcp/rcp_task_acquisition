@@ -51,16 +51,25 @@ class MainFrame(wx.Frame):
         self.cam_crop = Crop()
         #setting up screen for stimulus thread
         self.user_cfg = file_utils.read_config('userdata.yaml')
-        screen_settings = self.user_cfg["screen_settings"]
+        # screen_settings = self.user_cfg["screen_settings"]
         
         # Settting the GUI size and panels design
         displays = (wx.Display(i) for i in range(wx.Display.GetCount())) # Gets the number of displays
         screenSizes = [display.GetGeometry().GetSize() for display in displays] # Gets the size of each display
         logger.debug(f"screenSizes: {screenSizes}")
-        index = 1 # For display 1.
+        # index = 1 # For display 1.
+        if len(screenSizes) != 2:
+            self.warning.update_error("display")
+            self.warning.display()
+            sys.exit()
+        index = 0
+        psychopy_monitor = 1
+        if screenSizes[0][0] > screenSizes[1][0]:
+            logger.debug("Fist monitor is patient monitor")
+            index = 1
+            psychopy_monitor = 0
         screenW = screenSizes[index][0]
         screenH = screenSizes[index][1]
-        
         self.gui_size = (int(screenW*0.9), int(screenW*0.45))
         # self.gui_size = (screenW-90, screenH-55)
         wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = 'Task Master Aquisition',
@@ -150,10 +159,8 @@ class MainFrame(wx.Frame):
         self.warning = Warning()
         #check the display is correct
         #check the correct monitors are displayed
-        if wx.Display.GetCount() < 2:
-            self.warning.update_error("display")
-            self.warning.display()
-            sys.exit()
+        # if wx.Display.GetCount() < 2:
+            
 
         self.camera_toggle.Bind(wx.EVT_BUTTON, self.cams.update_cameras_viewed)
         #set up stimulus thread
@@ -175,7 +182,7 @@ class MainFrame(wx.Frame):
                                      self.finish, 
                                      self.shared, 
                                      self.frmaq,  
-                                     screen_settings, 
+                                     psychopy_monitor, #screen_settings, 
                                      self.task, 
                                      self.button_pressed,
                                      self.press_count,

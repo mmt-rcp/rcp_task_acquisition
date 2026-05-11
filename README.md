@@ -11,7 +11,7 @@ This is the outline for installing this program with the expected hardware confi
 
 ### Installing Windows
 1. Install Windows 11 per University standards. It will be helpful to have some level of admin acess to install programs.
-2. Adjust settings (Optional but recommended)
+2. Adjust settings
     - Set Main Display:
         1. Go to **Settings -> System -> Display**
         2. Select the smaller screen
