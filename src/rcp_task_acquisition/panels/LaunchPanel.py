@@ -22,8 +22,8 @@ class LaunchPanel():
             dropdown for the possible task selections
         administrator_id (wx.TextCtrl):
             text box for the administrator id. final string will be added to the metadata
-        participant_id (wx.TextCtrl):
-            text box for the participant id. final string will be added to the metadata
+        participant_id (wx.ComboBox):
+            Drop down to select the participants. the participant Id will be added to the metadata, the rest of the info is stored in a db
         participant_detail (wx.TextCtrl):
             text box for any overarching participant notes. final string will be added to the metadata
     '''
@@ -41,12 +41,12 @@ class LaunchPanel():
                          "participant_detail": None}
         # Basic panel set up. 3 different steps (Protocol, metadata and buttons) to help with 
         # organization and padding between sections
-        
-        
+        self.participant_panel = ParticipantPanel(None)
+        self.current_list = []
         self.regular_size = wx.Size(650, 400)
         self.hardware_size = wx.Size(650,800)
-        button_width = wx.Size(200, -1)
-        
+        button_width = wx.Size(220, -1)
+        self.update_list_bool = True
         self.dialog = wx.Dialog(parent, id= wx.ID_ANY, title= 'Select Protocol',
                             size = self.regular_size, pos = (660, 275))
         
@@ -55,60 +55,61 @@ class LaunchPanel():
         self.hardware_panel = HardwarePanel(task_config, self.panel)
         self.hardware_panel.Hide()
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_protocol(button_width), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.BOTTOM, 10)
         vertical_sizer.Add(self._setup_metadata(button_width), 0, wx.EXPAND | wx.ALL, 10)
         vertical_sizer.Add(self._setup_buttons(button_width), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         vertical_sizer.Add(self.hardware_panel, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         self.panel.SetSizerAndFit(vertical_sizer)
-
-        
-    def _setup_protocol(self, button_width):
-        self.protocol_text = wx.StaticText(self.panel, label='Protocol:')
-        self.protocol_choice= wx.Choice(self.panel, 
-                                       id=wx.ID_ANY, 
-                                       choices=self.task_list,
-                                       size=(200, -1))
-        self.protocol_choice.Bind(wx.EVT_CHOICE, self.task_event)
-        self.protocol_choice.SetSelection(0)
-        self.protocol_button = wx.Button(self.panel, size=button_width, label="Select Protocol")
-        self.task_event("")
-        grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        grid_sizer.Add(self.protocol_text, 0, flag= wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
-        grid_sizer.Add(self.protocol_choice, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
-        grid_sizer.Add(self.protocol_button, 0, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
-        return grid_sizer
     
+    
+    def get_participants(self, event):
+        self.participant_list, self.participant_tuple = self.participant_panel.get_all_participants()
+        print(self.participant_list)
+        self.participant_id.SetItems(self.participant_list)
     
     def _setup_metadata(self, button_width):
         self.administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
         self.administrator_id =  wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
         
+        self.protocol_text = wx.StaticText(self.panel, label='Protocol:')
+        self.protocol_choice= wx.Choice(self.panel, 
+                                       id=wx.ID_ANY, 
+                                       choices=self.task_list,
+                                       size=(220, -1))
+        self.protocol_choice.Bind(wx.EVT_CHOICE, self.task_event)
+        self.protocol_choice.SetSelection(0)
+        self.protocol_button = wx.Button(self.panel, size=button_width, label="Select Protocol")
+        self.task_event("")
         
-        # self.participane_type_text = wx.StaticText(self.panel, label="Participant:")
-        # self.
-        self.participant_id_text = wx.StaticText(self.panel, label='Participant Id:')
-        self.participant_id = wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
-        
+        self.participant_id_text = wx.StaticText(self.panel, label='Participant:')
+        self.participant_id =  wx.ComboBox(self.panel, size=wx.Size(450, -1), style=wx.CB_DROPDOWN, choices=[])
+        self.get_participants(None)
+        self.participant_id.Bind(wx.EVT_TEXT, self.update_list)
+        self.participant_id.Bind(wx.EVT_TEXT_ENTER, self.on_enter)
         self.participant_add = wx.Button(self.panel, size=button_width, label= "Add New Participant")
-        self.participant_search = wx.Button(self.panel, size=button_width, label="Search Participants")
+        self.participant_remove = wx.Button(self.panel, size=button_width, label="Remove Participant")
         self.participant_add.Bind(wx.EVT_BUTTON, self.add_participant)
+        self.participant_remove.Bind(wx.EVT_BUTTON, self.remove_participants)
         self.participant_detail_text = wx.StaticText(self.panel, label='Participant Details:')
         self.participant_detail = wx.TextCtrl(self.panel, size=wx.Size(450, 70), style=wx.TE_MULTILINE | wx.TE_LEFT, value="")
        
         grid_sizer = wx.GridBagSizer(4, 3)
-        grid_sizer.Add(self.administrator_text, pos=(0,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.administrator_id, pos=(0,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_id_text, pos=(1,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_id, pos=(1,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_search, pos=(2,1), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_add, pos=(2,2), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.protocol_text,  pos=(0,0), span=(0,1),  flag= wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.protocol_choice,  pos=(0,1), span=(0,1),  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.protocol_button, pos=(0,2), span=(0,1),  flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.administrator_text, pos=(1,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.administrator_id, pos=(1,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_id_text, pos=(2,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_id, pos=(2,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_remove, pos=(3,1), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_add, pos=(3,2), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         
-        grid_sizer.Add(self.participant_detail_text, pos=(3,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
-        grid_sizer.Add(self.participant_detail, pos=(3,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_detail_text, pos=(4,0), span=(0,1), flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
+        grid_sizer.Add(self.participant_detail, pos=(4,1), span=(0,3), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=5)
         return grid_sizer
 
 
     def _setup_buttons(self, button_width):
+        button_width = wx.Size(200, -1)
         self.hardware_button = wx.ToggleButton(self.panel, size=button_width, label="Update Hardware")
         self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.hardware_event)
         
@@ -123,6 +124,52 @@ class LaunchPanel():
         row_sizer.Add(self.exit_button, 0, wx.ALIGN_CENTER_VERTICAL)
         return row_sizer
     
+
+        
+    def update_list(self, event):
+        
+        if self.update_list_bool:
+            self.update_list_bool = False
+            current_text = self.participant_id.GetValue()
+            
+            print(f"current_text: {current_text}")
+            
+            self.current_list = [item for item in self.participant_list if current_text.lower() in item.lower()]
+            # self.participant_id.Clear()
+            self.participant_id.SetItems(self.current_list)
+            
+
+            self.participant_id.ChangeValue(current_text)
+            self.update_list_bool = True
+            self.participant_id.Popup()
+            self.participant_id.SetInsertionPointEnd()
+            
+    def on_enter(self, event):
+        pass
+        # value = self.participant_id.GetValue()
+        # for index, item in enumerate(self.current_list):
+        #     if value == item:
+        #         self.participant_id.SetSelection(index)
+        #         print("selected")
+        #     print(index)
+        # self.participant_id.SetInsertionPointEnd()
+            
+    def remove_participants(self, event):
+        index = self.participant_id.GetSelection()
+        user = self.participant_list[index]
+        if index == -1:
+            return
+        id_to_delete = self.participant_tuple[index][0]
+        dlg = wx.MessageDialog(None, 
+                               f"Are you sure you want to delete {user}?", 
+                               "", 
+                               wx.YES_NO | wx.ICON_QUESTION)
+        if dlg.ShowModal() == wx.ID_NO: 
+            return
+        
+        self.participant_panel.remove_participant(id_to_delete)
+        self.participant_id.SetSelection(-1)
+        self.get_participants(None)
     
     def enable_gui(self, is_enabled) -> None:
         self.hardware_button.Enable(is_enabled) 
@@ -145,11 +192,23 @@ class LaunchPanel():
     def exit_event(self)-> None:
         logger.debug("exit")
         self.panel.Destroy()
+        self.participant_panel.exit_event()
         self.dialog.Destroy()
     
+    
     def add_participant(self, event):
-        participant_panel = ParticipantPanel(None)
-        participant_panel.show()
+        
+        self.participant_panel.show()
+        
+        participant_id = self.participant_panel.data
+        # self.update_list_bool = False
+        new_index = -1
+        self.get_participants(None)
+        for index, current_id in enumerate(self.participant_tuple):
+            print(f"here: {index}, {current_id}")
+            if current_id[0] == participant_id:
+                new_index = index
+        self.participant_id.SetSelection(new_index)
         
     
     def protocol_event(self, event: wx.Event) -> None:
@@ -157,14 +216,17 @@ class LaunchPanel():
         Bound to select protocol event. Triggers starting the aquisition
         gui.
         '''
-       
+        participant_index = self.participant_id.GetSelection()
+        participant_id = self.participant_tuple[participant_index][0] 
+        if participant_index == -1:
+            participant_id = ""
         self.metadata = {"task": None,
                          "administrator_id": None,
                          "participant_id": None,
                          "participant_detail": None}
         self.metadata["task"] = self.task.strip()
         self.metadata["administrator_id"] = self.administrator_id.GetValue() 
-        self.metadata["participant_id"] = self.participant_id.GetValue()
+        self.metadata["participant_id"] = participant_id
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
         
         self.is_hidden = True
@@ -203,6 +265,10 @@ class LaunchPanel():
     
     
     def get_metadata(self) -> None: 
+        participant_index = self.participant_id.GetSelection()
+        participant_id = self.participant_tuple[participant_index][0] 
+        if participant_index == -1:
+            participant_id = ""
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
         self.dialog.SetSize(self.regular_size)
@@ -211,7 +277,7 @@ class LaunchPanel():
         self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue() 
-        self.metadata["participant_id"] = self.participant_id.GetValue()
+        self.metadata["participant_id"] =  participant_id
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
         
     

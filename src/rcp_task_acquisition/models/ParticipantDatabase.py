@@ -34,6 +34,18 @@ class ParticipantDatabase():
         return participants
         
     
+    def get_display_list(self):
+        select = "SELECT ParticipantId, FirstName, LastName FROM Participants;"
+        participants = self.cursor.execute(select).fetchall()
+        # self.connection.commit()
+        return participants
+        
+    
+    def remove_participant(self, participant_id):
+        remove = f"DELETE FROM Participants WHERE ParticipantId = '{participant_id}';"    
+        self.cursor.execute(remove)
+        self.connection.commit()
+        
     def get_participant(self, column, condition):
         select = (f"SELECT * FROM Participants WHERE {column} = {condition};" )
         participant = self.cursor.execute(select).fetchall()

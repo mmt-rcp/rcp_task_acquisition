@@ -21,6 +21,7 @@ class ParticipantPanel():
         vertical_sizer.Add(self._setup_data(), 0, wx.ALIGN_CENTER_HORIZONTAL| wx.TOP, 15)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL| wx.TOP, 15)
         self.panel.SetSizerAndFit(vertical_sizer)
+        self.data = None
     
     
     def _setup_data(self):
@@ -64,13 +65,13 @@ class ParticipantPanel():
     
     def cancel_event(self, event):
         self.dialog.Close()
-        self.dialog.Destroy()
+        # self.dialog.Destroy()
     
     
     def show_error(self):
         error = wx.MessageDialog(None, 
                                "Participant ID Required", 
-                               "", 
+                               "Error", 
                                wx.OK | wx.ICON_WARNING)
         error.ShowModal()
         error.Destroy()
@@ -104,15 +105,48 @@ class ParticipantPanel():
                                    wx.OK | wx.ICON_WARNING)
             error.ShowModal()
             error.Destroy()
+        
         else:
+            self.data = participant_id
             self.dialog.Close()
-            self.dialog.Destroy()
+            self.first_name_box.SetValue("")
+            self.last_name_box.SetValue("")
+            self.age_box.SetValue("")
+            self.diagnosis_box.SetValue("")
+            self.id_box.SetValue("")
         participantDB.close()
         
     
     def show(self):
         self.dialog.ShowModal()
     
-
-
-
+    def exit_event(self):
+        self.dialog.Destroy()
+        
+        
+    def get_all_participants(self):
+        participantDB = ParticipantDatabase()
+        database = os.path.join(BASEDIR, "database", "participants.db")
+        participantDB.connect(database)
+        participant_list = participantDB.get_display_list()
+        participantDB.close()
+        tuple_list = []
+        display_list = []
+        for item in participant_list:
+            id_str = f"Id: {item[0]}"
+            if item[1] != None:
+                id_str += f", First Name: {item[1]}"
+            if item[2] != None:
+                id_str +=f", Last Name: {item[2]}"
+            tuple_list.append((item[0], item[1], item[2]))
+            display_list.append(id_str)
+        
+        
+        return display_list, tuple_list
+    
+    def remove_participant(self, participant_id):
+        participantDB = ParticipantDatabase()
+        database = os.path.join(BASEDIR, "database", "participants.db")
+        participantDB.connect(database)
+        participantDB.remove_participant(participant_id)
+        participantDB.close()

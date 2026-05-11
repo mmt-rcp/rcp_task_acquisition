@@ -57,7 +57,7 @@ class MainFrame(wx.Frame):
         displays = (wx.Display(i) for i in range(wx.Display.GetCount())) # Gets the number of displays
         screenSizes = [display.GetGeometry().GetSize() for display in displays] # Gets the size of each display
         logger.debug(f"screenSizes: {screenSizes}")
-        index = 0 # For display 1.
+        index = 1 # For display 1.
         screenW = screenSizes[index][0]
         screenH = screenSizes[index][1]
         
@@ -773,6 +773,7 @@ class MainFrame(wx.Frame):
     def show(self, launch_args, event):
         self.labjack_scan_rate = None
         self.cams.reset_variables()
+        logger.debug(f"launch_args: {launch_args}")
         self.hardware_test = False
         self.cam_test.value = False
         self.user_cfg = file_utils.read_config('userdata.yaml')
