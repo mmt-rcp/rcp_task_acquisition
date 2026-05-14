@@ -63,13 +63,10 @@ class LaunchPanel():
     
     def get_participants(self, event):
         self.participant_list, self.participant_tuple = self.participant_panel.get_all_participants()
-        print(self.participant_list)
+        print(f"list: {self.participant_list}, tuple: {self.participant_tuple}")
         self.participant_id.SetItems(self.participant_list)
     
     def _setup_metadata(self, button_width):
-        self.administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
-        self.administrator_id =  wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
-        
         self.protocol_text = wx.StaticText(self.panel, label='Protocol:')
         self.protocol_choice= wx.Choice(self.panel, 
                                        id=wx.ID_ANY, 
@@ -80,13 +77,17 @@ class LaunchPanel():
         self.protocol_button = wx.Button(self.panel, size=button_width, label="Select Protocol")
         self.task_event("")
         
+        self.administrator_text = wx.StaticText(self.panel, label='Administrator Id:')
+        self.administrator_id =  wx.TextCtrl(self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
+        
         self.participant_id_text = wx.StaticText(self.panel, label='Participant:')
         self.participant_id =  wx.ComboBox(self.panel, size=wx.Size(450, -1), style=wx.CB_DROPDOWN, choices=[])
         self.get_participants(None)
         self.participant_id.Bind(wx.EVT_TEXT, self.update_list)
         self.participant_id.Bind(wx.EVT_TEXT_ENTER, self.on_enter)
-        self.participant_add = wx.Button(self.panel, size=button_width, label= "Add New Participant")
+        # self.participant_id.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.on_dropdown)
         self.participant_remove = wx.Button(self.panel, size=button_width, label="Remove Participant")
+        self.participant_add = wx.Button(self.panel, size=button_width, label= "Add New Participant")
         self.participant_add.Bind(wx.EVT_BUTTON, self.add_participant)
         self.participant_remove.Bind(wx.EVT_BUTTON, self.remove_participants)
         self.participant_detail_text = wx.StaticText(self.panel, label='Participant Details:')
@@ -133,17 +134,18 @@ class LaunchPanel():
             current_text = self.participant_id.GetValue()
             
             print(f"current_text: {current_text}")
-            
-            self.current_list = [item for item in self.participant_list if current_text.lower() in item.lower()]
+            test_text = current_text.replace(" ", "").lower()
+            if test_text == "":
+                current_text = test_text
+            self.current_list = [item for item in self.participant_list if test_text in item.lower().replace(" ", "")]
             # self.participant_id.Clear()
             self.participant_id.SetItems(self.current_list)
-            
-
             self.participant_id.ChangeValue(current_text)
-            self.update_list_bool = True
             self.participant_id.Popup()
             self.participant_id.SetInsertionPointEnd()
-            
+            self.update_list_bool = True
+    
+
     def on_enter(self, event):
         pass
         # value = self.participant_id.GetValue()
@@ -155,14 +157,21 @@ class LaunchPanel():
         # self.participant_id.SetInsertionPointEnd()
             
     def remove_participants(self, event):
-        index = self.participant_id.GetSelection()
-        user = self.participant_list[index]
+        user_string, user_index = "", -1
+        
+        id_string = self.current_list[self.participant_id.GetSelection()]
+        for user_index, user_string in enumerate(self.participant_list):
+            if user_string == id_string:
+                user = user_string
+                index = user_index
+                break
+        # user = self.participant_list[index]
         if index == -1:
             return
         id_to_delete = self.participant_tuple[index][0]
         dlg = wx.MessageDialog(None, 
                                f"Are you sure you want to delete {user}?", 
-                               "", 
+                               "Warning", 
                                wx.YES_NO | wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_NO: 
             return
@@ -170,6 +179,7 @@ class LaunchPanel():
         self.participant_panel.remove_participant(id_to_delete)
         self.participant_id.SetSelection(-1)
         self.get_participants(None)
+    
     
     def enable_gui(self, is_enabled) -> None:
         self.hardware_button.Enable(is_enabled) 

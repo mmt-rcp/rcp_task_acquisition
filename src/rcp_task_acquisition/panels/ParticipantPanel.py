@@ -133,7 +133,7 @@ class ParticipantPanel():
         tuple_list = []
         display_list = []
         for item in participant_list:
-            id_str = f"Id: {item[0]}"
+            id_str = f" Id: {item[0]}"
             if item[1] != None:
                 id_str += f", First Name: {item[1]}"
             if item[2] != None:
