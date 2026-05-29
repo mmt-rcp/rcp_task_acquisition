@@ -360,7 +360,6 @@ class MainFrame(wx.Frame):
         
 
     def update_intertrial(self, event):
-        logger.debug(f"video_status: {self.video_status.value}")
         if self.video_status.value == 5:
             self.trial_panel.stop_video()
             self.video_status.value = 0
@@ -581,13 +580,14 @@ class MainFrame(wx.Frame):
             cameras = {}
             self.meta["version"] = str(__version__)
             self.meta["actual_scan_rate"]=self.labjack_scan_rate
+        
             for ndx, s in enumerate(self.cams.camStrList):
                 # framerate, exposure = self.cam[ndx].get_actual_settings()
                 camset = {'serial':self.cam_cfg[s]['serial'],
                       'ismaster':self.cam_cfg[s]['ismaster'],
                       'crop':self.cam_cfg[s]['crop'],
-                      'exposure': self.cam_cfg[s]['exposure'],
-                      'framerate': self.cam_cfg[s]['framerate'],
+                      # 'exposure': self.cam_cfg[s]['exposure'],
+                      # 'framerate': self.cam_cfg[s]['framerate'],
                       'bin': self.cam_cfg[s]['bin'],
                       'nickname': s,
                       'actual_framerate': self.cams.rate[ndx],

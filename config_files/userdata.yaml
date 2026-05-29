@@ -7,66 +7,58 @@ cameras:
     serial: '24044011'
     ismaster: false
     crop:
-    - 40
-    - 640
-    - 30
-    - 480
-    exposure: 1000
+    - 20
+    - 320
+    - 15
+    - 240
     bin: 2
-    gain: 20
+    gain: 15
     gamma: 0.8
     gig_e: false
     flip: false
     in_use: true
-    framerate: 240
   rightCamTop:
     serial: '24041797'
     ismaster: true
     crop:
-    - 40
-    - 1280
-    - 30
-    - 960
-    exposure: 1000
-    bin: 1
-    gain: 20
+    - 20
+    - 320
+    - 15
+    - 240
+    bin: 2
+    gain: 15
     gamma: 0.8
     gig_e: false
     flip: false
     in_use: true
-    framerate: 240
   leftCamFace:
     serial: '23531686'
     ismaster: false
     crop:
     - 40
     - 640
-    - 30
-    - 480
-    exposure: 1000
-    bin: 2
-    gain: 20
+    - 90
+    - 360
+    bin: 1
+    gain: 15
     gamma: 0.8
-    gig_e: false
+    gig_e: true
     flip: false
     in_use: true
-    framerate: 240
   rightCamFace:
-    serial: '25504066'
+    serial: '24043993'
     ismaster: false
     crop:
     - 40
     - 640
-    - 30
-    - 480
-    exposure: 1000
-    bin: 2
-    gain: 20
+    - 90
+    - 360
+    bin: 1
+    gain: 15
     gamma: 0.8
-    gig_e: false
+    gig_e: true
     flip: false
     in_use: true
-    framerate: 240
   leftCamTripod:
     serial:
     ismaster: false
@@ -75,9 +67,8 @@ cameras:
     - 1280
     - 60
     - 960
-    exposure: 1000
     bin: 1
-    gain: 20
+    gain: 10
     gamma: 0.8
     gig_e: false
     flip: false
@@ -90,14 +81,12 @@ cameras:
     - 1280
     - 60
     - 960
-    exposure: 1000
     bin: 1
-    gain: 20
+    gain: 10
     gamma: 0.8
     gig_e: true
     flip: false
     in_use: false
-    framerate: 240
 
 
 unitRef: unitME
@@ -114,10 +103,10 @@ hardware:
     - 0.075
     graph: ''
   Cameras:
-    labjack_input: FIO0
+    labjack_input: AIN0
     voltage_range:
-    - 0
-    - 1
+    - -11.0
+    - 11.0
     graph: ''
   Button:
     labjack_input: EIO0
@@ -126,10 +115,10 @@ hardware:
     - 1
     graph: ''
   Photodiode:
-    labjack_input: AIN0
+    labjack_input: FIO5
     voltage_range:
-    - -0.015
-    - 0.015
+    - 0
+    - 1
     graph: ''
   Grasp Button:
     labjack_input: FIO1

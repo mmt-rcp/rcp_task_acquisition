@@ -9,6 +9,8 @@ naturalistic_speech:
   - TENS
   - leftCamTop
   - rightCamTop
+  - leftCamFace
+  - rightCamFace
 n_back:
   settings:
   - Audio

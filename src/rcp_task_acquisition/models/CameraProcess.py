@@ -6,10 +6,8 @@ import numpy as np
 import PySpin
 import sys, linecache
 import cv2
-import os
-from pathlib import Path
 import rcp_task_acquisition.utils.file_utils as file_utils
-from rcp_task_acquisition.models.AsyncVideoWriter import AsyncVideoWriter
+from rcp_task_acquisition.models.AsyncVideoWriter import AsyncFFmpegGPUWriter#AsyncVideoWriter
 from rcp_task_acquisition.utils.camera_utils import identify_dropped_frames
 from rcp_task_acquisition.utils.logger import get_logger
 from queue import Empty
@@ -66,14 +64,14 @@ class multiCam_DLC_Cam(Process):
             self.framerate = round(int(config['cam_config']['framerate'])/int(config['cam_config']['framerate_decrease_factor']))
         else:
             self.framerate =int(config['cam_config']['framerate'])
-        current_exposure_time = int(user_cfg[camStr]['exposure'])
+        current_exposure_time = 1000 #= int(user_cfg[camStr]['exposure'])
         
         aqW = int(user_cfg[camStr]['crop'][1]*self.dwnsmplfac)
         aqH = int(user_cfg[camStr]['crop'][3]*self.dwnsmplfac)
         
         
         # frame_results = np.zeros([int(self.frmdim[1]*self.dwnsmplfac),int(self.frmdim[3]*self.dwnsmplfac),3],'ubyte')
-        frame_results = np.zeros([aqH,aqW,3],'ubyte')
+        # frame_results = np.zeros([aqH,aqW,3],'ubyte')
         frameSml = np.zeros([int(aqH/self.dwnsmplfac),int(aqW/self.dwnsmplfac),3],'ubyte')
         
         method = 'none'
@@ -138,32 +136,41 @@ class multiCam_DLC_Cam(Process):
                         handling_mode_entry = handling_mode.GetEntryByName('OldestFirst')
                         handling_mode.SetIntValue(handling_mode_entry.GetValue())
                         logger.debug(path_base)
-                        avi = PySpin.SpinVideo()
-                        option = PySpin.AVIOption()
+                        # avi = PySpin.SpinVideo()
+                        # option = PySpin.AVIOption()
                         
-                        option.frameRate = write_frame_rate
+                        # option.frameRate = write_frame_rate
                         self.height = aqH
                         self.width = aqW
                         self.fps = round(write_frame_rate,2)
                         
-                        file_dir, base_name = os.path.split(path_base)
-                        image_dir = os.path.join(file_dir,base_name+'_images')
-                        new_dir = Path(image_dir)
+                        # file_dir, base_name = os.path.split(path_base)
+                        # image_dir = os.path.join(file_dir,base_name+'_images')
+                        # new_dir = Path(image_dir)
                         # Ensure the log directory exists
-                        new_dir.mkdir(parents=True, exist_ok=True)
+                        # new_dir.mkdir(parents=True, exist_ok=True)
                         
                         self.video_file = path_base + ".mp4"
                         file_path = f"{path_base}_timestamps.txt"
                         
-                        self.async_writer = AsyncVideoWriter(
+                        # self.async_writer = AsyncVideoWriter(
+                        #     video_file=self.video_file,
+                        #     timestamp_file=file_path,
+                        #     fps=self.fps,
+                        #     width=self.width,
+                        #     height=self.height,
+                        #     max_queue=256
+                        # )
+                        
+                        self.async_writer = AsyncFFmpegGPUWriter(
                             video_file=self.video_file,
                             timestamp_file=file_path,
                             fps=self.fps,
                             width=self.width,
                             height=self.height,
-                            max_queue=256
+                            max_queue=512,
+                            qp=23
                         )
-                        
                         start_time = 0
                         capture_duration = 0
                         record = True
@@ -196,14 +203,14 @@ class multiCam_DLC_Cam(Process):
                                 # cam.EndAcquisition()
                                 # cam.DeInit()
                                 continue
-                            image_result = processor.Convert(image_result, PySpin.PixelFormat_RGB8)
-                            if self.aq.value == 2:
-                                frame_results = image_result.GetNDArray()
-                            elif self.aq.value == 1:
-                                frame_results[:,:,:] = image_result.GetNDArray()
+                            
+                            image_result = processor.Convert(image_result, PySpin.PixelFormat_BGR8)
+                            frame_bits = image_result.GetData()
+                            timestamp = image_result.GetTimeStamp()
+                            frame_id = image_result.GetFrameID()
+                            
+                            
                             if record:
-                                timestamp = image_result.GetTimeStamp()
-                                frame_id = image_result.GetFrameID()
                                 
                                 if start_time == 0:
                                     start_time = timestamp
@@ -213,11 +220,12 @@ class multiCam_DLC_Cam(Process):
                                     start_time = timestamp
                                 
                                 # Important: make a real owned NumPy copy before releasing image_result.
-                                frame_bgr = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR).copy()
+                                # frame_bgr = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR).copy()
                                 
-                                ok = self.async_writer.write(frame_bgr, frame_id, capture_duration)
-                                if not ok:
-                                    logger.error(f"{self.camID}: async writer queue full; dropped frame {frame_id}")
+                                # ok = self.async_writer.write(frame_results, frame_id, capture_duration)
+                                ok = self.async_writer.write(frame_bits, frame_id, capture_duration)
+                                # if not ok:
+                                #     logger.error(f"{self.camID}: async writer queue full; dropped frame {frame_id}")
 
                                 
                                 # frame_results_rgb = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR)
@@ -240,14 +248,15 @@ class multiCam_DLC_Cam(Process):
                             if self.aq.value == 1:
                                 # Live feed array
                                 if self.frmGrab.value == 0:
-                                    if np.shape(image_result.GetNDArray())[2] == 3:
+                                    frame_results = image_result.GetNDArray().copy()
+                                    if np.shape(frame_results)[2] == 3:
                                         # frameA = np.zeros([int(len(frame_results)/4), int(len(frame_results[0])/4), 3])
                                         frameSml[:, :, :] = frame_results[::self.dwnsmplfac, ::self.dwnsmplfac, :]
                                         # frame[:,:,:] = frameSml #frame_results
-                                        logger.debug(f"val ={aqH}, {aqW}, {frameSml.shape}")
+                                        # logger.debug(f"val ={aqH}, {aqW}, {frameSml.shape}")
                                         self.array4feed[0:int(aqH*aqW*3/self.dwnsmplfac/self.dwnsmplfac)] = frameSml.flatten()
                                     self.frmGrab.value = 1
-                            image_result.Release()     
+                            image_result.Release()
                             if ismaster:
                                 self.frm.value+=1
                             
@@ -373,6 +382,13 @@ class multiCam_DLC_Cam(Process):
                         cam.GainAuto.SetValue(PySpin.GainAuto_Off)
                         cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
                         
+                        # Locate the ISP Enable node
+                        isp_enable_node = PySpin.CBooleanPtr(nodemap.GetNode('IspEnable'))                        
+                        if PySpin.IsAvailable(isp_enable_node) and PySpin.IsWritable(isp_enable_node):
+                            isp_enable_node.SetValue(False)
+                        else:
+                            logger.warn('ISP Enable node is not available or read-only.')
+                            
                         # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
                         user_cfg = file_utils.read_config('userdata.yaml')["cameras"]
                         self.camq_p2read.put('done')
@@ -433,9 +449,10 @@ class multiCam_DLC_Cam(Process):
                         frmrate_time_to_set = min(max_frmrate, record_frame_rate)
                         cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
                         exposure_time_to_set = cam.ExposureTime.GetValue()
+                        logger.info(f"max fr: {max_frmrate}, record: {record_frame_rate}, self.framerate: {self.framerate}")
                         logger.info(f"exposure: {exposure_time_to_set}")
                         record_frame_rate = cam.AcquisitionFrameRate.GetValue()
-                        exposure_time_request = int(user_cfg[camStr]['exposure'])
+                        
                         
                         cam.AcquisitionFrameRateEnable.SetValue(False)
                         if cam.ExposureAuto.GetAccessMode() != PySpin.RW:
@@ -447,12 +464,13 @@ class multiCam_DLC_Cam(Process):
                             logger.warn('Unable to set exposure time. Aborting...')
                             continue
                         # # Ensure desired exposure time does not exceed the maximum
+                        max_exposure = cam.ExposureTime.GetMax()
+                        exposure_time_request = max_exposure #int(user_cfg[camStr]['exposure'])
                         exposure_time_to_set = floor(1/record_frame_rate*1000*1000)
                         if exposure_time_request <= exposure_time_to_set:
                             exposure_time_to_set = exposure_time_request
-                        max_exposure = cam.ExposureTime.GetMax()
-                        logger.debug(f"max exposure: {max_exposure}")
-                        current_exposure_time = min(max_exposure, exposure_time_to_set)
+                        # max_exposure = cam.ExposureTime.GetMax()
+                        max_exposure = min(max_exposure, exposure_time_to_set)*0.99
                         cam.ExposureTime.SetValue(current_exposure_time)
 
                         cam.AcquisitionFrameRateEnable.SetValue(True)
@@ -463,10 +481,11 @@ class multiCam_DLC_Cam(Process):
                         cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
                         exposure_time_to_set = cam.ExposureTime.GetValue()
                         record_frame_rate = cam.AcquisitionFrameRate.GetValue()
-
-                        # max_exposure = cam.ExposureTime.GetMax()
+                        
+                        
+                        logger.debug(f"max exposure: {max_exposure}")
                         # self.camq_p2read.put(exposure_time_to_set)
-                        logger.info(f"frame rate {camStr}: {str(round(record_frame_rate))}")
+                        logger.info(f"cam.AcquisitionFrameRate.GetValue(): {camStr}: {str(record_frame_rate)}")
                         # self.camq_p2read.put(max_exposure)
                         self.camq_p2read.put(record_frame_rate)
                         self.camq_p2read.put(node_width.GetValue())
@@ -478,9 +497,10 @@ class multiCam_DLC_Cam(Process):
                     elif msg == 'getExposure':
                         
                         logger.info(f"Current exposure: {current_exposure_time}" )
-                        current_exposure_time = cam.ExposureTime.GetValue()*.99
+                        current_exposure_time = cam.ExposureTime.GetValue()*0.99
                         cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
-                        # current_exposure_time = min(current_exposure_time,exposure_max)
+                        current_exposure_time = min(current_exposure_time,max_exposure)
+                        # current_exposure_time = 1.1*max_exposure
                         cam.ExposureTime.SetValue(current_exposure_time)
                         logger.info(f"Auto-exposure result {camStr}: {current_exposure_time}")
                         logger.debug(f"exposure: {cam.ExposureTime.GetValue()}")

@@ -172,9 +172,10 @@ class Camera():
             self.x2.append(self.x1[ndx]+self.w[ndx])
             
             frame = self.frameBuff[ndx][0:self.dispSize[ndx]].reshape([self.h[ndx], self.w[ndx],3])
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             for f in range(3):
                 self.frame[ndx][self.y1[ndx]:self.y2[ndx],self.x1[ndx]:self.x2[ndx],f] = frame[:,:,f]
-
+                
             self.im[0].set_data(self.frame[self.cam_pointer])
             self.im[1].set_data(self.frame[self.cam_pointer+1])
                 
@@ -219,6 +220,7 @@ class Camera():
             if self.frmGrab[ndx].value == 1:
                 self.frameBuff[ndx][0:] = np.frombuffer(self.array4feed[ndx].get_obj(), self.dtype, self.cam_settings[ndx].size)
                 frame = self.frameBuff[ndx][0:self.dispSize[ndx]].reshape([self.h[ndx], self.w[ndx], 3])
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 for f in range(3):
                     self.frame[ndx][self.y1[ndx]:self.y2[ndx],self.x1[ndx]:self.x2[ndx],f] = frame[:,:,f]
                 if ndx == self.cam_pointer:
@@ -437,6 +439,7 @@ class Camera():
             actual_rate = self.camq_p2read[camID].get()
             framerate = self.camq_p2read[camID].get()
             self.rate.append(actual_rate)
+            logger.debug(f"RATES: {self.rate}")
             # if math.ceil(actual_rate) != framerate:
 
                 # warning_str += f"\n {camID} has a framerate of {round(actual_rate,3)}, expected {framerate}"
