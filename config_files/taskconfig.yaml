@@ -14,28 +14,32 @@ naturalistic_speech:
   - rightCamFace
 n_back:
   settings:
-  - PC Audio
-  - Camera Sync TTL
-  - Digital Accessory
   - Photodetector
   - Subject Mic
   - Experimenter Mic
-  - TTL to E-Phys
+  - PC Audio
+  - Camera Sync TTL
   - Trigger to DS7A
+  - TTL to E-Phys
+  - Digital Accessory
   - leftCamTop
   - rightCamTop
+  - leftCamFace
+  - rightCamFace
 motor_task_finger_taps:
   settings:
-  - PC Audio
-  - Camera Sync TTL
-  - Digital Accessory
   - Photodetector
   - Subject Mic
   - Experimenter Mic
-  - TTL to E-Phys
+  - PC Audio
+  - Camera Sync TTL
   - Trigger to DS7A
+  - TTL to E-Phys
+  - Digital Accessory
   - leftCamTop
   - rightCamTop
+  - leftCamFace
+  - rightCamFace
 diadochokinesis:
   settings:
   - PC Audio
@@ -73,21 +77,21 @@ vowel_space:
   - leftCamTop
   - rightCamTop
 reach_grasp:
-  - PC Audio
-  - Camera Sync TTL
-  - Digital Accessory
-  - Photodetector
-  - Subject Mic
-  - Experimenter Mic
-  - Force Sensor X
-  - Force Sensor Y
-  - Force Sensor Z
-  - TTL to E-Phys
-  - Trigger to DS7A
-  - leftCamTop
-  - rightCamTop
-  - leftCamTripod
-  - rightCamTripod
+- PC Audio
+- Camera Sync TTL
+- Digital Accessory
+- Photodetector
+- Subject Mic
+- Experimenter Mic
+- Force Sensor X
+- Force Sensor Y
+- Force Sensor Z
+- TTL to E-Phys
+- Trigger to DS7A
+- leftCamTop
+- rightCamTop
+- leftCamTripod
+- rightCamTripod
 tone_taps_closed:
   settings:
   - PC Audio
@@ -114,13 +118,17 @@ sara:
   - rightCamTop
 verb_generation:
   settings:
-  - PC Audio
-  - Camera Sync TTL
-  - Digital Accessory
   - Photodetector
   - Subject Mic
   - Experimenter Mic
-  - TTL to E-Phys
+  - PC Audio
+  - Camera Sync TTL
   - Trigger to DS7A
+  - TTL to E-Phys
+  - Digital Accessory
   - leftCamTop
   - rightCamTop
+  - leftCamFace
+  - rightCamFace
+  - leftCamTripod
+  - rightCamTripod

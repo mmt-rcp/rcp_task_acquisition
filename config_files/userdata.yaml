@@ -5,50 +5,6 @@ cam_config:
 cameras:
   leftCamTop:
     serial: '26127411'
-    ismaster: true
-    crop:
-    - 20
-    - 320
-    - 15
-    - 240
-    bin: 2
-    gain: 15
-    gamma: 0.8
-    gig_e: false
-    flip: false
-    in_use: true
-  rightCamTop:
-    serial: '26063923'
-    ismaster: false
-    crop:
-    - 20
-    - 320
-    - 15
-    - 240
-    bin: 2
-    gain: 15
-    gamma: 0.8
-    gig_e: false
-    flip: false
-    in_use: true
-  leftCamFace:
-    serial: '26127421'
-    ismaster: false
-    crop:
-    - 90
-    - 540
-    - 0
-    - 540
-    exposure: 1000
-    bin: 2
-    gain: 15
-    gamma: 0.8
-    gig_e: false
-    flip: false
-    in_use: true
-    framerate: 240
-  rightCamFace:
-    serial: '26127422'
     ismaster: false
     crop:
     - 40
@@ -59,9 +15,51 @@ cameras:
     bin: 2
     gain: 15
     gamma: 0.8
-    gig_e: false
+    framerate_decrease_factor: 2
     flip: false
-    in_use: tru
+    in_use: true
+  rightCamTop:
+    serial: '26063923'
+    ismaster: false
+    crop:
+    - 90
+    - 540
+    - 0
+    - 540
+    bin: 1
+    gain: 15
+    gamma: 0.8
+    framerate_decrease_factor: 2
+    flip: false
+    in_use: true
+  leftCamFace:
+    serial: '26127421'
+    ismaster: true
+    crop:
+    - 20
+    - 320
+    - 15
+    - 240
+    bin: 2
+    gain: 15
+    gamma: 0.8
+    framerate_decrease_factor: 1
+    flip: false
+    in_use: true
+  rightCamFace:
+    serial: '26127422'
+    ismaster: false
+    crop:
+    - 20
+    - 320
+    - 15
+    - 240
+    bin: 2
+    gain: 15
+    gamma: 0.8
+    framerate_decrease_factor: 1
+    flip: false
+    in_use: true
     framerate: 240
   leftCamTripod:
     serial: '26125063'
@@ -75,7 +73,7 @@ cameras:
     bin: 2
     gain: 15
     gamma: 0.8
-    gig_e: false
+    framerate_decrease_factor: 2
     flip: false
     in_use: true
     framerate: 240
@@ -91,7 +89,7 @@ cameras:
     bin: 2
     gain: 15
     gamma: 0.8
-    gig_e: false
+    framerate_decrease_factor: 2
     flip: false
     in_use: true
     framerate: 240
@@ -104,63 +102,72 @@ VideoDir: C:\Users\Public\Videos\task_videos
 
 
 hardware:
-
   Photodetector:
     labjack_input: AIN0
     voltage_range:
     - -0.015
     - 0.015
+    graph: ''
   Subject Mic:
     labjack_input: AIN1
     voltage_range:
-    - 0
-    - 1
+    - -0.6
+    - 0.6
     graph: ''
   Experimenter Mic:
     labjack_input: AIN2
     voltage_range:
     - -0.6
     - 0.6
+    graph: ''
   PC Audio:
     labjack_input: AIN3
     voltage_range:
     - -0.075
     - 0.075
+    graph: ''
   Grip Force Sensor:
     labjack_input: AIN4
     voltage_range:
     - -0.6
     - 0.6
+    graph: ''
   Force Sensor X:
     labjack_input: AIN5
     voltage_range:
     - -0.6
     - 0.6
+    graph: ''
   Force Sensor Y:
     labjack_input: AIN6
     voltage_range:
     - -0.6
     - 0.6
+    graph: ''
   Force Sensor Z:
     labjack_input: AIN7
     voltage_range:
     - -0.6
     - 0.6
+    graph: ''
   Camera Sync TTL:
     labjack_input: FIO0
     voltage_range:
     - 0
     - 1
+    graph: ''
   Grasp Start Pad:
     labjack_input: FIO1
     voltage_range:
     - 0
     - 1
+    graph: ''
   Extra Digital In 1:
     labjack_input: FIO2
     voltage_range:
     - 0
     - 1
+    graph: ''
   Extra Digital In 2:
     labjack_input: FIO3
     voltage_range:
@@ -178,18 +185,22 @@ hardware:
     voltage_range:
     - 0
     - 1
+    graph: ''
   Trigger to DS7A:
     labjack_input: FIO6
     voltage_range:
     - 0
     - 1
+    graph: ''
   TTL to E-Phys:
     labjack_input: FIO7
     voltage_range:
     - 0
     - 1
+    graph: ''
   Digital Accessory:
     labjack_input: EIO0
     voltage_range:
     - 0
     - 1
+    graph: ''

@@ -29,7 +29,8 @@ class CameraRow:
     in_use: wx.CheckBox
     is_primary: wx.RadioButton
     serial: wx.Choice
-    gig_e: wx.CheckBox
+    framerate_decrease: wx.Choice
+    # gig_e: wx.Choice #wx.CheckBox
     flip_vid: wx.CheckBox
     in_use_all: bool = False
     in_use_protocol: bool = False
@@ -247,8 +248,11 @@ class HardwarePanel(wx.Panel):
             is_primary = (wx.RadioButton(self, style=wx.RB_GROUP) 
                           if first_cam else wx.RadioButton(self))
             
-            gig_e = wx.CheckBox(self, id=wx.ID_ANY)
-            gig_e.Enable(False)
+            self.framerate_decrease_options = ["1","2","3","4"]
+            framerate_decrease = wx.Choice(self, id=wx.ID_ANY, choices=self.framerate_decrease_options)
+            framerate_decrease.Enable(False)
+            # gig_e = wx.CheckBox(self, id=wx.ID_ANY)
+            # gig_e.Enable(False)
             
             flip_vid = wx.CheckBox(self, id=wx.ID_ANY)
             flip_vid.Enable(False)
@@ -256,13 +260,14 @@ class HardwarePanel(wx.Panel):
             first_cam= False
             is_primary.Enable(False)
             
-            new_camera = CameraRow(name, in_use, is_primary, serial, gig_e, flip_vid)
+            new_camera = CameraRow(name, in_use, is_primary, serial, framerate_decrease, flip_vid)#gig_e, flip_vid)
             
             grid_sizer.Add(in_use, pos=(vertical_pos,0), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             grid_sizer.Add(name, pos=(vertical_pos,1), span=(0,1), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10)
             grid_sizer.Add(is_primary, pos=(vertical_pos,2), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             grid_sizer.Add(serial, pos=(vertical_pos,3), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
-            grid_sizer.Add(gig_e, pos=(vertical_pos, 4), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
+            # grid_sizer.Add(gig_e, pos=(vertical_pos, 4), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
+            grid_sizer.Add(framerate_decrease, pos=(vertical_pos, 4), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             grid_sizer.Add(flip_vid, pos=(vertical_pos, 5), span=(0,1), flag=wx.ALIGN_CENTER | wx.ALL, border=10)
             vertical_pos +=1
 
@@ -272,10 +277,16 @@ class HardwarePanel(wx.Panel):
                 name.Enable(True)
                 serial.Enable(True)
                 is_primary.Enable(True)
-                gig_e.Enable(True)
+                # gig_e.Enable(True)
+                framerate_decrease.Enable(True)
                 flip_vid.Enable(True)
                 flip_vid.SetValue(cam_config[key]["flip"])
-                gig_e.SetValue(cam_config[key]["gig_e"])
+                # gig_e.SetValue(cam_config[key]["gig_e"])
+                # try:
+                index = self.framerate_decrease_options.index(str(cam_config[key]["framerate_decrease_factor"]))
+                framerate_decrease.SetSelection(index)
+                # except:
+                #     pass
                 is_primary.SetValue(cam_config[key]["ismaster"])
                 cam_index = self.cam_serial_numbers.index(cam_config[key]["serial"])
                 serial.SetSelection(cam_index)
@@ -328,7 +339,8 @@ class HardwarePanel(wx.Panel):
             camera.in_use.SetValue(False)
             camera.serial.Enable(False)
             camera.is_primary.Enable(False)
-            camera.gig_e.Enable(False)
+            # camera.gig_e.Enable(False)
+            camera.framerate_decrease.Enable(False)
             camera.flip_vid.Enable(False)
         
         self.update_task()
@@ -366,14 +378,16 @@ class HardwarePanel(wx.Panel):
                     camera.name.Enable(True)
                     camera.is_primary.Enable(True)
                     camera.serial.Enable(True)
-                    camera.gig_e.Enable(True)
+                    # camera.gig_e.Enable(True)
+                    # camera.gig_e.Enable(False)
+                    camera.framerate_decrease.Enable(True)
                     camera.flip_vid.Enable(True)
                     
                 else:
                     camera.name.Enable(False)
                     camera.serial.Enable(False)
                     camera.is_primary.Enable(False)
-                    camera.gig_e.Enable(False)
+                    # camera.gig_e.Enable(False)
                     camera.flip_vid.Enable(False)
                     camera.serial.SetSelection(-1)
             self._update_lists(self.hardware_list)
@@ -406,6 +420,12 @@ class HardwarePanel(wx.Panel):
             self.task_config[self.task]["settings"] = self.args
             write_config("taskconfig.yaml", self.task_config)
         write_config("userdata.yaml", self.user_config)
+        dlg = wx.MessageDialog(None, 
+                               "Hardware settings saved!", 
+                               "Notification", 
+                               wx.OK | wx.ICON_INFORMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
 
 
     def _create_hardware_dict(self): 
@@ -449,14 +469,17 @@ class HardwarePanel(wx.Panel):
                     #     camera_dict[self._get_name(camera)]["framerate"] = int(240/2)
                     # else:
                     #     camera_dict[self._get_name(camera)]["framerate"] = int(240)
-                    camera_dict[self._get_name(camera)]["gig_e"] = camera.gig_e.GetValue()
+                    frame_decrease = self.framerate_decrease_options[camera.framerate_decrease.GetSelection()]
+                    camera_dict[self._get_name(camera)]["framerate_decrease_factor"] = int(frame_decrease)
+                    # camera_dict[self._get_name(camera)]["gig_e"] = camera.gig_e.GetValue()
                     camera_dict[self._get_name(camera)]["flip"] = camera.flip_vid.GetValue()
                 
                 else:
+                    frame_decrease = self.framerate_decrease_options[camera.framerate_decrease.GetSelection()]
                     camera_dict[self._get_name(camera)] = {"ismaster": camera.is_primary.GetValue(),
                                                                     "serial": camera.serial.GetStrings()[serial],
                                                                     "in_use": camera.in_use_all,
-                                                                    "gig_e": camera.gig_e.GetValue(),
+                                                                    "framerate_decrease_factor": int(frame_decrease), #"gig_e": camera.gig_e.GetValue(),
                                                                     "flip": camera.flip_vid.GetValue()}
                                                                     
             else:
