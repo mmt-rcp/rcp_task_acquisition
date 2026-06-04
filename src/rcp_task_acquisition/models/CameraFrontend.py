@@ -252,7 +252,7 @@ class Camera():
         self.figure.canvas.draw()
         
         
-    def start_recording(self, event, base_dir, sess_dir, unit_ref, sess_string, count):
+    def start_recording(self, event, base_dir, sess_dir, path_base, count):
 
         totTime = 20 #int(self.secRec.GetValue())+int(self.minRec.GetValue())*60
         spaceneeded = 0
@@ -268,10 +268,11 @@ class Camera():
         for ndx, s in enumerate(self.camStrList):
             camID = str(self.cam_cfg[s]['serial'])
             self.camq[camID].put('recordPrep')
-            date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-            name_base = f"{date_string}_{unit_ref}_{sess_string}_{s}_trial{count}" #% (date_string, self.user_cfg['unitRef'], self.sess_string, self.cam_cfg[s]['nickname'])
-            path_base = os.path.join(sess_dir,name_base)
-            self.camq[camID].put(path_base)
+            # date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
+            name_base = "%s_%s_trial%03d" % (path_base, s, count)
+            # name_base = f"{date_string}_{unit_ref}_{sess_string}_{s}_trial{count}" #% (date_string, self.user_cfg['unitRef'], self.sess_string, self.cam_cfg[s]['nickname'])
+            new_base = os.path.join(sess_dir,name_base)
+            self.camq[camID].put(new_base)
             self.camq_p2read[camID].get()
 
         self.camaq.value = 1

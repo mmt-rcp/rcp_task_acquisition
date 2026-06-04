@@ -109,8 +109,11 @@ class StimulusThread(Process):
                     msgq_data = self.msgq.get()
                     logger.debug(f"stim: {msgq_data}")
                     try:
-                        trial_data = ast.literal_eval(msgq_data)
-                        
+                    
+                        if msgq_data[0] == "(":
+                            trial_data = ast.literal_eval(msgq_data)
+                        else: 
+                            trial_data = msgq_data
                     except:
                         trial_data = msgq_data
                     # trial_data = trial_data.replace("(", "")

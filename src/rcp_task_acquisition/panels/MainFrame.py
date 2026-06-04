@@ -223,8 +223,8 @@ class MainFrame(wx.Frame):
             self.labjack_stream_button.Enable(False)
             self.labjack_stream_button.SetLabel("Stop Labjack")
             self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-            lj_path = os.path.join(self.sess_dir, f"{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}_labjack.txt")
-            msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
+            lj_path = os.path.join(self.sess_dir, self.path_base+"_labjack.txt")
+            msg = f"P{self.path_base}x"
             self.lj.add_csv(lj_path, self.serial_device, msg)
             self.startingSession = True
             self.task_button.SetLabel("End Task")
@@ -310,7 +310,7 @@ class MainFrame(wx.Frame):
                    
             self.trial_panel.run_trial(self.count)
             self.trial_button.SetLabel("Stop Trial")
-            self.cams.start_recording(event, self.base_dir, self.sess_dir, self.user_cfg['unitRef'], self.sess_string, self.count)
+            self.cams.start_recording(event, self.base_dir, self.sess_dir, self.path_base, self.count)
             self.liveTimer.Start(150)
             self.msgq.put("run_stimulus")
 
@@ -643,6 +643,9 @@ class MainFrame(wx.Frame):
         self.sess_dir = os.path.join(self.base_dir, self.sess_string)
         if not os.path.exists(self.sess_dir):
             os.makedirs(self.sess_dir)
+        self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
+        self.path_base = f"{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}"
+        # msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
         
   
     def initCams(self, event):
@@ -753,22 +756,27 @@ class MainFrame(wx.Frame):
             if self.recording:
                 return
             self.recording = True
-            self.cams.start_recording(event, self.base_dir, self.sess_dir, self.user_cfg['unitRef'], self.sess_string, self.count)
+            self.create_file()
+            self.cams.start_recording(event, self.base_dir,self.sess_dir, self.path_base, self.count)
             self.set_crop.Enable(False)
             self.minRec.Enable(False)
             self.secRec.Enable(False)
+            self.exposure_button.Enable(False)
             self.update_settings.Enable(False)
             self.rec.SetLabel('Stop')
             self.play.SetLabel('Abort')
+            self.liveTimer.Start(150)
         else:
             if not self.recording:
                 return
             self.recording = False
             self.cams.stop_recording(event)
             self.rec.SetLabel('Record')
-            self.play.SetLabel('Play')
+            self.play.SetLabel('Live')
+            self.liveTimer.Stop()
             self.set_crop.Enable(True)
             self.minRec.Enable(True)
+            self.exposure_button.Enable(True)
             self.secRec.Enable(True)
             self.update_settings.Enable(True)
         
@@ -850,6 +858,10 @@ class MainFrame(wx.Frame):
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0 
         self.video_start, self.video_pause = self.trial_panel.get_video_buttons()
+        if self.task == "all_hardware":
+            self.task_button.Enable(False)
+        else:
+            self.task_button.Enable(True)
         if self.video_start != None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
             self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)

@@ -42,16 +42,18 @@ motor_task_finger_taps:
   - rightCamFace
 diadochokinesis:
   settings:
-  - PC Audio
-  - Camera Sync TTL
-  - Digital Accessory
   - Photodetector
   - Subject Mic
   - Experimenter Mic
-  - TTL to E-Phys
+  - PC Audio
+  - Camera Sync TTL
   - Trigger to DS7A
+  - TTL to E-Phys
+  - Digital Accessory
   - leftCamTop
   - rightCamTop
+  - leftCamFace
+  - rightCamFace
 verbal_fluency:
   settings:
   - PC Audio
