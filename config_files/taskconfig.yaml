@@ -134,3 +134,31 @@ verb_generation:
   - rightCamFace
   - leftCamTripod
   - rightCamTripod
+calibrate_top:
+  settings:
+  - Photodetector
+  - Camera Sync TTL
+  - Trigger to DS7A
+  - TTL to E-Phys
+  - leftCamTop
+  - rightCamTop
+  - leftCamFace
+  - rightCamFace
+calibrate_face:
+  settings:
+  - Photodetector
+  - Camera Sync TTL
+  - Trigger to DS7A
+  - TTL to E-Phys
+  - leftCamFace
+  - rightCamFace
+calibrate_tripod:
+  settings:
+  - Photodetector
+  - Camera Sync TTL
+  - Trigger to DS7A
+  - TTL to E-Phys
+  - leftCamTripod
+  - rightCamTripod
+  - leftCamFace
+  - rightCamFace

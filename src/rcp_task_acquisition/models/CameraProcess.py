@@ -72,7 +72,7 @@ class multiCam_DLC_Cam(Process):
         
         # frame_results = np.zeros([int(self.frmdim[1]*self.dwnsmplfac),int(self.frmdim[3]*self.dwnsmplfac),3],'ubyte')
         # frame_results = np.zeros([aqH,aqW,3],'ubyte')
-        frameSml = np.zeros([int(aqH/self.dwnsmplfac),int(aqW/self.dwnsmplfac),3],'ubyte')
+        frameSml = np.zeros([int(aqH/self.dwnsmplfac/user_cfg[camStr]["bin"]),int(aqW/self.dwnsmplfac/user_cfg[camStr]["bin"]),3],'ubyte')
         
         method = 'none'
         system = PySpin.System.GetInstance()
@@ -269,6 +269,7 @@ class multiCam_DLC_Cam(Process):
                                     if np.shape(frame_results)[2] == 3:
                                         # frameA = np.zeros([int(len(frame_results)/4), int(len(frame_results[0])/4), 3])
                                         frameSml[:, :, :] = frame_results[::self.dwnsmplfac, ::self.dwnsmplfac, :]
+                                        logger.debug(f"frameSml: {frameSml.shape}, frame_results: {frame_results.shape}")
                                         # frame[:,:,:] = frameSml #frame_results
                                         # logger.debug(f"val ={aqH}, {aqW}, {frameSml.shape}")
                                         self.array4feed[0:int(aqH*aqW*3/self.dwnsmplfac/self.dwnsmplfac)] = frameSml.flatten()
@@ -413,11 +414,13 @@ class multiCam_DLC_Cam(Process):
                         if method == 'crop':
                                 
                             roi = self.frmdim
-                            
+                            logger.debug(f"roi: {self.frmdim}")
                             record_frame_rate = self.framerate #int(user_cfg['cam_config']['framerate'])
                             # Set width
                             node_width = PySpin.CIntegerPtr(nodemap.GetNode('Width'))
                             width_max = node_width.GetMax()
+                            
+                            logger.debug(f"node_width:{width_max}")
                             width_to_set = np.floor(width_max/roi[3]*user_cfg[camStr]['crop'][1]/4)*4
                             if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
                                 node_width.SetValue(int(width_to_set))
@@ -431,7 +434,7 @@ class multiCam_DLC_Cam(Process):
                                 node_height.SetValue(int(height_to_set))
                             else:
                                 logger.warn('Height not available...')
-    
+                            logger.debug(f"node height: {height_max}")
                             # Apply offset X
                             node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode('OffsetX'))
                             offset_x = np.floor(width_max/roi[3]*user_cfg[camStr]['crop'][0]/4)*4
