@@ -109,7 +109,7 @@ class StimulusThread(Process):
                     msgq_data = self.msgq.get()
                     logger.debug(f"stim: {msgq_data}")
                     try:
-                    
+                        logger.debug(f"stimthread datadata: {msgq_data[0]}")
                         if msgq_data[0] == "(":
                             trial_data = ast.literal_eval(msgq_data)
                         else: 

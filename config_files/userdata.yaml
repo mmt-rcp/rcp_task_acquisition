@@ -44,7 +44,7 @@ cameras:
     gain: 15
     gamma: 0.8
     framerate_decrease_factor: 1
-    flip: false
+    flip: true
     in_use: true
   rightCamFace:
     serial: '26127422'
@@ -58,7 +58,7 @@ cameras:
     gain: 15
     gamma: 0.8
     framerate_decrease_factor: 1
-    flip: false
+    flip: true
     in_use: true
     framerate: 240
   leftCamTripod:

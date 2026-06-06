@@ -282,6 +282,16 @@ class MainFrame(wx.Frame):
             else:
                 self.rest_timer.Start(1000)
             self.finish.value = 0
+            
+            if self.task== "verbal_fluency" and self.trial_panel.first:
+                self.count =0
+                self.trial_button.SetLabel("Start Trial")
+                self.trial_panel.switch_panel()
+                data = str(self.trial_panel.get_trials())
+                self.msgq.put("update_data")
+                self.msgq.put(data)
+                # self.results_list.append(self.trial_panel.get_result())
+                return
             try:
                 self.msgq.put("update_data")
                 
@@ -299,15 +309,7 @@ class MainFrame(wx.Frame):
             #     if finish:
             #        self.trial_button.Enable(True) 
             #     return
-            if self.task== "verbal_fluency" and self.trial_panel.first:
-                self.count =0
-                self.trial_button.SetLabel("Start Trial")
-                self.trial_panel.switch_panel()
-                data = str(self.trial_panel.get_trials())
-                self.msgq.put("update_data")
-                self.msgq.put(data)
-                self.results_list.append(self.trial_panel.get_result())
-                return
+            
                    
             self.trial_panel.run_trial(self.count)
             self.trial_button.SetLabel("Stop Trial")
@@ -341,7 +343,6 @@ class MainFrame(wx.Frame):
     
     
     def next_trial(self, event):  
-        logger.debug("UPDATING DATA")
         self.msgq.put("update_data")
         
         data = str(self.trial_panel.get_result())

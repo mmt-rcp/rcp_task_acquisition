@@ -269,7 +269,6 @@ class multiCam_DLC_Cam(Process):
                                     if np.shape(frame_results)[2] == 3:
                                         # frameA = np.zeros([int(len(frame_results)/4), int(len(frame_results[0])/4), 3])
                                         frameSml[:, :, :] = frame_results[::self.dwnsmplfac, ::self.dwnsmplfac, :]
-                                        logger.debug(f"frameSml: {frameSml.shape}, frame_results: {frame_results.shape}")
                                         # frame[:,:,:] = frameSml #frame_results
                                         # logger.debug(f"val ={aqH}, {aqW}, {frameSml.shape}")
                                         self.array4feed[0:int(aqH*aqW*3/self.dwnsmplfac/self.dwnsmplfac)] = frameSml.flatten()

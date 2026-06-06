@@ -56,6 +56,7 @@ class ToneTapsClosedPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {number}")
         
     def get_result(self):
+        self.tap_hand = "left" if self.left_radio.GetValue() else "right"
         return self.tap_hand
         
 

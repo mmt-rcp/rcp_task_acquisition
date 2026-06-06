@@ -80,7 +80,6 @@ class Camera():
                 self.camStrList.append(s)
 
         camCt = len(self.camStrList)
-        logger.debug(f"CAMSTRLISTS: {self.camStrList}")
         for cam in self.camStrList:
             self.cam_tests.append(np.full(shape=30*2, fill_value=np.nan))
             self.contrast_tests.append(np.full(shape=30*2, fill_value=np.nan))
@@ -96,14 +95,12 @@ class Camera():
                         int(CAM_MAX_HEIGHT/DOWNSAMPLE_VAL/cam_bin),
                         0,
                         int(CAM_MAX_WIDTH/DOWNSAMPLE_VAL/cam_bin)]
-            logger.debug(f"frontend cam_dims: {cam_dims}")
             cam = CamSettings(str(self.cam_cfg[s]['serial']),  
                               cam_dims[1]*cam_dims[3]*3,
                               [cam_dims[1], cam_dims[3], 3],
                               cam_bin, 
                               cam_dims
                               )
-            logger.debug(f"cam: {cam.shape}, {cam.size}, s: {s}")
             self.cam_settings.append(cam)
             frame = np.zeros(cam.shape, dtype='ubyte')
             frameBuff = np.zeros(cam.size, dtype='ubyte')
@@ -176,7 +173,6 @@ class Camera():
             self.dispSize.append(self.h[ndx]*self.w[ndx]*3)
             self.y2.append(self.y1[ndx]+self.h[ndx])
             self.x2.append(self.x1[ndx]+self.w[ndx])
-            logger.debug(f"x1: {self.x1}, y1: {self.y1}, h: {self.h}, w: {self.w}, ndx: {ndx}, dispSize: {self.dispSize}")
             frame = self.frameBuff[ndx][0:self.dispSize[ndx]].reshape([self.h[ndx], self.w[ndx],3])
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             for f in range(3):
@@ -446,7 +442,6 @@ class Camera():
             actual_rate = self.camq_p2read[camID].get()
             framerate = self.camq_p2read[camID].get()
             self.rate.append(actual_rate)
-            logger.debug(f"RATES: {self.rate}")
             # if math.ceil(actual_rate) != framerate:
 
                 # warning_str += f"\n {camID} has a framerate of {round(actual_rate,3)}, expected {framerate}"

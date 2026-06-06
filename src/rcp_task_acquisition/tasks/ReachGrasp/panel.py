@@ -66,7 +66,7 @@ class ReachGraspPanel(TrialPanel):
         # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
         self.grasp_object = "Large" if self.large_object_radio.GetValue() else "Precision"
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
-        return f"{self.reach_hand},{self.grasp_object}" #, self.pace
+        return self.reach_hand,self.grasp_object#, self.pace
         
     def cancel_event(self, event):
         self.cancel = True
