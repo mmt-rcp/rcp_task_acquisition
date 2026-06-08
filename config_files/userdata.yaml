@@ -40,25 +40,25 @@ cameras:
     - 320
     - 15
     - 240
-    bin: 2
+    bin: 1
     gain: 15
     gamma: 0.8
     framerate_decrease_factor: 1
-    flip: true
+    flip: false
     in_use: true
   rightCamFace:
-    serial: '26127422'
+    serial: '23531686'
     ismaster: false
     crop:
-    - 20
-    - 320
-    - 15
-    - 240
+    - 90
+    - 540
+    - 0
+    - 540
     bin: 2
     gain: 15
     gamma: 0.8
-    framerate_decrease_factor: 1
-    flip: true
+    framerate_decrease_factor: 2
+    flip: false
     in_use: true
     framerate: 240
   leftCamTripod:
@@ -93,10 +93,11 @@ cameras:
     flip: false
     in_use: true
     framerate: 240
+    in_use: false
 
 
 unitRef: unitME
-RawDataDir: C:\Users\Public\Documents\RawDataLocal
+RawDataDir: D:\RawDataLocal
 VideoDir: C:\Users\Public\Videos\task_videos
 
 
