@@ -26,7 +26,7 @@ class ReachGraspPanel(TrialPanel):
         self.right_radio = wx.RadioButton(self, label="Right Hand")
         # self.left_radio.Bind(wx.EVT_RADIOBUTTON, self.on_select)
         # self.right_radio.Bind(wx.EVT_RADIOBUTTON, self.on_select)
-        
+        self.right_radio.SetValue(True)
         self.object_text = wx.StaticText(self, label='Choose grasp apparatus:')
         self.large_object_radio = wx.RadioButton(self, label="Large", style= wx.RB_GROUP)
         self.precision_object_radio = wx.RadioButton(self, label="Precision")
@@ -66,7 +66,7 @@ class ReachGraspPanel(TrialPanel):
         # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
         self.grasp_object = "Large" if self.large_object_radio.GetValue() else "Precision"
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
-        return f"{self.reach_hand},{self.grasp_object}" #, self.pace
+        return self.reach_hand,self.grasp_object#, self.pace
         
     def cancel_event(self, event):
         self.cancel = True

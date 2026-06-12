@@ -150,6 +150,7 @@ class StimulusBase():
         pass
     
     def play_instructional_video(self, trial_name):
+        logger.debug(f"Trial name: {trial_name}")
         if trial_name == "":
             file = self.instructions_dict
         else:
@@ -223,7 +224,7 @@ class StimulusBase():
             tone = np.sin(frequency * t * 2 * np.pi)
     
             # Normalize to 16-bit range
-            audio = (tone * 32767).astype(np.int16)
+            audio = ((tone * 32767)*0.1).astype(np.int16)
             
             p = pyaudio.PyAudio()
             stream = p.open(format=pyaudio.paInt16,
