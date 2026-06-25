@@ -926,12 +926,7 @@ class MainFrame(wx.Frame):
             self.Bind(wx.EVT_TIMER, self.labjack_stream, self.disable_timer)
         self.Disable()
         self.disable_timer.StartOnce(80)
-    
-    def close_labjack(self):
-        try: 
-            self.lj.crash()
-        except:
-            logger.debug("no labjack process available")
+
 
     def labjack_stream(self,event):
         self.lj.labjack_stream(event)

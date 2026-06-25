@@ -75,7 +75,5 @@ class SwitchPanel():
         self.task_frame.Hide(event)
         self.task_frame.quitButton(event)
 
-    def end(self):
-        self.task_frame.close_labjack()
 
         

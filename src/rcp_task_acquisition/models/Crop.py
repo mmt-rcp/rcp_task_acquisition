@@ -93,7 +93,6 @@ class Crop():
          
         
     def update_crop(self, index, axis, frmDims):
-        logger.debug(f'in update crop: {index}, {axis}, {frmDims}, {self.croproi}')
         self.frmDims = frmDims
         cpt = self.croproi[index]
         rec = [patches.Rectangle((cpt[0],cpt[2]), cpt[1], cpt[3], fill=False, ec = [0.25,0.25,0.75], linewidth=2, linestyle='-',alpha=0.0)]
