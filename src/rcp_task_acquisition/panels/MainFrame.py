@@ -594,7 +594,7 @@ class MainFrame(wx.Frame):
                       'nickname': self.cams.cam_dict[s].name,
                       'actual_framerate': self.cams.cam_dict[s].actual_framerate,
                       'actual_exposure': self.cams.cam_dict[s].exposure}
-                cameras[s] = camset
+                cameras[self.cams.cam_dict[s].name] = camset
             self.meta['cameras'] = cameras
             self.meta['unitRef']=self.user_cfg['unitRef']
             self.meta['Collection']='info'
