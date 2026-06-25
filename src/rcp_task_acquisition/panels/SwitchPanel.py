@@ -76,5 +76,4 @@ class SwitchPanel():
         self.task_frame.quitButton(event)
 
 
-
         
