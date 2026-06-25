@@ -16,16 +16,26 @@ def identify_dropped_frames(timestamp_file, frame_rate):
     """
     # Load timestamps from the file
     # frame_id_list = pd.read_csv(timestamp_file)['frame_id'].values
-    timestamps_ns = pd.read_csv(timestamp_file)['timestamp'].values[1:]  # Extract timestamp column
-    expected_interval = 1e9 / frame_rate
+    # timestamps_ns = pd.read_csv(timestamp_file)['timestamp'].values[1:]  # Extract timestamp column
+    # expected_interval = 1e9 / frame_rate
+    # current_frame = len(timestamps_ns)
+    # timestamps_ns = np.asarray(timestamps_ns)
+    # dropped_frame_count = np.sum((np.round(timestamps_ns / expected_interval)) - 1)
+    # total_frames = current_frame+dropped_frame_count
     
-    current_frame = len(timestamps_ns)
-    timestamps_ns = np.asarray(timestamps_ns)
     
-    dropped_frame_count = np.sum((np.round(timestamps_ns / expected_interval)) - 1)
-    
+    timestamps_ns = pd.read_csv(timestamp_file)['frame_id'].values[1:]  # Extract timestamp column
 
-    total_frames = current_frame+dropped_frame_count
-    return dropped_frame_count, total_frames, current_frame
+    timestamps_ns = np.asarray(timestamps_ns)
+
+    total_expected = np.max(timestamps_ns) - np.min(timestamps_ns) + 1
+    
+    missing_count = total_expected - len(timestamps_ns)
+
+    print("Amount of missing numbers:", missing_count)
+    
+    
+    
+    return missing_count, len(timestamps_ns)+missing_count, len(timestamps_ns)
 
 
