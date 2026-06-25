@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-
+from rcp_task_acquisition.utils.logger import get_logger
+logger = get_logger("./utils/camera_utils") 
 
 
 def identify_dropped_frames(timestamp_file, frame_rate):
@@ -30,9 +31,10 @@ def identify_dropped_frames(timestamp_file, frame_rate):
     total_expected = np.max(frame_arr) - np.min(frame_arr) + 1
     missing_count = total_expected - frame_len
     
-    if missing_count > 0:
-        return  missing_count, frame_len+missing_count, frame_len
-    
-    return dropped_frame_count, total_frames, current_frame
+    if missing_count <= 0 and dropped_frame_count > 0:  
+        logger.debug("using timestamps")
+        return dropped_frame_count, total_frames, current_frame
+    logger.debug("Using frame count")
+    return  missing_count, frame_len+missing_count, frame_len
 
 
