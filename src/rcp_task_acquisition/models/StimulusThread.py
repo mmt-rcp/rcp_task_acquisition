@@ -27,6 +27,14 @@ class Msg(Enum):
     INITIALIZE = "init_stimulus"
     UPDATE_TASK = "update_task"
     RUN_TASK = "run_stimulus"
+    END_TASK = "end_stimulus"
+    ADD_INSTRUCTIONS = "create_instructions"
+    PLAY_INSTRUCTIONS = "play_instructions"
+    UPDATE_DATA = "update_data"
+    RESET_TASK = "reset_task"
+    HARDWARE_TEST = "hardware_test"
+    CLOSE_WINDOW = "close"
+    VOWEL_SPACE = "vowel_space"
 
 
 class StimulusThread(Process):
@@ -91,21 +99,21 @@ class StimulusThread(Process):
                     logger.info(f'Stimulus protocol completed in {min_string}{seconds:.2f} seconds')
 
                     self.finish.value = 1
-                elif msg=="end_stimulus":
+                elif msg== Msg.END_TASK.value:
                     
                     self.end_stimulus()
-                elif "play_instructions" in msg:
+                elif Msg.PLAY_INSTRUCTIONS.value in msg:
                     msg = self.msgq.get()
                     
                     logger.debug(msg)
                     self.play_video(msg)
-                elif "create_instructions" in msg:
+                elif Msg.ADD_INSTRUCTIONS.value in msg:
                     msg = self.msgq.get()
                     self.setup_videos(msg)
                     # self.setup_videos(video_filename_dict)
-                elif "hardware_test" in msg:
+                elif Msg.HARDWARE_TEST.value in msg:
                     HardwareTest(self.window, self.finish, self.frame, self.video_status).present()
-                elif "update_data" in msg:
+                elif Msg.UPDATE_DATA.value in msg:
                     msgq_data = self.msgq.get()
                     logger.debug(f"stim: {msgq_data}")
                     try:
@@ -118,13 +126,13 @@ class StimulusThread(Process):
                         trial_data = msgq_data
                     # trial_data = trial_data.replace("(", "")
                     self.stimulus.update_data(trial_data)
-                elif "reset_task" in msg:
+                elif Msg.RESET_TASK.value in msg:
                     self.stimulus.reset_task()
-                elif "vowel_space" in msg:
+                elif Msg.VOWEL_SPACE.value in msg:
                     results = self.stimulus.get_trial()
                     logger.debug(results)
                     self.resultsq.put(results)
-                elif "close" in msg:
+                elif Msg.CLOSE_WINDOW.value in msg:
                     self.close_window()
             except SystemExit:
                 logger.debug("interrupted stimulus")

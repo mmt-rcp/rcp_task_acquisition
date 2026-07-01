@@ -88,7 +88,7 @@ class MainFrame(wx.Frame):
         self.image_panel = ImagePanel(vSplitter)
         self.image_panel.updateImage(self.gui_size)
         self.ctrl_panel = GraphPanel(vSplitter, self.gui_size)
-        self.widget_panel = ControlsPanel(topSplitter, self.ctrl_panel)
+        self.widget_panel = ControlsPanel(topSplitter, self.ctrl_panel, psychopy_monitor, screenSizes[psychopy_monitor])
 
         vSplitter.SplitHorizontally(self.image_panel, self.ctrl_panel, sashPosition=int(self.gui_size[1]*0.6))
         topSplitter.SplitVertically(vSplitter, self.widget_panel, sashPosition=int(self.gui_size[0]*0.78))
@@ -105,10 +105,18 @@ class MainFrame(wx.Frame):
 
         (self.camera_toggle, self.hardware_button, 
          self.task_button,  self.quit, self.tens_button) = self.widget_panel.get_task_handles()
-        (self.contrast_test, self.focus_test, self.hardware_test_panel) = self.widget_panel.get_hardware_handles()
+        (self.contrast_test, self.focus_test, self.hardware_test_panel) = self.ctrl_panel.get_hardware_handles()
         self.focus_test.Bind(wx.EVT_TOGGLEBUTTON, self.set_focus)
         self.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, self.set_contrast)
-        self.cams = Camera(self.serial_device, self.ctrl_panel, self.image_panel, self.contrast_test, self.focus_test)
+        
+        
+        self.participant_monitor = self.widget_panel.get_monitor()
+        self.cams = Camera(self.serial_device, 
+                           self.ctrl_panel, 
+                           self.image_panel, 
+                           self.contrast_test, 
+                           self.focus_test,
+                           self.participant_monitor)
         
         self.init.Bind(wx.EVT_TOGGLEBUTTON, self.initCams)
         self.update_settings.Bind(wx.EVT_BUTTON, self.cams.updateSettings)
@@ -161,8 +169,10 @@ class MainFrame(wx.Frame):
         #check the display is correct
         #check the correct monitors are displayed
         # if wx.Display.GetCount() < 2:
-            
-
+        
+        # self.video_timer = wx.Timer(self, wx.ID_ANY)
+        # self.Bind(wx.EVT_TIMER, self.participant_monitor.update_screen_event, self.video_timer)
+        
         self.camera_toggle.Bind(wx.EVT_BUTTON, self.cams.update_cameras_viewed)
         #set up stimulus thread
         '''
@@ -290,7 +300,6 @@ class MainFrame(wx.Frame):
                 data = str(self.trial_panel.get_trials())
                 self.msgq.put("update_data")
                 self.msgq.put(data)
-                # self.results_list.append(self.trial_panel.get_result())
                 return
             try:
                 self.msgq.put("update_data")
@@ -298,18 +307,7 @@ class MainFrame(wx.Frame):
                 data = str(self.trial_panel.get_result())
                 self.msgq.put(data)
             except:
-                self.results_list.append(self.trial_panel.get_result())
-            # if self.task == "vowel_space":
-            #     self.msgq.put("vowel_space")
-            #     trial_info = self.resultsq.get()
-            #     trial, syllable, finish = trial_info.split(",")
-            #     trial = int(trial)
-            #     finish = str(finish) == "True"
-            #     self.trial_panel.update_trial(trial, syllable)
-            #     if finish:
-            #        self.trial_button.Enable(True) 
-            #     return
-            
+                self.results_list.append(self.trial_panel.get_result())          
                    
             self.trial_panel.run_trial(self.count)
             self.trial_button.SetLabel("Stop Trial")
@@ -335,6 +333,8 @@ class MainFrame(wx.Frame):
                 # self.msgq.put(self.trial_panel.repeat)
                 return
             # self.msgq.put("end_stimulus")
+            
+            self.participant_monitor.update_screen()
             self.cams.stop_recording(event)
             self.trial_button.SetLabel("Begin Trial")
             self.trial_panel.reset(self.count)
@@ -344,7 +344,6 @@ class MainFrame(wx.Frame):
     
     def next_trial(self, event):  
         self.msgq.put("update_data")
-        
         data = str(self.trial_panel.get_result())
         self.msgq.put("False")
         self.msgq.put("vowel_space")
@@ -369,8 +368,9 @@ class MainFrame(wx.Frame):
             self.video_status.value = 0
             logger.debug("called stop_video")
             self.rest_timer.Stop()
+            # self.video_timer.Stop()
+            # self.participant_monitor.update_screen()
         elif self.video_status.value == 6:
-            
             self.trial_panel.stop_video()
             self.video_status.value = 0
             self.warning.update_error("video")
@@ -380,10 +380,13 @@ class MainFrame(wx.Frame):
         elif (self.finish.value == 1 and 
         (self.task != "naturalistic_speech" and self.task != "vowel_space")):
             logger.debug("in intertrial")
+            
+            self.participant_monitor.update_screen()
             self.cams.stop_recording(event)
             self.trial_panel.reset(self.count)
             self.trial_panel.end_trial()
             self.stimulus_panel.value = False
+            self.liveTimer.Stop()
             self.finish.value = 0
             self.trial_panel.update_values()
             self.trial_button.SetLabel("Start Trial")
@@ -400,10 +403,13 @@ class MainFrame(wx.Frame):
             self.video_status.value = 1
             self.trial_panel.start_video()
             self.rest_timer.Start(1000)
+            self.video_timer.Start(150)
         else:
             self.video_status.value = 4
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
+            self.video_timer.Stop()
+            # self.participant_monitor.update_screen()
         
         
     def pause_instructions(self, event):
@@ -911,6 +917,7 @@ class MainFrame(wx.Frame):
                 self.trial_panel.syllable_pause_video_button.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
             if self.task == "vowel_space":
                 self.trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
+        self.participant_monitor.update_screen()
         super().Show()
         return True
         

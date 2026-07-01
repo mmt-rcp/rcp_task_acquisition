@@ -32,7 +32,7 @@ class CamSettings:
 
  
 class Camera():
-    def __init__(self, serial, panel, image_panel, contrast_test, focus_test):
+    def __init__(self, serial, panel, image_panel, contrast_test, focus_test, monitor):
         self.serial = serial
         
         self.shared = Value(ctypes.c_byte, 0)
@@ -51,6 +51,7 @@ class Camera():
         self.cam_settings = list()
         self.trial = 0
         self.session = 0
+        self.participant_monitor = monitor
 
 
     def setup(self, config, is_unconnected):
@@ -218,6 +219,7 @@ class Camera():
     def vidPlayer(self, event):
         if self.camaq.value == 2:
             return
+        self.participant_monitor.update_screen()
         for ndx, im in enumerate(self.frame):
             if self.frmGrab[ndx].value == 1:
                 self.frameBuff[ndx][0:] = np.frombuffer(self.array4feed[ndx].get_obj(), self.dtype, self.cam_settings[ndx].size)
@@ -253,7 +255,6 @@ class Camera():
         
         
     def start_recording(self, event, base_dir, sess_dir, path_base, count):
-
         totTime = 20 #int(self.secRec.GetValue())+int(self.minRec.GetValue())*60
         spaceneeded = 0
         freespace = shutil.disk_usage(base_dir)[2]
