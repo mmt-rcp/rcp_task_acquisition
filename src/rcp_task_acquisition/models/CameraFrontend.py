@@ -215,10 +215,13 @@ class Camera():
         if self.camaq.value == 2:
             return
         self.participant_monitor.update_screen()
-        for ndx, im in enumerate(self.frame):
-            if self.frmGrab[ndx].value == 1:
-                self.frameBuff[ndx][0:] = np.frombuffer(self.array4feed[ndx].get_obj(), self.dtype, self.cam_settings[ndx].size)
-                frame = self.frameBuff[ndx][0:self.dispSize[ndx]].reshape([self.h[ndx], self.w[ndx], 3])
+        for ndx, im in enumerate(self.cam_dict):
+            if self.cam_dict[im].frmGrab.value == 1:
+                self.cam_dict[im].frameBuff[0:] =  np.frombuffer(self.cam_dict[im].array4feed.get_obj(), 
+                                                                 self.dtype, 
+                                                                 self.cam_dict[im].size)
+                dims = self.cam_dict[im].frame_size
+                frame = self.cam_dict[im].frameBuff[0:dims.dispSize].reshape([dims.h, dims.w,3])
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 for f in range(3):
                     self.cam_dict[im].frame[dims.y1: dims.y2, dims.x1: dims.x2,f] = frame[:,:,f]
