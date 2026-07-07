@@ -433,13 +433,12 @@ class MainFrame(wx.Frame):
         if self.focus_test.GetValue():
             self.contrast_test.Enable(False)
             self.cam_test.value = True
-            self.ctrl_panel.plot_hardware(self.cams.cam_tests, 300)
+            self.cams.update_focus()
             self.ctrl_panel.setup_test_legend()
         else:
             self.ctrl_panel.remove_hardware()
             self.contrast_test.Enable(True)
-            for cam_index in range(len(self.cams.cam_tests)):
-                self.cams.cam_tests[cam_index] = np.full(shape=30*2, fill_value=np.nan)
+            self.cams.update_focus(False)
             self.cam_test.value = False
  
     
@@ -448,12 +447,11 @@ class MainFrame(wx.Frame):
             self.focus_test.Enable(False)
             self.cam_test.value = True
             self.ctrl_panel.setup_test_legend()
-            self.ctrl_panel.plot_hardware(self.cams.contrast_tests, 1)
+            self.cams.update_contrast()
         else:
             self.ctrl_panel.remove_hardware()
             self.focus_test.Enable(True)
-            for cam_index in range(len(self.cams.contrast_tests)):
-                self.cams.contrast_tests[cam_index] = np.full(shape=30*2, fill_value=np.nan)
+            self.cams.update_contrast(False)
             self.cam_test.value = False
         
         
@@ -599,18 +597,18 @@ class MainFrame(wx.Frame):
             self.meta["version"] = str(__version__)
             self.meta["actual_scan_rate"]=self.labjack_scan_rate
         
-            for ndx, s in enumerate(self.cams.camStrList):
+            for ndx, s in enumerate(self.cams.cam_dict):
                 # framerate, exposure = self.cam[ndx].get_actual_settings()
-                camset = {'serial':self.cam_cfg[s]['serial'],
-                      'ismaster':self.cam_cfg[s]['ismaster'],
-                      'crop':self.cam_cfg[s]['crop'],
+                camset = {'serial':self.cam_cfg[self.cams.cam_dict[s].name]['serial'],
+                      'ismaster':self.cam_cfg[self.cams.cam_dict[s].name]['ismaster'],
+                      'crop':self.cam_cfg[self.cams.cam_dict[s].name]['crop'],
                       # 'exposure': self.cam_cfg[s]['exposure'],
                       # 'framerate': self.cam_cfg[s]['framerate'],
-                      'bin': self.cam_cfg[s]['bin'],
-                      'nickname': s,
-                      'actual_framerate': self.cams.rate[ndx],
-                      'actual_exposure': self.cams.exposure[ndx]}
-                cameras[s] = camset
+                      'bin': self.cam_cfg[self.cams.cam_dict[s].name]['bin'],
+                      'nickname': self.cams.cam_dict[s].name,
+                      'actual_framerate': self.cams.cam_dict[s].actual_framerate,
+                      'actual_exposure': self.cams.cam_dict[s].exposure}
+                cameras[self.cams.cam_dict[s].name] = camset
             self.meta['cameras'] = cameras
             self.meta['unitRef']=self.user_cfg['unitRef']
             self.meta['Collection']='info'
@@ -691,7 +689,8 @@ class MainFrame(wx.Frame):
             #     self.ser.close()
             if self.rec.GetValue():
                 self.rec.SetValue(False) 
-                self.cams.recordCam(event)
+                # self.cams.recordCam(event)
+                self.recordCam(event)
             if self.play.GetValue():
                 self.play.SetValue(False) 
                 self.cams.liveFeed(event)
@@ -872,10 +871,12 @@ class MainFrame(wx.Frame):
         self.video_status.value = VideoStatus.NOT_PLAYING.value
         self.task_metadata = launch_args
         self.cam_cfg = {}
+        self.frames = None
         if not self.task or self.task not in self.task_cfg.keys():
             args = self.user_cfg["hardware"]
             self.cam_cfg = self.user_cfg["cameras"]
             self.widget_panel.show_cams()
+            self.frames = self.user_cfg["cam_config"]["framerate"]
         else:
             hardware_list = self.task_cfg[self.task]["settings"]
             self.widget_panel.hide_cams()
@@ -890,7 +891,7 @@ class MainFrame(wx.Frame):
         hardware_lists = list(zip(*sorted_hardware))
         self.hardware_list = hardware_lists
         logger.debug(hardware_lists)
-        self.cams.setup(self.cam_cfg, self.user_cfg['cam_config']['is_unconnected'])
+        self.cams.setup(self.cam_cfg, self.user_cfg['cam_config']['is_unconnected'], self.frames)
         self.init.SetValue(True)
         self.widget_panel.update_task(self.task)
         self.trial_panel = self.widget_panel.get_trial_panel()
