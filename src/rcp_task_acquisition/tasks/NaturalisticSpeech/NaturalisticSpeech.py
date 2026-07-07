@@ -16,8 +16,8 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.photo = None
         self.photo_dict = {}
         self.trial =0
-        self.screen_width = 1800 #not technically screen width but we dont want to cover the photodiode
-        self.screen_height = 1080
+        self.screen_width = 2200 #not technically screen width but we dont want to cover the photodiode
+        self.screen_height = 1440
         
     def present(self, test=True):
         # Load and draw the photo being presented
