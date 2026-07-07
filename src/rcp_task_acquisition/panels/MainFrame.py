@@ -7,7 +7,7 @@ W Williamson, wallace.williamson@ucdenver.edu
 import os
 import sys
 import time, datetime
-from multiprocessing import Value, Queue
+from multiprocessing import Value, Queue, Event
 import wx
 import wx.lib.dialogs
 import numpy as np
@@ -24,7 +24,7 @@ from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.models.Warnings import Warning
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
-from rcp_task_acquisition.utils.constants import RAW_DATA_DIR, PLOT_LENGTH
+from rcp_task_acquisition.utils.constants import RAW_DATA_DIR, PLOT_LENGTH, VideoStatus
 from rcp_task_acquisition.panels.ControlsPanel import ControlsPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
@@ -44,6 +44,7 @@ class MainFrame(wx.Frame):
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
         self.press_count = Value(ctypes.c_int, 0)
+        self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
         self.hardware_list = [[], [], []]
         self.count = 0
@@ -170,25 +171,18 @@ class MainFrame(wx.Frame):
         #check the correct monitors are displayed
         # if wx.Display.GetCount() < 2:
         
-        # self.video_timer = wx.Timer(self, wx.ID_ANY)
-        # self.Bind(wx.EVT_TIMER, self.participant_monitor.update_screen_event, self.video_timer)
+        self.video_timer = wx.Timer(self, wx.ID_ANY)
+        self.Bind(wx.EVT_TIMER, self.participant_monitor.update_screen_event, self.video_timer)
         
         self.camera_toggle.Bind(wx.EVT_BUTTON, self.cams.update_cameras_viewed)
         #set up stimulus thread
-        '''
-        0-> no video playing
-        1-> video playing
-        2-> video paused
-        3-> video playing from pause
-        4-> stop video fully
-        5-> video finished run
-        '''
+
         self.video_status = Value(ctypes.c_int, 0)
         self.threads = []
         self.msgq =  Queue()
         self.finish = Value(ctypes.c_byte, 0)
         self.resultsq = Queue()
-        
+        self.video_lock = Event()
         self.thread = StimulusThread( self.msgq, 
                                      self.finish, 
                                      self.shared, 
@@ -198,7 +192,9 @@ class MainFrame(wx.Frame):
                                      self.button_pressed,
                                      self.press_count,
                                      self.video_status,
-                                     self.resultsq)
+                                     self.resultsq,
+                                     self.stimulus_timer,
+                                     self.video_lock)
         self.startingSession = False
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
@@ -250,6 +246,8 @@ class MainFrame(wx.Frame):
                 self.trial_panel.update_trial(trial, syllable)
             self.trial_panel.start_new_trial()
             self.trial_panel.show()
+            # if not self.rest_timer.IsRunning():
+            #     self.rest_timer.Start(1000)
         else:
             self.task_active = False
             self.serial_device.write("A")
@@ -259,7 +257,7 @@ class MainFrame(wx.Frame):
                 self.trial_event(event)
             if self.recording:
                 self.cams.stop_recording(event)
-            self.video_status.value = 4
+            self.video_status.value = VideoStatus.STOP.value
             self.task_button.SetLabel("Start Task")
             self.hardware_button.Enable(True)
             self.trial_panel.hide()
@@ -277,21 +275,30 @@ class MainFrame(wx.Frame):
             self.add_metadata()
             self.msgq.put("reset_task")
             self.labjack_timer.Start(200)
-            # self.trial_panel.start_new_trial()
+            self.rest_timer.Stop()
 
-    
+
     def trial_event(self, event):
+        logger.debug(f"in trial_event: {self.video_status.value}")
         if self.trial_button.GetValue():
+            logger.debug("in trial button")
             time.sleep(1)
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
-            if self.video_status.value != 0 and self.video_status.value != 4:
-                self.video_status.value = 4
+            if self.video_status.value == VideoStatus.PAUSED.value:
+                self.video_status.value = VideoStatus.STOP.value
+                self.video_lock.wait()
+            if (self.video_status.value == VideoStatus.FINISHED.value):
+                logger.debug("ending video")
+                self.video_status.value = VideoStatus.NOT_PLAYING.value
                 self.trial_panel.stop_video()
-            else:
-                self.rest_timer.Start(1000)
+                
+            if not self.rest_timer.IsRunning():
+                logger.debug("in trial_event starting rest_timer")
+                self.rest_timer.Start(800)
             self.finish.value = 0
+            logger.debug("started timer")
             
             if self.task== "verbal_fluency" and self.trial_panel.first:
                 self.count =0
@@ -300,6 +307,7 @@ class MainFrame(wx.Frame):
                 data = str(self.trial_panel.get_trials())
                 self.msgq.put("update_data")
                 self.msgq.put(data)
+                logger.debug("verbal_ fluency first panel")
                 return
             try:
                 self.msgq.put("update_data")
@@ -316,35 +324,37 @@ class MainFrame(wx.Frame):
             self.msgq.put("run_stimulus")
 
         else:
-            self.rest_timer.Stop()
+            
+            logger.debug("stopping episode")
             self.finish.value = 2
+            
+            self.rest_timer.Stop()
             if self.task == "sara":
                 self.trial_panel.show_scoring()
             elif self.task == "verbal_fluency":
                 self.trial_panel.update_values()
+                logger.debug("ending verbal fluency")
             elif self.task == "vowel_space":
                 self.trial_panel.repeat_trial.Enable(True)
                 self.trial_button.SetLabel("Repeat Trial")
                 self.trial_panel.repeat_trial.SetValue(False)
                 self.cams.stop_recording(event)
                 self.liveTimer.Stop()
-                # self.msgq.put("update_data")
+                # self.rest_timer.Stop()
                 self.trial_panel.next_button.Enable(True)
-                # self.msgq.put(self.trial_panel.repeat)
                 return
-            # self.msgq.put("end_stimulus")
-            
             self.participant_monitor.update_screen()
             self.cams.stop_recording(event)
             self.trial_button.SetLabel("Begin Trial")
             self.trial_panel.reset(self.count)
             self.trial_panel.end_trial()
             self.liveTimer.Stop()
+            logger.debug("ending entire trial")
     
     
     def next_trial(self, event):  
         self.msgq.put("update_data")
-        data = str(self.trial_panel.get_result())
+        str(self.trial_panel.get_result())
         self.msgq.put("False")
         self.msgq.put("vowel_space")
         trial_info = self.resultsq.get()
@@ -363,24 +373,21 @@ class MainFrame(wx.Frame):
         
 
     def update_intertrial(self, event):
-        if self.video_status.value == 5:
+        logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
+        if self.video_status.value == VideoStatus.FINISHED.value:
+            logger.debug("in finish")
             self.trial_panel.stop_video()
-            self.video_status.value = 0
+            self.video_status.value = VideoStatus.NOT_PLAYING.value 
             logger.debug("called stop_video")
             self.rest_timer.Stop()
-            # self.video_timer.Stop()
-            # self.participant_monitor.update_screen()
-        elif self.video_status.value == 6:
+        elif self.video_status.value == VideoStatus.ERROR.value:
             self.trial_panel.stop_video()
-            self.video_status.value = 0
+            self.video_status.value = VideoStatus.NOT_PLAYING.value
             self.warning.update_error("video")
             self.warning.display()
-            
-            
         elif (self.finish.value == 1 and 
         (self.task != "naturalistic_speech" and self.task != "vowel_space")):
             logger.debug("in intertrial")
-            
             self.participant_monitor.update_screen()
             self.cams.stop_recording(event)
             self.trial_panel.reset(self.count)
@@ -390,7 +397,8 @@ class MainFrame(wx.Frame):
             self.finish.value = 0
             self.trial_panel.update_values()
             self.trial_button.SetLabel("Start Trial")
-
+            self.rest_timer.Stop()
+            
 
     def play_instructions(self, event):
         if event.GetEventObject().GetValue():
@@ -400,24 +408,24 @@ class MainFrame(wx.Frame):
                 result = self.trial_panel.get_instruction(self.count)
             self.msgq.put("play_instructions")
             self.msgq.put(result)
-            self.video_status.value = 1
+            self.video_status.value = VideoStatus.PLAY.value
             self.trial_panel.start_video()
-            self.rest_timer.Start(1000)
-            self.video_timer.Start(150)
+            if not self.rest_timer.IsRunning():
+                self.rest_timer.Start(800)
         else:
-            self.video_status.value = 4
+            logger.debug("stopping_video")
+            self.video_status.value = VideoStatus.STOP.value
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
-            self.video_timer.Stop()
-            # self.participant_monitor.update_screen()
+            logger.debug(f"done stopping: {self.video_status.value}")
         
         
     def pause_instructions(self, event):
         if event.GetEventObject().GetValue():
-            self.video_status.value = 2
+            self.video_status.value = VideoStatus.PAUSED.value
             self.trial_panel.pause_video()
         else:
-            self.video_status.value = 3
+            self.video_status.value = VideoStatus.START_FROM_PAUSE.value
             self.trial_panel.resume_video()
 
 
@@ -731,7 +739,7 @@ class MainFrame(wx.Frame):
         self.lj.stop_labjack()
         
         self.rest_timer.Stop()
-        self.video_status.value = 4
+        self.video_status.value = VideoStatus.STOP.value
         if self.recording:
             self.cams.stop_recording(event)
         if self.play.GetValue():
@@ -861,7 +869,7 @@ class MainFrame(wx.Frame):
         self.msgq.put(launch_args["task"].strip())
         self.launch_args = launch_args
         args = {}
-        self.video_status.value = 0
+        self.video_status.value = VideoStatus.NOT_PLAYING.value
         self.task_metadata = launch_args
         self.cam_cfg = {}
         if not self.task or self.task not in self.task_cfg.keys():
@@ -918,6 +926,7 @@ class MainFrame(wx.Frame):
             if self.task == "vowel_space":
                 self.trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
         self.participant_monitor.update_screen()
+        self.trial_panel.add_timer(self.stimulus_timer)
         super().Show()
         return True
         

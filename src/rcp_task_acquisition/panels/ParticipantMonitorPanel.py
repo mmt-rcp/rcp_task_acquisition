@@ -60,7 +60,7 @@ class MonitorPanel(wx.Panel):
             self.monitor_bitmap.SetBitmap(wx_image) 
         self.parent.Layout()
 
-    # def update_screen_event(self, event):
-    #     self.update_screen()
+    def update_screen_event(self, event):
+        self.update_screen()
 
  

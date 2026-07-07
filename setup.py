@@ -19,6 +19,7 @@ if __name__ == "__main__":
             "setuptools_scm",
             "pyshortcuts",
             "pyaudio",
+            "mss",
             f"spinnaker_python @ {local_path}"
         ]
     )

@@ -39,7 +39,8 @@ class Msg(Enum):
 
 class StimulusThread(Process):
     def __init__(self, msgq, finish, shared, frame, 
-                 screen_config, task, button, press_count, video_status, resultsq):
+                 screen_config, task, button, press_count,
+                 video_status, resultsq, stimulus_timer, event_lock):
         super().__init__()
         self.msgq = msgq
         self.screenConfig = screen_config
@@ -53,8 +54,10 @@ class StimulusThread(Process):
         self.resultsq = resultsq
         self.press_count = press_count
         self.video_status = video_status
+        self.timer = stimulus_timer
         self.alive = True  
         self.task = task
+        self.video_lock = event_lock
         
         
     def run(self):
@@ -66,7 +69,7 @@ class StimulusThread(Process):
         while self.alive:
             try:
                 msg = self.msgq.get(timeout=0.05)
-                logger.debug(msg)
+                logger.debug(f"msg: {msg}")
             except Empty:
                 continue
             try:
@@ -97,8 +100,10 @@ class StimulusThread(Process):
                     seconds = (tElapsed%60)
                     min_string = f"{math.floor(tElapsed/ 60)} minutes, " if minutes > 0 else ""
                     logger.info(f'Stimulus protocol completed in {min_string}{seconds:.2f} seconds')
-
-                    self.finish.value = 1
+                    if self.finish.value != 2:
+                        self.finish.value = 1
+                    else:
+                        self.finish.value = 0
                 elif msg== Msg.END_TASK.value:
                     
                     self.end_stimulus()
@@ -141,38 +146,45 @@ class StimulusThread(Process):
                 
                 
     def init_stimuli(self):
+        base_vars = {"display": self.window,
+                     "frame": self.frame,
+                     "timer": self.timer, 
+                     "video_lock": self.video_lock,
+                     "video_status": self.video_status,
+                     "finish": self.finish}
+        logger.debug(f"base vars: {base_vars}")
         if self.task == 'n_back':
-            self.stimulus = N_back(self.window, self.frame, self.button, self.finish)
+            self.stimulus = N_back(base_vars, self.button)
 
         elif self.task == 'motor_task_finger_taps':
-            self.stimulus = BasicTaps(self.window, self.frame, self.finish, self.video_status)
+            self.stimulus = BasicTaps(base_vars)
         
         elif self.task == 'naturalistic_speech':
-            self.stimulus = NaturalisticSpeech(self.window, self.frame, self.finish)
+            self.stimulus = NaturalisticSpeech(base_vars)
         
         elif self.task == "sara":
-            self.stimulus = Sara(self.window, self.frame, self.finish)
+            self.stimulus = Sara(base_vars)
         
         elif self.task == 'diadochokinesis':
-            self.stimulus =Diadochokinesis(self.window, self.frame, self.finish, self.video_status)
+            self.stimulus =Diadochokinesis(base_vars)
             
         elif self.task == "verbal_fluency":
-            self.stimulus = VerbalFluency(self.window, self.frame, self.finish, self.video_status)
+            self.stimulus = VerbalFluency(base_vars)
         
         elif self.task == "vowel_space":
-            self.stimulus = VowelSpace(self.window, self.frame, self.finish, self.video_status)
+            self.stimulus = VowelSpace(base_vars)
         
         elif self.task == "reach_grasp":
-            self.stimulus = ReachGrasp(self.window, self.frame, self.finish)
+            self.stimulus = ReachGrasp(base_vars)
         
         elif self.task == 'tone_taps_closed':
-            self.stimulus = ToneTapsClosed(self.window, self.frame, self.press_count, self.finish, self.video_status)
+            self.stimulus = ToneTapsClosed(base_vars, self.press_count)
         
         elif self.task == "verb_generation":
-            self.stimulus = VerbGeneration(self.window, self.frame, self.finish)
+            self.stimulus = VerbGeneration(base_vars)
 
         else:
-            self.stimulus = StimulusBase(self.window, self.frame, None, self.finish)
+            self.stimulus = StimulusBase(base_vars)
             
         logger.info(f"iterable: {self.stimulus}")
             
@@ -180,7 +192,7 @@ class StimulusThread(Process):
     def end_stimulus(self):
         self.window.idle(time_list = [])
         if hasattr(self.stimulus, 'saveMetadata'):
-            logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
+            # logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
             results = self.stimulus.saveMetadata(self.stimulusConfig[self.task], None)
             json_str = json.dumps(results)
             logger.debug(f"jsonstr: {json_str}")
@@ -199,8 +211,6 @@ class StimulusThread(Process):
     
     def setup_videos(self, video_filename_dict):
         pass
-        
-        
         
 
     def play_video(self, trial=None):
