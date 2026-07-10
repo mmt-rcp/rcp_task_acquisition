@@ -137,8 +137,7 @@ class MainFrame(wx.Frame):
         self.labjack_choices = self.ctrl_panel.get_graph_choices()
         
         self.labjack_timer = wx.Timer(self, wx.ID_ANY)
-        self.lj = LabjackFrontend(PLOT_LENGTH, 
-                                  self.ctrl_panel, 
+        self.lj = LabjackFrontend(self.ctrl_panel, 
                                   self.labjack_timer, 
                                   self.hardware_list,
                                   self.button_pressed,
@@ -373,12 +372,9 @@ class MainFrame(wx.Frame):
         
 
     def update_intertrial(self, event):
-        logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
         if self.video_status.value == VideoStatus.FINISHED.value:
-            logger.debug("in finish")
             self.trial_panel.stop_video()
             self.video_status.value = VideoStatus.NOT_PLAYING.value 
-            logger.debug("called stop_video")
             self.rest_timer.Stop()
         elif self.video_status.value == VideoStatus.ERROR.value:
             self.trial_panel.stop_video()
@@ -387,7 +383,6 @@ class MainFrame(wx.Frame):
             self.warning.display()
         elif (self.finish.value == 1 and 
         (self.task != "naturalistic_speech" and self.task != "vowel_space")):
-            logger.debug("in intertrial")
             self.participant_monitor.update_screen()
             self.cams.stop_recording(event)
             self.trial_panel.reset(self.count)

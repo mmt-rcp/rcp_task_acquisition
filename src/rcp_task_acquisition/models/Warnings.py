@@ -56,6 +56,8 @@ class Warning():
             return "Video not found in current path"
         elif error == "fps":
             return f"Warning! {info}"
+        elif error == "start_labjack":
+            return "Error starting labjack, please unplug and replug in labjack and then click ok"
         else:
             return None
         

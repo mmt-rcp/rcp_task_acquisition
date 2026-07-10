@@ -8,7 +8,8 @@ import numpy as np
 import ctypes
 from multiprocessing import Queue, Array, Value
 
-from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
+from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS, PLOT_LENGTH
+from rcp_task_acquisition.models.Warnings import Warning
 from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger("./models/LabjackFrontend") 
@@ -16,7 +17,7 @@ logger = get_logger("./models/LabjackFrontend")
  
 
 class LabjackFrontend():
-    def __init__(self, array_length, ctrl_panel, timer, args, button_pressed, press_count, hardware_test):
+    def __init__(self, ctrl_panel, timer, args, button_pressed, press_count, hardware_test):
         
         self.constants = []
         self.button_pressed = button_pressed #Value(ctypes.c_bool, False)
@@ -28,7 +29,6 @@ class LabjackFrontend():
         self.analog_list = []
         self.button_list = []
         self.extended_list = []
-        self.array_length = array_length
         for index, item in enumerate(self.labjack_list):
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
@@ -38,7 +38,7 @@ class LabjackFrontend():
             else:
                 self.analog_list.append(item)
         self.inputs_list = [self.analog_list, self.digital_list]     
-        self.labjack_arr = Array('d', array_length*(len(self.hardware_indices)+3))
+        self.labjack_arr = Array('d', PLOT_LENGTH*(len(self.hardware_indices)+3))
         self.labjack_queue = Queue()
         self.labjack_is_csv  = Value(ctypes.c_bool, False)
         self.stream_started = Value(ctypes.c_bool, False)
@@ -100,10 +100,6 @@ class LabjackFrontend():
                 self.digital_list.append(int(item[-1])+8)
                 if "Accessory" in self.all_hardware[0][index]:
                     self.button_list.append((int(item[-1])+8, "e")) 
-            # elif "E" in item:
-            #     self.extended_list.append(int(item[-1]))
-            #     if "Button" in self.all_hardware[0][index]:
-            #         self.button_list.append((int(item[-1]), "e")) 
             else:
                 self.analog_list.append(item)
         print(f"digital: {self.digital_list}, extended: {self.extended_list}, Analog: {self.analog_list}, button: {self.button_list}")
@@ -120,48 +116,50 @@ class LabjackFrontend():
         logger.debug(self.hardware_indices)
         self.scan_rate.value = 0
         self.labjack_is_finished.value = False
-        self.labjack_process = LabJackDataStream(self.array_length, 
-                                                 self.labjack_is_finished,
-                                                 self.labjack_arr, 
-                                                 self.labjack_is_csv, 
-                                                 self.labjack_queue,
-                                                 self.labjack_list,
-                                                 self.hardware_indices,
-                                                 self.button_pressed,
-                                                 self.inputs_list,
-                                                 self.button_list,
-                                                 self.press_count,
-                                                 self.constant_index,
-                                                 self.all_hardware[3],
-                                                 self.stream_started,
-                                                 self.scan_rate,
-                                                 self.handshake)
-
-        if self.labjack_process.is_successful():
-            self.labjack_process.start()
-            self.labjack_timer.Start(200)
-            return True
-        else:
-            # Warning("labjack").display()
-            labjack_button = self.graph_panel.get_graph_button()
-            labjack_button.SetValue(False)
-            return False
+        labjack_args = {"finish": self.labjack_is_finished, 
+                        "labjack_arr": self.labjack_arr, 
+                        "create_csv": self.labjack_is_csv, 
+                        "labjack_queue": self.labjack_queue, 
+                        "labjack_list": self.labjack_list, 
+                        "graph_indices": self.hardware_indices, 
+                        "button_pressed": self.button_pressed, 
+                        "inputs": self.inputs_list, 
+                        "button_list": self.button_list, 
+                        "press_counter": self.press_count,
+                        "constants": self.constant_index, 
+                        "voltage_ranges": self.all_hardware[3], 
+                        "stream_started": self.stream_started, 
+                        "scan_rate": self.scan_rate}
+        self.labjack_process = LabJackDataStream(**labjack_args)
         
-
-
+        self.labjack_process.start()
+        self.labjack_timer.Start(200)
+        
+        message = self.labjack_queue.get()
+        logger.debug(f"labjack message: {message}")
+        if message == "error":
+            warning = Warning()
+            warning.update_error("start_labjack")
+            warning.display()
+            self.labjack_process.join()
+            self.labjack_process = LabJackDataStream(**labjack_args)
+            self.scan_rate.value = 0
+            self.labjack_is_finished.value = False
+            self.labjack_process.start()
+        
+        return True
+        
 
     def stop_labjack(self):
-        
-        
         self.labjack_is_finished.value = True
         self.labjack_is_csv.value = False
         self.stream_started.value = False
         self.labjack_timer.Stop()
         for index, lj_input in enumerate(self.hardware_indices):
-            self.graph_panel.update_yaxis([np.nan]*self.array_length, index, lj_input.value)
+            self.graph_panel.update_yaxis([np.nan]*PLOT_LENGTH, index, lj_input.value)
         for index, constant_inputs in enumerate(self.constants):
             
-            self.graph_panel.update_constants([np.nan]*self.array_length, index, self.constant_index[index])
+            self.graph_panel.update_constants([np.nan]*PLOT_LENGTH, index, self.constant_index[index])
         new_arr = np.empty(80000*(len(self.hardware_indices)+3))
 
         new_arr.fill(np.nan)
@@ -175,13 +173,11 @@ class LabjackFrontend():
         logger.info('labjack_stopped')
         return self.scan_rate.value
 
+
     def labjack_event(self, event):
             if not self.labjack_is_finished.value and self.stream_started.value:
                 arr_step = 0
-                # if self.handshake.value == 1:
                 y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), 'd', len(self.labjack_arr))
-                # else:
-                #     return
                 if not np.isnan(y_plot_points[-1]) and self.serial_bool:
                     self.serial_state += 1
                     if self.ser_success and self.serial_state > 0:
@@ -196,28 +192,28 @@ class LabjackFrontend():
                 if not self.hardware_test.value:
                     for index, lj_input in enumerate(self.hardware_indices):
                         if lj_input.value == -1:
-                            self.graph_panel.update_yaxis([np.nan]*self.array_length, index, lj_input.value)
-                            y_plot_points[arr_step:arr_step+self.array_length] = np.nan
-                            # arr_step+= self.array_length
+                            self.graph_panel.update_yaxis([np.nan]*PLOT_LENGTH, index, lj_input.value)
+                            y_plot_points[arr_step:arr_step+PLOT_LENGTH] = np.nan
+                            # arr_step+= PLOT_LENGTH
                             self.graph_panel.set_visible(index, False)
                         else:
                             if lj_input.value != self.prev_graph_list[index]:
                                 self.prev_graph_list[index] = lj_input.value
-                                y_plot_points[arr_step:arr_step+self.array_length] = np.nan
-                                self.graph_panel.update_yaxis([np.nan]*self.array_length, index, lj_input.value)
-                            self.graph_panel.update_yaxis(y_plot_points[arr_step:arr_step+self.array_length], index, lj_input.value)
+                                y_plot_points[arr_step:arr_step+PLOT_LENGTH] = np.nan
+                                self.graph_panel.update_yaxis([np.nan]*PLOT_LENGTH, index, lj_input.value)
+                            self.graph_panel.update_yaxis(y_plot_points[arr_step:arr_step+PLOT_LENGTH], index, lj_input.value)
                             self.graph_panel.set_visible(index)
-                        arr_step+= self.array_length
+                        arr_step+= PLOT_LENGTH
                 else:
                     
                     for index, lj_input in enumerate(self.hardware_indices):
                         self.graph_panel.set_visible(index, False)
-                        arr_step += self.array_length
+                        arr_step += PLOT_LENGTH
                      
                 for index, constants_input in enumerate(self.constants):
-                    self.graph_panel.update_constants(y_plot_points[arr_step:arr_step+self.array_length], index, self.constant_index[index])
+                    self.graph_panel.update_constants(y_plot_points[arr_step:arr_step+PLOT_LENGTH], index, self.constant_index[index])
                     self.graph_panel.set_visible_const(index)
-                    arr_step+= self.array_length
+                    arr_step+= PLOT_LENGTH
                 # if self.handshake.value == 1:    
                 np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(len(y_plot_points.flatten()))[:] = y_plot_points.flatten()
                     # self.handshake.value = 0
@@ -239,9 +235,10 @@ class LabjackFrontend():
     def is_active(self):
         return not self.labjack_is_finished.value
     
+    
+    
     def _update_graph_list(self, event):
         selected_list = []
-
         for choice in self.labjack_choices:
             if choice.GetSelection() !=-1 and choice.GetSelection() != 0:
                 selection = choice.GetSelection()

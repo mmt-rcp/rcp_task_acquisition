@@ -31,10 +31,11 @@ PLOT_LENGTH = 80000
 
 # labjack constants
 SCANS_PER_READ = 10000
+REBOOT_ADDRESS = 0x4C4A0000
+OVERFLOW_VALUE = -9999
 #Hardcoded the hardware and labjack bc its much easier than pulling from somewhere for now
 CAMERA_HEADERS = ["In Use","Name", "Is Primary", "Serial Number", "Framerate Decrease", "Flip Image"]
 HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]
-
 
 HARDWARE_LIST = ["Photodetector", "Subject Mic", "Experimenter Mic", "PC Audio", 
                  "Grip Force Sensor", "Force Sensor X", "Force Sensor Y", "Force Sensor Z",
