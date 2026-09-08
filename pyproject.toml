@@ -15,7 +15,9 @@ requires-python = ">= 3.10, < 3.13, != 3.11"
 dependencies = [
 	"wxpython >= 4.2",  # UI
 	"psychopy >= 2026.1, < 2027",  # experiments run
-	"numpy >= 2, < 3",
+	"numpy >= 2, < 3 ; python_version >= '3.12'",
+	"numpy >= 1.24, < 2 ; python_version < '3.12'",
+
 	"ruamel.yaml",  # yaml files
 	"labjack-ljm >= 1.23, < 2",  # data acquisition
 	"pyshortcuts >= 1.9.10, < 2",
