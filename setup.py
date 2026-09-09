@@ -23,5 +23,6 @@ if __name__ == "__main__":
             "pyaudio",
             "mss",
             f"spinnaker_python @ {local_path}",
+            "GitPython >= 3.1, < 4",
         ]
     )
