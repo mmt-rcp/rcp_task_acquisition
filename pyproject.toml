@@ -24,7 +24,7 @@ dependencies = [
 	"mss",  # An ultra fast cross-platform multiple screenshots module in pure python using ctypes.
 	"pywin32 >= 312, < 400 ; platform_system == 'Windows'",  # 312 is available since python 3.10 already.
 	"spinnaker_python >= 4.3, < 4.5 ; platform_system == 'Windows'",
-	# "setuptools_scm",  normally only necessary for build of project wheel
+	"setuptools-scm >= 9.2.2, < 10",  # normally only necessary for build of project wheel
 ]
 
 [project.optional-dependencies]

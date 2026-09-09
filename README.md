@@ -60,6 +60,7 @@ This is the outline for installing this program with the expected hardware confi
     - `conda create -n rcp-task-acquisition python=3.12`  # only first time
     - `conda activate rcp-task-acquisition` # Always
     - `conda install -c conda-forge pywinhook`  # only first time
+      // other possibility is to get Visual C++ Build tools
     - `git lfs install`  # only first time, this enables git LFS hooks
     - `git clone https://github.com/mmt-rcp/rcp_task_acquisition.git`  # only first time
     - `cd rcp_task_acquisition`  # Always
