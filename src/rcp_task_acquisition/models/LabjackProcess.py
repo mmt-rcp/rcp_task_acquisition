@@ -9,10 +9,6 @@ else:
     win32api = win32process = win32con = None
 
 
-import numpy as np
-import win32api
-import win32con
-import win32process
 from labjack import ljm
 
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
@@ -101,8 +97,11 @@ class LabJackDataStream(Process):
         self.voltage_ranges = voltage_ranges
 
     def _set_high_prio(
-        self, *,
-        win32api=win32api, win32process=win32process, win32con=win32con,  # noqa
+        self,
+        *,
+        win32api=win32api,
+        win32process=win32process,
+        win32con=win32con,  # noqa
     ):
         if win32api is None:
             pass  # todo
@@ -111,7 +110,9 @@ class LabJackDataStream(Process):
             handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
             ok = win32process.SetPriorityClass(handle, win32process.HIGH_PRIORITY_CLASS)
             if not ok:
-                logger.warning("Could not set current process to high prio: %s", win32api.GetLastError())
+                logger.warning(
+                    "Could not set current process to high prio: %s", win32api.GetLastError()
+                )
 
     def run(self):
         self._set_high_prio()
