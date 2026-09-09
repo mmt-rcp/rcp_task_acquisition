@@ -59,13 +59,14 @@ This is the outline for installing this program with the expected hardware confi
     - `cd Documents`  # Always
     - `conda create -n rcp-task-acquisition python=3.12`  # only first time
     - `conda activate rcp-task-acquisition` # Always
+    - `conda install -c conda-forge pywinhook`  # only first time
     - `git lfs install`  # only first time, this enables git LFS hooks
     - `git clone https://github.com/mmt-rcp/rcp_task_acquisition.git`  # only first time
     - `cd rcp_task_acquisition`  # Always
     - `pip install -e . --find-links ./library`  # first time and when dependencies change
       # NB: using --find-linds to allow search for needed wheels within the current library subdir
       - **Only for DEV**:
-        - Use `pip install -e .[dev]` to get all dev tools included
+        - Use `pip install -e .[dev] --find-links ./library` to get all dev tools included
         - `git config blame.ignoreRevsFile .git-blame-ignore-revs`  # only once/first time
         - `pre-commit install`  # only once/first time
     - `create-shortcut`  # when shortcuts change
