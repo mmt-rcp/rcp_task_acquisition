@@ -19,7 +19,7 @@ dependencies = [
 	"numpy >= 1.24, < 2 ; python_version < '3.12'",
 	"ruamel.yaml >= 0.19, < 1",  # yaml files
 	"labjack-ljm >= 1.23, < 2",  # data acquisition
-	"pyshortcuts >= 1.9.10, < 2",
+	"pyshortcuts >= 1.9.9, < 2",
 	"pyaudio >= 0.2.14, < 1",  # audio play/record
 	"mss",  # An ultra fast cross-platform multiple screenshots module in pure python using ctypes.
 	"pywin32 >= 312, < 400 ; platform_system == 'Windows'",  # 312 is available since python 3.10 already.
