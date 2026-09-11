@@ -13,8 +13,9 @@ readme = "README.md"
 requires-python = ">= 3.10, < 3.13, != 3.11"
 
 dependencies = [
-	"wxpython >= 4.2, < 4.3",  # UI
+	"wxpython == 4.2.5 ; platform_system == 'Windows'",  # UI
 		# NB: limiting to <4.3 as current latest(4.3.1) makes laggy cam content refresh in UI
+	"wxpython >= 4.2.5, < 5 ; platform_system != 'Windows'",  # UI
 	"psychopy >= 2026.1, < 2027",  # experiments run
 	"numpy >= 2, < 3 ; python_version >= '3.12'",
 	"numpy >= 1.24, < 2 ; python_version < '3.12'",
@@ -24,7 +25,7 @@ dependencies = [
 	"pyaudio >= 0.2.14, < 1",  # audio play/record
 	"mss",  # An ultra fast cross-platform multiple screenshots module in pure python using ctypes.
 	"pywin32 >= 312, < 400 ; platform_system == 'Windows'",  # 312 is available since python 3.10 already.
-	"spinnaker_python >= 4.3, < 4.5 ; platform_system == 'Windows'",
+	"spinnaker_python >= 4.3, < 4.5",
 	"setuptools-scm >= 9.2.2, < 10",  # normally only necessary for build of project wheel
 ]
 
