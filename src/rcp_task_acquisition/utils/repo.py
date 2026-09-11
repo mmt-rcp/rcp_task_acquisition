@@ -26,7 +26,7 @@ def check_repo_up_to_date(
         msg = _check_repo_up_to_date(repo_path, **locs)
     except Exception as err:  # noqa
         return f"Failed verify repo status: {err}"
-    return msg if not isinstance(msg, str) or "{" not in msg else msg.format(**locs)
+    return msg
 
 
 def _check_repo_up_to_date(
@@ -43,19 +43,24 @@ def _check_repo_up_to_date(
     m_diverged,
 ) -> str | None:
 
+    locs = locals()
+
+    def ret_val(v):
+        return v if not isinstance(v, str) else v.format(**locs)
+
     if git is None:
-        return m_git_not_found
+        return ret_val(m_git_not_found)
 
     # Initialize the repository object
     repo = git.Repo(repo_path)
 
     # 1. Ensure the repo isn't in a broken state and get the active branch name
     if repo.head.is_detached:
-        return m_detached
+        return ret_val(m_detached)
 
     branch_name = repo.active_branch.name
     if branch_name != remote_branch:
-        return m_diff_branch
+        return ret_val(m_diff_branch)
 
     # 2. Fetch the latest references from the remote server
     # print("Fetching from remote...")
@@ -67,12 +72,12 @@ def _check_repo_up_to_date(
     try:
         remote_commit = origin.refs[remote_branch].commit
     except IndexError:
-        return m_remote_branch_miss
+        return ret_val(m_remote_branch_miss)
 
     # 4. Compare the commits to determine the status
     if remote_commit == local_commit:
         if repo.is_dirty(untracked_files=True):
-            return m_up2date_but_dirty
+            return ret_val(m_up2date_but_dirty)
         else:
             # print("No changes found. Clean workspace.")
             return None
@@ -84,8 +89,8 @@ def _check_repo_up_to_date(
     is_behind = repo.is_ancestor(local_commit, remote_commit)
 
     if is_ahead and not is_behind:
-        return m_ahead
+        return ret_val(m_ahead)
     elif is_behind and not is_ahead:
-        return m_behind
+        return ret_val(m_behind)
     else:
-        return m_diverged
+        return ret_val(m_diverged)
