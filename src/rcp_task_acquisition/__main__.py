@@ -35,7 +35,7 @@ def run_app():
         # could be a wheel install.. todo
         up2date_status = None
     if up2date_status is not None:
-        wx.MessageBox(up2date_status)
+        wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP)
 
     from rcp_task_acquisition.panels.SwitchPanel import SwitchPanel  # noqa
 
