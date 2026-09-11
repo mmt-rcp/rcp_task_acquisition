@@ -11,9 +11,12 @@ matplotlib.use("qtagg")
 
 def run_app():
     # delayed import on purpose.
-    from rcp_task_acquisition.utils.repo import check_repo_up_to_date
+    # print("starting app..")
 
     app = wx.App()
+
+    # print("checking up2date status ..")
+    from rcp_task_acquisition.utils.repo import check_repo_up_to_date
 
     rcp_package_dir = Path(__file__).parent
     if rcp_package_dir.parent.name == "src":
@@ -37,8 +40,10 @@ def run_app():
     if up2date_status is not None:
         wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP)
 
+    # print("loading panel ..")
     from rcp_task_acquisition.panels.SwitchPanel import SwitchPanel  # noqa
 
+    # print("showing panel ..")
     SwitchPanel()
     return app.MainLoop()
 

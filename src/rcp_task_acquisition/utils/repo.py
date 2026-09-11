@@ -1,16 +1,21 @@
 from __future__ import annotations  # noqa
 
+import os
+
 try:
     import git
 except ModuleNotFoundError:
     git = None
 
 
+DEFAULT_REMOTE_BRANCH = os.getenv("RCP_CHECK_REMOTE_BRANCH", "main")
+
+
 def check_repo_up_to_date(
     repo_path,
     *,
     remote_name="origin",
-    remote_branch="main",
+    remote_branch=DEFAULT_REMOTE_BRANCH,
     m_git_not_found="git module not found (GitPython). Cannot check repo status",
     m_remote_branch_miss=r"The branch '{remote_branch}' does not exist on the remote tracking server.",
     m_detached="Repository is in a detached HEAD state. Cannot verify tracking branch.",
