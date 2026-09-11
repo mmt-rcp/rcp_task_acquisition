@@ -27,7 +27,7 @@ dependencies = [
 	"pywin32 >= 312, < 400 ; platform_system == 'Windows'",  # 312 is available since python 3.10 already.
 	"spinnaker_python >= 4.3, < 4.5",
 	"setuptools-scm >= 9.2.2, < 10",  # normally only necessary for build of project wheel
-        "GitPython >= 3.1, < 4",  # to get repo status vs remote
+	"GitPython >= 3.1, < 4",  # to get repo status vs remote
 ]
 
 [project.optional-dependencies]
@@ -36,11 +36,6 @@ dev = [
 	"ruff >= 0.16, < 1",
 	"pre-commit >= 4.6, < 5",
 	"rcp-task-acquisition[test]",
-]
-test = [
-	# todo: create some automated + reproducible test cases
-	# "pytest",
-	# "coverage",
 ]
 test = [
 	"pytest >= 9, < 10",
