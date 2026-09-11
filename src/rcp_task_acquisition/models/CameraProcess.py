@@ -91,482 +91,474 @@ class multiCam_DLC_Cam(Process):
         processor = PySpin.ImageProcessor()
         processor.SetColorProcessing(PySpin.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
         while True:
-            time.sleep(0.005)
+            try:  # get a new msg command
+                msg = self.camq.get(timeout=0.005)
+            except Empty:
+                continue
+
+            logger.debug(f"{camStr} msg: {msg}")
             try:
-                msg = self.camq.get(block=False)
-                logger.debug(f"{camStr} msg: {msg}")
-                try:
-                    if msg == "InitM":
-                        ismaster = True
+                # execute command
+                if msg == "InitM":
+                    ismaster = True
 
-                        cam.Init()
-                        self.create_primary(cam)
-                        self.camq_p2read.put("done")
-                        while cam.TLStream.StreamOutputBufferCount() > 0:
-                            _image = cam.GetNextImage(100)
-                            _image.Release()
+                    cam.Init()
+                    self.create_primary(cam)
+                    self.camq_p2read.put("done")
+                    while cam.TLStream.StreamOutputBufferCount() > 0:
+                        _image = cam.GetNextImage(100)
+                        _image.Release()
 
-                    if msg == "InitS":
-                        cam.Init()
-                        self.create_secondary(cam, is_decreased)
-                        self.camq_p2read.put("done")
-                        while cam.TLStream.StreamOutputBufferCount() > 0:
-                            _image = cam.GetNextImage(100)
-                            _image.Release()
+                if msg == "InitS":
+                    cam.Init()
+                    self.create_secondary(cam, is_decreased)
+                    self.camq_p2read.put("done")
+                    while cam.TLStream.StreamOutputBufferCount() > 0:
+                        _image = cam.GetNextImage(100)
+                        _image.Release()
 
-                    if msg == "InitC":
-                        cam.Init()
-                        cam.LineSelector.SetValue(PySpin.LineSelector_Line2)
-                        cam.V3_3Enable.SetValue(False)
-                        cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-                        cam.LineSource.SetValue(PySpin.LineSource_ExposureActive)
-                        cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
-                        cam.TriggerSource.SetValue(PySpin.TriggerSource_Software)
-                        cam.TriggerOverlap.SetValue(PySpin.TriggerOverlap_Off)
-                        cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
-                        isunconnected = True
-                        while cam.TLStream.StreamOutputBufferCount() > 0:
-                            _image = cam.GetNextImage(100)
-                            _image.Release()
+                if msg == "InitC":
+                    cam.Init()
+                    cam.LineSelector.SetValue(PySpin.LineSelector_Line2)
+                    cam.V3_3Enable.SetValue(False)
+                    cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                    cam.LineSource.SetValue(PySpin.LineSource_ExposureActive)
+                    cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
+                    cam.TriggerSource.SetValue(PySpin.TriggerSource_Software)
+                    cam.TriggerOverlap.SetValue(PySpin.TriggerOverlap_Off)
+                    cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
+                    isunconnected = True
+                    while cam.TLStream.StreamOutputBufferCount() > 0:
+                        _image = cam.GetNextImage(100)
+                        _image.Release()
 
-                        self.camq_p2read.put("done")
-                    elif msg == "Release":
-                        cam.DeInit()
-                        del cam
-                        for i in self.idList:
-                            cam_list.RemoveBySerial(str(i))
-                        cam_list.Clear()
-                        system.ReleaseInstance()  # Release instance
-                        self.camq_p2read.put("done")
-                    elif msg == "recordPrep":
-                        path_base = self.camq.get()
-                        write_frame_rate = record_frame_rate
-                        s_node_map = cam.GetTLStreamNodeMap()
-                        handling_mode = PySpin.CEnumerationPtr(
-                            s_node_map.GetNode("StreamBufferHandlingMode")
+                    self.camq_p2read.put("done")
+                elif msg == "Release":
+                    cam.DeInit()
+                    del cam
+                    for i in self.idList:
+                        cam_list.RemoveBySerial(str(i))
+                    cam_list.Clear()
+                    system.ReleaseInstance()  # Release instance
+                    self.camq_p2read.put("done")
+                elif msg == "recordPrep":
+                    path_base = self.camq.get()
+                    write_frame_rate = record_frame_rate
+                    s_node_map = cam.GetTLStreamNodeMap()
+                    handling_mode = PySpin.CEnumerationPtr(
+                        s_node_map.GetNode("StreamBufferHandlingMode")
+                    )
+                    if not PySpin.IsAvailable(handling_mode) or not PySpin.IsWritable(
+                        handling_mode
+                    ):
+                        logger.warning(
+                            "Unable to set Buffer Handling mode (node retrieval). Aborting...\n"
                         )
-                        if not PySpin.IsAvailable(handling_mode) or not PySpin.IsWritable(
-                            handling_mode
-                        ):
-                            logger.warning(
-                                "Unable to set Buffer Handling mode (node retrieval). Aborting...\n"
-                            )
-                            return
-                        handling_mode_entry = handling_mode.GetEntryByName("OldestFirst")
-                        handling_mode.SetIntValue(handling_mode_entry.GetValue())
-                        logger.debug(path_base)
+                        return
+                    handling_mode_entry = handling_mode.GetEntryByName("OldestFirst")
+                    handling_mode.SetIntValue(handling_mode_entry.GetValue())
+                    logger.debug(path_base)
 
-                        self.height = aqH
-                        self.width = aqW
-                        self.fps = round(write_frame_rate, 2)
+                    self.height = aqH
+                    self.width = aqW
+                    self.fps = round(write_frame_rate, 2)
 
-                        self.video_file = path_base + ".mp4"
-                        file_path = f"{path_base}_timestamps.txt"
+                    self.video_file = path_base + ".mp4"
+                    file_path = f"{path_base}_timestamps.txt"
 
-                        self.async_writer = AsyncFFmpegGPUWriter(
-                            video_file=self.video_file,
-                            timestamp_file=file_path,
-                            fps=self.fps,
-                            width=self.width,
-                            height=self.height,
-                            max_queue=512,
-                            qp=23,
-                        )
-                        start_time = 0
-                        capture_duration = 0
-                        record = True
-                        self.camq_p2read.put("done")
+                    self.async_writer = AsyncFFmpegGPUWriter(
+                        video_file=self.video_file,
+                        timestamp_file=file_path,
+                        fps=self.fps,
+                        width=self.width,
+                        height=self.height,
+                        max_queue=512,
+                        qp=23,
+                    )
+                    start_time = 0
+                    capture_duration = 0
+                    record = True
+                    self.camq_p2read.put("done")
 
-                    elif msg == "Start":
-                        cam.BeginAcquisition()
-                        if ismaster or isunconnected:
-                            self.frm.value = 0
-                            self.camq.get()
-                            cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
-                        while self.aq.value > 0:
-                            try:
-                                image_result = cam.GetNextImage(100)  # trying with timeout
-                            except PySpin.SpinnakerException as e:
-                                # when doing hardware test, pass value to parent
-                                # and alert that sync cable error
-                                logger.error(f"timeout error: {e}")
-                                # cam.EndAcquisition()
-                                # cam.DeInit()
-                                continue
-
-                            image_result = processor.Convert(image_result, PySpin.PixelFormat_BGR8)
-                            frame_bits = image_result.GetData()
-                            timestamp = image_result.GetTimeStamp()
-                            frame_id = image_result.GetFrameID()
-
-                            if record:
-                                if start_time == 0:
-                                    start_time = timestamp
-                                    capture_duration = 0
-                                else:
-                                    capture_duration = timestamp - start_time
-                                    start_time = timestamp
-
-                                # Important: make a real owned NumPy copy before releasing image_result.
-                                # frame_bgr = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR).copy()
-
-                                # ok = self.async_writer.write(frame_results, frame_id, capture_duration)
-                                self.async_writer.write(frame_bits, frame_id, capture_duration)
-                                # if not ok:
-                                #     logger.error(f"{self.camID}: async writer queue full; dropped frame {frame_id}")
-
-                                # frame_results_rgb = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR)
-
-                                # test_num+=1
-                                # self.video_writer.write(frame_results_rgb)
-                                # if start_time == 0:
-                                #     start_time = image_result.GetTimeStamp()
-                                #     time_test = 0
-                                # else:
-                                #     time_test = image_result.GetTimeStamp()
-                                #     capture_duration = time_test- start_time
-                                #     start_time = time_test #image_result.GetTimeStamp()
-                                # frame_id = image_result.GetFrameID()
-                                # # image_result.Save(os.path.join(image_dir,base_name+str(frame_id)+'.bmp'))
-                                # # avi.Append(image_result)
-                                # f.write("%s,%s\n" % (frame_id, round(capture_duration)))
-
-                            if self.aq.value == 1:
-                                # Live feed array
-                                if self.frmGrab.value == 0:
-                                    frame_results = image_result.GetNDArray().copy()
-                                    if np.shape(frame_results)[2] == 3:
-                                        frameSml[:, :, :] = frame_results[
-                                            :: self.dwnsmplfac, :: self.dwnsmplfac, :
-                                        ]
-                                        self.array4feed[
-                                            0 : int(
-                                                aqH * aqW * 3 / self.dwnsmplfac / self.dwnsmplfac
-                                            )
-                                        ] = frameSml.flatten()
-                                    self.frmGrab.value = 1
-                            image_result.Release()
-                            if ismaster:
-                                self.frm.value += 1
-
+                elif msg == "Start":
+                    cam.BeginAcquisition()
+                    if ismaster or isunconnected:
+                        self.frm.value = 0
                         self.camq.get()
-                        percentage_dropped = 0
+                        cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
+                    while self.aq.value > 0:
+                        try:
+                            image_result = cam.GetNextImage(100)  # trying with timeout
+                        except PySpin.SpinnakerException as e:
+                            # when doing hardware test, pass value to parent
+                            # and alert that sync cable error
+                            logger.error(f"timeout error: {e}")
+                            # cam.EndAcquisition()
+                            # cam.DeInit()
+                            continue
+
+                        image_result = processor.Convert(image_result, PySpin.PixelFormat_BGR8)
+                        frame_bits = image_result.GetData()
+                        timestamp = image_result.GetTimeStamp()
+                        frame_id = image_result.GetFrameID()
+
                         if record:
-                            self.async_writer.close()
-
-                            if self.async_writer.dropped_by_writer:
-                                logger.error(
-                                    f"{self.camID}: writer dropped {self.async_writer.dropped_by_writer} "
-                                    f"frames because the queue filled"
-                                )
-
-                            (dropped_frame, total_frames, files_len) = identify_dropped_frames(
-                                file_path, self.framerate
-                            )
-                            percentage_dropped = int(np.ceil((dropped_frame / total_frames) * 100))
-                            logger.debug(
-                                f"{self.camID}: total: {total_frames}, dropped: {dropped_frame}, len: {files_len}"
-                            )
-                            # logger.debug(f"{dropped_frame} of camera frames dropped for {self.camID}")
-                            logger.debug(
-                                f"{percentage_dropped}% of camera frames dropped for {self.camID}"
-                            )
-
-                            self.camq_p2read.put(percentage_dropped)
-                            record = False
-
-                        cam.EndAcquisition()
-                        cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
-                        self.frmGrab.value = 0
-                        if ismaster:
-                            cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-                            cam.LineSource.SetValue(PySpin.LineSource_FrameTriggerWait)
-                            cam.LineInverter.SetValue(True)
-                            cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-                            cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
-                        self.camq_p2read.put("done")
-
-                    elif msg == "updateSettings":
-                        nodemap = cam.GetNodeMap()
-                        binsize = user_cfg[camStr]["bin"]
-                        # Horizontal Flip
-                        reverseX = PySpin.CBooleanPtr(nodemap.GetNode("ReverseX"))
-                        if PySpin.IsAvailable(reverseX) and PySpin.IsWritable(reverseX):
-                            reverseX.SetValue(user_cfg[camStr]["flip"])
-
-                        # Vertical Flip
-                        reverseY = PySpin.CBooleanPtr(nodemap.GetNode("ReverseY"))
-                        if PySpin.IsAvailable(reverseY) and PySpin.IsWritable(reverseY):
-                            reverseY.SetValue(user_cfg[camStr]["flip"])
-
-                        cam.BinningHorizontal.SetValue(int(binsize))
-                        cam.BinningVertical.SetValue(int(binsize))
-
-                        # cam.IspEnable.SetValue(False)
-                        node_acquisition_mode = PySpin.CEnumerationPtr(
-                            nodemap.GetNode("AcquisitionMode")
-                        )
-                        if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(
-                            node_acquisition_mode
-                        ):
-                            logger.warning(
-                                "Unable to set acquisition mode to continuous (enum retrieval). Aborting..."
-                            )
-                            return False
-                        # Retrieve entry node from enumeration node
-                        node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName(
-                            "Continuous"
-                        )
-                        if not PySpin.IsAvailable(
-                            node_acquisition_mode_continuous
-                        ) or not PySpin.IsReadable(node_acquisition_mode_continuous):
-                            logger.warning(
-                                "Unable to set acquisition mode to continuous (entry retrieval). Aborting..."
-                            )
-                            return False
-                        acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
-                        # Set integer value from entry node as new value of enumeration node
-                        node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
-                        # Retrieve the enumeration node from the nodemap
-                        node_pixel_format = PySpin.CEnumerationPtr(nodemap.GetNode("PixelFormat"))
-                        if PySpin.IsAvailable(node_pixel_format) and PySpin.IsWritable(
-                            node_pixel_format
-                        ):
-                            # # Retrieve the desired entry node from the enumeration node
-                            # node_pixel_format_mono8 = PySpin.CEnumEntryPtr(node_pixel_format.GetEntryByName('Mono8'))
-                            # if PySpin.IsAvailable(node_pixel_format_mono8) and PySpin.IsReadable(node_pixel_format_mono8):
-                            #     # Retrieve the integer value from the entry node
-                            #     pixel_format_mono8 = node_pixel_format_mono8.GetValue()
-                            #     # Set integer as new value for enumeration node
-                            #     node_pixel_format.SetIntValue(pixel_format_mono8)
-                            # else:
-                            #     logger.warn('Pixel format mono 8 not available...')
-
-                            node_pixel_format_BayerRG8 = PySpin.CEnumEntryPtr(
-                                node_pixel_format.GetEntryByName("BayerRG8")
-                            )
-                            if PySpin.IsAvailable(node_pixel_format_BayerRG8) and PySpin.IsReadable(
-                                node_pixel_format_BayerRG8
-                            ):
-                                # Retrieve the integer value from the entry node
-                                pixel_format_BayerRG8 = node_pixel_format_BayerRG8.GetValue()
-                                # Set integer as new value for enumeration node
-                                node_pixel_format.SetIntValue(pixel_format_BayerRG8)
+                            if start_time == 0:
+                                start_time = timestamp
+                                capture_duration = 0
                             else:
-                                logger.debug("Pixel format BayerRG8 not available...")
+                                capture_duration = timestamp - start_time
+                                start_time = timestamp
 
-                        else:
-                            logger.warning("Pixel format not available...")
+                            # Important: make a real owned NumPy copy before releasing image_result.
+                            # frame_bgr = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR).copy()
 
-                        # Apply minimum to offset X
-                        node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
-                        if PySpin.IsAvailable(node_offset_x) and PySpin.IsWritable(node_offset_x):
-                            node_offset_x.SetValue(node_offset_x.GetMin())
+                            # ok = self.async_writer.write(frame_results, frame_id, capture_duration)
+                            self.async_writer.write(frame_bits, frame_id, capture_duration)
+                            # if not ok:
+                            #     logger.error(f"{self.camID}: async writer queue full; dropped frame {frame_id}")
+
+                            # frame_results_rgb = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR)
+
+                            # test_num+=1
+                            # self.video_writer.write(frame_results_rgb)
+                            # if start_time == 0:
+                            #     start_time = image_result.GetTimeStamp()
+                            #     time_test = 0
+                            # else:
+                            #     time_test = image_result.GetTimeStamp()
+                            #     capture_duration = time_test- start_time
+                            #     start_time = time_test #image_result.GetTimeStamp()
+                            # frame_id = image_result.GetFrameID()
+                            # # image_result.Save(os.path.join(image_dir,base_name+str(frame_id)+'.bmp'))
+                            # # avi.Append(image_result)
+                            # f.write("%s,%s\n" % (frame_id, round(capture_duration)))
+
+                        if self.aq.value == 1:
+                            # Live feed array
+                            if self.frmGrab.value == 0:
+                                frame_results = image_result.GetNDArray().copy()
+                                if np.shape(frame_results)[2] == 3:
+                                    frameSml[:, :, :] = frame_results[
+                                        :: self.dwnsmplfac, :: self.dwnsmplfac, :
+                                    ]
+                                    self.array4feed[
+                                        0 : int(aqH * aqW * 3 / self.dwnsmplfac / self.dwnsmplfac)
+                                    ] = frameSml.flatten()
+                                self.frmGrab.value = 1
+                        image_result.Release()
+                        if ismaster:
+                            self.frm.value += 1
+
+                    self.camq.get()
+                    percentage_dropped = 0
+                    if record:
+                        self.async_writer.close()
+
+                        if self.async_writer.dropped_by_writer:
+                            logger.error(
+                                f"{self.camID}: writer dropped {self.async_writer.dropped_by_writer} "
+                                f"frames because the queue filled"
+                            )
+
+                        (dropped_frame, total_frames, files_len) = identify_dropped_frames(
+                            file_path, self.framerate
+                        )
+                        percentage_dropped = int(np.ceil((dropped_frame / total_frames) * 100))
+                        logger.debug(
+                            f"{self.camID}: total: {total_frames}, dropped: {dropped_frame}, len: {files_len}"
+                        )
+                        # logger.debug(f"{dropped_frame} of camera frames dropped for {self.camID}")
+                        logger.debug(
+                            f"{percentage_dropped}% of camera frames dropped for {self.camID}"
+                        )
+
+                        self.camq_p2read.put(percentage_dropped)
+                        record = False
+
+                    cam.EndAcquisition()
+                    cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
+                    self.frmGrab.value = 0
+                    if ismaster:
+                        cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                        cam.LineSource.SetValue(PySpin.LineSource_FrameTriggerWait)
+                        cam.LineInverter.SetValue(True)
+                        cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                        cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
+                    self.camq_p2read.put("done")
+
+                elif msg == "updateSettings":
+                    nodemap = cam.GetNodeMap()
+                    binsize = user_cfg[camStr]["bin"]
+                    # Horizontal Flip
+                    reverseX = PySpin.CBooleanPtr(nodemap.GetNode("ReverseX"))
+                    if PySpin.IsAvailable(reverseX) and PySpin.IsWritable(reverseX):
+                        reverseX.SetValue(user_cfg[camStr]["flip"])
+
+                    # Vertical Flip
+                    reverseY = PySpin.CBooleanPtr(nodemap.GetNode("ReverseY"))
+                    if PySpin.IsAvailable(reverseY) and PySpin.IsWritable(reverseY):
+                        reverseY.SetValue(user_cfg[camStr]["flip"])
+
+                    cam.BinningHorizontal.SetValue(int(binsize))
+                    cam.BinningVertical.SetValue(int(binsize))
+
+                    # cam.IspEnable.SetValue(False)
+                    node_acquisition_mode = PySpin.CEnumerationPtr(
+                        nodemap.GetNode("AcquisitionMode")
+                    )
+                    if not PySpin.IsAvailable(node_acquisition_mode) or not PySpin.IsWritable(
+                        node_acquisition_mode
+                    ):
+                        logger.warning(
+                            "Unable to set acquisition mode to continuous (enum retrieval). Aborting..."
+                        )
+                        return False
+                    # Retrieve entry node from enumeration node
+                    node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName(
+                        "Continuous"
+                    )
+                    if not PySpin.IsAvailable(
+                        node_acquisition_mode_continuous
+                    ) or not PySpin.IsReadable(node_acquisition_mode_continuous):
+                        logger.warning(
+                            "Unable to set acquisition mode to continuous (entry retrieval). Aborting..."
+                        )
+                        return False
+                    acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
+                    # Set integer value from entry node as new value of enumeration node
+                    node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
+                    # Retrieve the enumeration node from the nodemap
+                    node_pixel_format = PySpin.CEnumerationPtr(nodemap.GetNode("PixelFormat"))
+                    if PySpin.IsAvailable(node_pixel_format) and PySpin.IsWritable(
+                        node_pixel_format
+                    ):
+                        # # Retrieve the desired entry node from the enumeration node
+                        # node_pixel_format_mono8 = PySpin.CEnumEntryPtr(node_pixel_format.GetEntryByName('Mono8'))
+                        # if PySpin.IsAvailable(node_pixel_format_mono8) and PySpin.IsReadable(node_pixel_format_mono8):
+                        #     # Retrieve the integer value from the entry node
+                        #     pixel_format_mono8 = node_pixel_format_mono8.GetValue()
+                        #     # Set integer as new value for enumeration node
+                        #     node_pixel_format.SetIntValue(pixel_format_mono8)
+                        # else:
+                        #     logger.warn('Pixel format mono 8 not available...')
+
+                        node_pixel_format_BayerRG8 = PySpin.CEnumEntryPtr(
+                            node_pixel_format.GetEntryByName("BayerRG8")
+                        )
+                        if PySpin.IsAvailable(node_pixel_format_BayerRG8) and PySpin.IsReadable(
+                            node_pixel_format_BayerRG8
+                        ):
+                            # Retrieve the integer value from the entry node
+                            pixel_format_BayerRG8 = node_pixel_format_BayerRG8.GetValue()
+                            # Set integer as new value for enumeration node
+                            node_pixel_format.SetIntValue(pixel_format_BayerRG8)
                         else:
-                            logger.warning("Offset X not available...")
-                        # Apply minimum to offset Y
-                        node_offset_y = PySpin.CIntegerPtr(nodemap.GetNode("OffsetY"))
-                        if PySpin.IsAvailable(node_offset_y) and PySpin.IsWritable(node_offset_y):
-                            node_offset_y.SetValue(node_offset_y.GetMin())
-                        else:
-                            logger.warning("Offset Y not available...")
-                        # Set maximum width
+                            logger.debug("Pixel format BayerRG8 not available...")
+
+                    else:
+                        logger.warning("Pixel format not available...")
+
+                    # Apply minimum to offset X
+                    node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
+                    if PySpin.IsAvailable(node_offset_x) and PySpin.IsWritable(node_offset_x):
+                        node_offset_x.SetValue(node_offset_x.GetMin())
+                    else:
+                        logger.warning("Offset X not available...")
+                    # Apply minimum to offset Y
+                    node_offset_y = PySpin.CIntegerPtr(nodemap.GetNode("OffsetY"))
+                    if PySpin.IsAvailable(node_offset_y) and PySpin.IsWritable(node_offset_y):
+                        node_offset_y.SetValue(node_offset_y.GetMin())
+                    else:
+                        logger.warning("Offset Y not available...")
+                    # Set maximum width
+                    node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
+                    if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
+                        width_to_set = node_width.GetMax()
+                        node_width.SetValue(width_to_set)
+                    else:
+                        logger.warning("Width not available...")
+                    # Set maximum height
+                    node_height = PySpin.CIntegerPtr(nodemap.GetNode("Height"))
+                    if PySpin.IsAvailable(node_height) and PySpin.IsWritable(node_height):
+                        height_to_set = node_height.GetMax()
+                        node_height.SetValue(height_to_set)
+                    else:
+                        logger.warning("Height not available...")
+                    cam.GainAuto.SetValue(PySpin.GainAuto_Off)
+                    cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
+
+                    # Locate the ISP Enable node
+                    isp_enable_node = PySpin.CBooleanPtr(nodemap.GetNode("IspEnable"))
+                    if PySpin.IsAvailable(isp_enable_node) and PySpin.IsWritable(isp_enable_node):
+                        isp_enable_node.SetValue(False)
+                    else:
+                        logger.warning("ISP Enable node is not available or read-only.")
+
+                    # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
+                    user_cfg = file_utils.read_config("userdata.yaml")["cameras"]
+                    self.camq_p2read.put("done")
+                    method = self.camq.get()
+                    if method == "crop":
+                        roi = self.frmdim
+                        logger.debug(f"roi: {self.frmdim}")
+                        record_frame_rate = (
+                            self.framerate
+                        )  # int(user_cfg['cam_config']['framerate'])
+                        # Set width
                         node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
+                        width_max = node_width.GetMax()
+
+                        logger.debug(f"node_width:{width_max}")
+                        width_to_set = (
+                            np.floor(width_max / roi[3] * user_cfg[camStr]["crop"][1] / 4) * 4
+                        )
                         if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
-                            width_to_set = node_width.GetMax()
-                            node_width.SetValue(width_to_set)
+                            node_width.SetValue(int(width_to_set))
                         else:
                             logger.warning("Width not available...")
-                        # Set maximum height
+                        # Set height
                         node_height = PySpin.CIntegerPtr(nodemap.GetNode("Height"))
+                        height_max = node_height.GetMax()
+                        height_to_set = (
+                            np.floor(height_max / roi[1] * user_cfg[camStr]["crop"][3] / 4) * 4
+                        )
                         if PySpin.IsAvailable(node_height) and PySpin.IsWritable(node_height):
-                            height_to_set = node_height.GetMax()
-                            node_height.SetValue(height_to_set)
+                            node_height.SetValue(int(height_to_set))
                         else:
                             logger.warning("Height not available...")
-                        cam.GainAuto.SetValue(PySpin.GainAuto_Off)
-                        cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
-
-                        # Locate the ISP Enable node
-                        isp_enable_node = PySpin.CBooleanPtr(nodemap.GetNode("IspEnable"))
-                        if PySpin.IsAvailable(isp_enable_node) and PySpin.IsWritable(
-                            isp_enable_node
-                        ):
-                            isp_enable_node.SetValue(False)
-                        else:
-                            logger.warning("ISP Enable node is not available or read-only.")
-
-                        # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
-                        user_cfg = file_utils.read_config("userdata.yaml")["cameras"]
-                        self.camq_p2read.put("done")
-                        method = self.camq.get()
-                        if method == "crop":
-                            roi = self.frmdim
-                            logger.debug(f"roi: {self.frmdim}")
-                            record_frame_rate = (
-                                self.framerate
-                            )  # int(user_cfg['cam_config']['framerate'])
-                            # Set width
-                            node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
-                            width_max = node_width.GetMax()
-
-                            logger.debug(f"node_width:{width_max}")
-                            width_to_set = (
-                                np.floor(width_max / roi[3] * user_cfg[camStr]["crop"][1] / 4) * 4
-                            )
-                            if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
-                                node_width.SetValue(int(width_to_set))
-                            else:
-                                logger.warning("Width not available...")
-                            # Set height
-                            node_height = PySpin.CIntegerPtr(nodemap.GetNode("Height"))
-                            height_max = node_height.GetMax()
-                            height_to_set = (
-                                np.floor(height_max / roi[1] * user_cfg[camStr]["crop"][3] / 4) * 4
-                            )
-                            if PySpin.IsAvailable(node_height) and PySpin.IsWritable(node_height):
-                                node_height.SetValue(int(height_to_set))
-                            else:
-                                logger.warning("Height not available...")
-                            logger.debug(f"node height: {height_max}")
-                            # Apply offset X
-                            node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
-                            offset_x = (
-                                np.floor(width_max / roi[3] * user_cfg[camStr]["crop"][0] / 4) * 4
-                            )
-                            if PySpin.IsAvailable(node_offset_x) and PySpin.IsWritable(
-                                node_offset_x
-                            ):
-                                node_offset_x.SetValue(int(offset_x))
-                            else:
-                                logger.warning("Offset X not available...")
-                            # Apply offset Y
-                            node_offset_y = PySpin.CIntegerPtr(nodemap.GetNode("OffsetY"))
-                            offset_y = (
-                                np.floor(height_max / roi[1] * user_cfg[camStr]["crop"][2] / 4) * 4
-                            )
-                            if PySpin.IsAvailable(node_offset_y) and PySpin.IsWritable(
-                                node_offset_y
-                            ):
-                                node_offset_y.SetValue(int(offset_y))
-                            else:
-                                logger.warning("Offset Y not available...")
-
-                            aqW = int(user_cfg[camStr]["crop"][1] * self.dwnsmplfac)
-                            aqH = int(user_cfg[camStr]["crop"][3] * self.dwnsmplfac)
-
-                        else:
-                            aqW = int(self.frmdim[3] * self.dwnsmplfac)
-                            aqH = int(self.frmdim[1] * self.dwnsmplfac)
-                            record_frame_rate = 10
-
-                        frame_results = np.zeros([aqH, aqW, 3], "ubyte")
-                        frameSml = np.zeros(
-                            [int(aqH / self.dwnsmplfac), int(aqW / self.dwnsmplfac), 3], "ubyte"
+                        logger.debug(f"node height: {height_max}")
+                        # Apply offset X
+                        node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
+                        offset_x = (
+                            np.floor(width_max / roi[3] * user_cfg[camStr]["crop"][0] / 4) * 4
                         )
-
-                        cam.AcquisitionFrameRateEnable.SetValue(True)
-                        cam.Gain.SetValue(user_cfg[camStr]["gain"])
-
-                        # Ensure desired frame rate does not exceed the maximum
-                        max_frmrate = cam.AcquisitionFrameRate.GetMax()
-                        frmrate_time_to_set = min(max_frmrate, record_frame_rate)
-                        # cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
-                        if not ismaster:
-                            cam.AcquisitionFrameRateEnable.SetValue(False)
+                        if PySpin.IsAvailable(node_offset_x) and PySpin.IsWritable(node_offset_x):
+                            node_offset_x.SetValue(int(offset_x))
                         else:
-                            cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
-                        exposure_time_to_set = cam.ExposureTime.GetValue()
-                        logger.info(
-                            f"max fr: {max_frmrate}, record: {record_frame_rate}, self.framerate: {self.framerate}"
+                            logger.warning("Offset X not available...")
+                        # Apply offset Y
+                        node_offset_y = PySpin.CIntegerPtr(nodemap.GetNode("OffsetY"))
+                        offset_y = (
+                            np.floor(height_max / roi[1] * user_cfg[camStr]["crop"][2] / 4) * 4
                         )
-                        logger.info(f"exposure: {exposure_time_to_set}")
-                        # record_frame_rate = cam.AcquisitionFrameRate.GetValue()
-
-                        cam.AcquisitionFrameRateEnable.SetValue(False)
-                        if cam.ExposureAuto.GetAccessMode() != PySpin.RW:
-                            logger.warning("Unable to disable automatic exposure. Aborting...")
-                            continue
-                        # cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
-                        cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
-                        if cam.ExposureTime.GetAccessMode() != PySpin.RW:
-                            logger.warning("Unable to set exposure time. Aborting...")
-                            continue
-                        # # Ensure desired exposure time does not exceed the maximum
-                        max_exposure = cam.ExposureTime.GetMax()
-                        logger.debug(f"{camStr} max exposure: {max_exposure}")
-                        exposure_time_request = max_exposure  # int(user_cfg[camStr]['exposure'])
-                        exposure_time_to_set = floor(1 / record_frame_rate * 1000 * 1000)
-                        exposure_time_to_set = min(exposure_time_request, exposure_time_to_set)
-                        # max_exposure = cam.ExposureTime.GetMax()
-                        max_exposure = min(max_exposure, exposure_time_to_set) * 0.75
-                        cam.ExposureTime.SetValue(current_exposure_time)
-
-                        cam.AcquisitionFrameRateEnable.SetValue(True)
-                        cam.Gain.SetValue(user_cfg[camStr]["gain"])
-                        cam.Gamma.SetValue(user_cfg[camStr]["gamma"])
-                        # Ensure desired frame rate does not exceed the maximum
-                        max_frmrate = cam.AcquisitionFrameRate.GetMax()
-                        if not ismaster:
-                            cam.AcquisitionFrameRateEnable.SetValue(False)
+                        if PySpin.IsAvailable(node_offset_y) and PySpin.IsWritable(node_offset_y):
+                            node_offset_y.SetValue(int(offset_y))
                         else:
-                            cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
-                        exposure_time_to_set = cam.ExposureTime.GetValue()
+                            logger.warning("Offset Y not available...")
 
-                        logger.debug(
-                            f"Spin cam vals: height = {node_height.GetValue()}, width = {node_width.GetValue()}"
-                        )
-                        self.camq_p2read.put(node_width.GetValue())
-                        self.camq_p2read.put(node_height.GetValue())
+                        aqW = int(user_cfg[camStr]["crop"][1] * self.dwnsmplfac)
+                        aqH = int(user_cfg[camStr]["crop"][3] * self.dwnsmplfac)
 
-                    elif msg == "setExposure":
-                        cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
-
-                    elif msg == "getExposure":
-                        logger.info(f"Current exposure: {current_exposure_time}")
-                        current_exposure_time = cam.ExposureTime.GetValue() * 0.99
-                        cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
-                        current_exposure_time = min(current_exposure_time, max_exposure)
-                        # current_exposure_time = 1.1*max_exposure
-                        cam.ExposureTime.SetValue(current_exposure_time)
-                        logger.debug(f"exposure: {cam.ExposureTime.GetValue()}")
-                        self.camq_p2read.put(cam.ExposureTime.GetValue())
-                    elif msg == "setBalance":
-                        cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Continuous)
-
-                    elif msg == "getBalance":
-                        cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
-                        cam.Gain.SetValue(user_cfg[camStr]["gain"])
-                        cam.Gamma.SetValue(user_cfg[camStr]["gamma"])
-                        if not ismaster:
-                            cam.AcquisitionFrameRateEnable.SetValue(False)
-                        else:
-                            cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
-                        if ismaster:
-                            record_frame_rate = cam.AcquisitionFrameRate.GetValue()
-                            self.camq_p2read.put(record_frame_rate)
-                        logger.info(f"Frame rate {camStr}: {self.framerate}")
-
-                except PySpin.SpinnakerException:
-                    _exc_type, exc_obj, tb = sys.exc_info()
-                    f = tb.tb_frame
-                    lineno = tb.tb_lineno
-                    filename = f.f_code.co_filename
-                    linecache.checkcache(filename)
-                    line = linecache.getline(filename, lineno, f.f_globals)
-                    logger.exception(
-                        f'EXCEPTION IN ({filename}, LINE {lineno} "{line.strip()}"): {exc_obj}'
-                    )
-                    logger.exception(self.camID + " : " + camStr)
-                    if msg == "updateSettings":
-                        self.camq_p2read.put(-1)
-                        self.camq_p2read.put(30)
-                        self.camq_p2read.put(30)
                     else:
-                        self.camq_p2read.put("done")
+                        aqW = int(self.frmdim[3] * self.dwnsmplfac)
+                        aqH = int(self.frmdim[1] * self.dwnsmplfac)
+                        record_frame_rate = 10
 
-            except Empty:
-                pass
+                    frame_results = np.zeros([aqH, aqW, 3], "ubyte")
+                    frameSml = np.zeros(
+                        [int(aqH / self.dwnsmplfac), int(aqW / self.dwnsmplfac), 3], "ubyte"
+                    )
+
+                    cam.AcquisitionFrameRateEnable.SetValue(True)
+                    cam.Gain.SetValue(user_cfg[camStr]["gain"])
+
+                    # Ensure desired frame rate does not exceed the maximum
+                    max_frmrate = cam.AcquisitionFrameRate.GetMax()
+                    frmrate_time_to_set = min(max_frmrate, record_frame_rate)
+                    # cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
+                    if not ismaster:
+                        cam.AcquisitionFrameRateEnable.SetValue(False)
+                    else:
+                        cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
+                    exposure_time_to_set = cam.ExposureTime.GetValue()
+                    logger.info(
+                        f"max fr: {max_frmrate}, record: {record_frame_rate}, self.framerate: {self.framerate}"
+                    )
+                    logger.info(f"exposure: {exposure_time_to_set}")
+                    # record_frame_rate = cam.AcquisitionFrameRate.GetValue()
+
+                    cam.AcquisitionFrameRateEnable.SetValue(False)
+                    if cam.ExposureAuto.GetAccessMode() != PySpin.RW:
+                        logger.warning("Unable to disable automatic exposure. Aborting...")
+                        continue
+                    # cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
+                    cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
+                    if cam.ExposureTime.GetAccessMode() != PySpin.RW:
+                        logger.warning("Unable to set exposure time. Aborting...")
+                        continue
+                    # # Ensure desired exposure time does not exceed the maximum
+                    max_exposure = cam.ExposureTime.GetMax()
+                    logger.debug(f"{camStr} max exposure: {max_exposure}")
+                    exposure_time_request = max_exposure  # int(user_cfg[camStr]['exposure'])
+                    exposure_time_to_set = floor(1 / record_frame_rate * 1000 * 1000)
+                    exposure_time_to_set = min(exposure_time_request, exposure_time_to_set)
+                    # max_exposure = cam.ExposureTime.GetMax()
+                    max_exposure = min(max_exposure, exposure_time_to_set) * 0.75
+                    cam.ExposureTime.SetValue(current_exposure_time)
+
+                    cam.AcquisitionFrameRateEnable.SetValue(True)
+                    cam.Gain.SetValue(user_cfg[camStr]["gain"])
+                    cam.Gamma.SetValue(user_cfg[camStr]["gamma"])
+                    # Ensure desired frame rate does not exceed the maximum
+                    max_frmrate = cam.AcquisitionFrameRate.GetMax()
+                    if not ismaster:
+                        cam.AcquisitionFrameRateEnable.SetValue(False)
+                    else:
+                        cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
+                    exposure_time_to_set = cam.ExposureTime.GetValue()
+
+                    logger.debug(
+                        f"Spin cam vals: height = {node_height.GetValue()}, width = {node_width.GetValue()}"
+                    )
+                    self.camq_p2read.put(node_width.GetValue())
+                    self.camq_p2read.put(node_height.GetValue())
+
+                elif msg == "setExposure":
+                    cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
+
+                elif msg == "getExposure":
+                    logger.info(f"Current exposure: {current_exposure_time}")
+                    current_exposure_time = cam.ExposureTime.GetValue() * 0.99
+                    cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
+                    current_exposure_time = min(current_exposure_time, max_exposure)
+                    # current_exposure_time = 1.1*max_exposure
+                    cam.ExposureTime.SetValue(current_exposure_time)
+                    logger.debug(f"exposure: {cam.ExposureTime.GetValue()}")
+                    self.camq_p2read.put(cam.ExposureTime.GetValue())
+                elif msg == "setBalance":
+                    cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Continuous)
+
+                elif msg == "getBalance":
+                    cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
+                    cam.Gain.SetValue(user_cfg[camStr]["gain"])
+                    cam.Gamma.SetValue(user_cfg[camStr]["gamma"])
+                    if not ismaster:
+                        cam.AcquisitionFrameRateEnable.SetValue(False)
+                    else:
+                        cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
+                    if ismaster:
+                        record_frame_rate = cam.AcquisitionFrameRate.GetValue()
+                        self.camq_p2read.put(record_frame_rate)
+                    logger.info(f"Frame rate {camStr}: {self.framerate}")
+
+            except PySpin.SpinnakerException:
+                _exc_type, exc_obj, tb = sys.exc_info()
+                f = tb.tb_frame
+                lineno = tb.tb_lineno
+                filename = f.f_code.co_filename
+                linecache.checkcache(filename)
+                line = linecache.getline(filename, lineno, f.f_globals)
+                logger.exception(
+                    f'EXCEPTION IN ({filename}, LINE {lineno} "{line.strip()}"): {exc_obj}'
+                )
+                logger.exception(self.camID + " : " + camStr)
+                if msg == "updateSettings":
+                    self.camq_p2read.put(-1)
+                    self.camq_p2read.put(30)
+                    self.camq_p2read.put(30)
+                else:
+                    self.camq_p2read.put("done")
 
     def create_primary(self, cam):
         cam.CounterSelector.SetValue(PySpin.CounterSelector_Counter0)
