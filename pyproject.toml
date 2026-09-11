@@ -15,6 +15,9 @@ dev = [
 	"ruff >= 0.16, < 1",
 	"pre-commit >= 4.6, < 5",
 ]
+test = [
+	"pytest >= 9, < 10",
+]
 
 [project.scripts]
 rcp-task-acquisition = "rcp_task_acquisition.__main__:run_app"
