@@ -6,27 +6,56 @@ except ModuleNotFoundError:
     git = None
 
 
-def check_repo_up_to_date(repo_path, remote_name="origin", remote_branch="main") -> str | None:
+def check_repo_up_to_date(
+    repo_path,
+    *,
+    remote_name="origin",
+    remote_branch="main",
+    m_git_not_found="git module not found (GitPython). Cannot check repo status",
+    m_remote_branch_miss=r"The branch '{remote_branch}' does not exist on the remote tracking server.",
+    m_detached="Repository is in a detached HEAD state. Cannot verify tracking branch.",
+    m_diff_branch=r"Your local branch ({branch_name}) is not same than {remote_branch}.",
+    m_up2date_but_dirty="The repository is up2date with remote but has local changes!",
+    m_ahead="⚠️ Local is AHEAD of remote (You have unpushed commits).",
+    m_behind="⚠️ Local is BEHIND remote (You need to pull changes).",
+    m_diverged="🚨 Diverged! Both local and remote have unique, conflicting commits.",
+) -> str | None:
+    locs = dict(locals())
+    del locs["repo_path"]  # keep as arg
     try:
-        return _check_repo_up_to_date(repo_path, remote_name, remote_branch)
+        msg = _check_repo_up_to_date(repo_path, **locs)
     except Exception as err:  # noqa
         return f"Failed verify repo status: {err}"
+    return msg if not isinstance(msg, str) or "{" not in msg else msg.format(**locs)
 
 
-def _check_repo_up_to_date(repo_path, remote_name="origin", remote_branch="main") -> str | None:
+def _check_repo_up_to_date(
+    repo_path,
+    remote_name,
+    remote_branch,
+    m_git_not_found,
+    m_remote_branch_miss,
+    m_detached,
+    m_diff_branch,
+    m_up2date_but_dirty,
+    m_ahead,
+    m_behind,
+    m_diverged,
+) -> str | None:
+
     if git is None:
-        return "git module not found (GitPython). Cannot check repo status"
+        return m_git_not_found
 
     # Initialize the repository object
     repo = git.Repo(repo_path)
 
     # 1. Ensure the repo isn't in a broken state and get the active branch name
     if repo.head.is_detached:
-        return "Repository is in a detached HEAD state. Cannot verify tracking branch."
+        return m_detached
 
     branch_name = repo.active_branch.name
     if branch_name != remote_branch:
-        return f"Your local branch ({branch_name}) is not same than {remote_branch}."
+        return m_diff_branch
 
     # 2. Fetch the latest references from the remote server
     # print("Fetching from remote...")
@@ -38,12 +67,12 @@ def _check_repo_up_to_date(repo_path, remote_name="origin", remote_branch="main"
     try:
         remote_commit = origin.refs[remote_branch].commit
     except IndexError:
-        return f"The branch '{remote_branch}' does not exist on the remote tracking server."
+        return m_remote_branch_miss
 
     # 4. Compare the commits to determine the status
     if remote_commit == local_commit:
         if repo.is_dirty(untracked_files=True):
-            return "The repository is up2date with remote but has local changes!"
+            return m_up2date_but_dirty
         else:
             # print("No changes found. Clean workspace.")
             return None
@@ -55,8 +84,8 @@ def _check_repo_up_to_date(repo_path, remote_name="origin", remote_branch="main"
     is_behind = repo.is_ancestor(local_commit, remote_commit)
 
     if is_ahead and not is_behind:
-        return "⚠️ Local is AHEAD of remote (You have unpushed commits)."
+        return m_ahead
     elif is_behind and not is_ahead:
-        return "⚠️ Local is BEHIND remote (You need to pull changes)."
+        return m_behind
     else:
-        return "🚨 Diverged! Both local and remote have unique, conflicting commits."
+        return m_diverged
