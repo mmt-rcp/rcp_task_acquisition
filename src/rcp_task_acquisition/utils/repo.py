@@ -1,6 +1,10 @@
 from __future__ import annotations  # noqa
 
 import os
+from pathlib import Path
+
+import rcp_task_acquisition
+from rcp_task_acquisition.utils.logger import get_logger
 
 try:
     import git
@@ -8,7 +12,22 @@ except ModuleNotFoundError:
     git = None
 
 
+logger = get_logger("./utils/displays")
+
+
 DEFAULT_REMOTE_BRANCH = os.getenv("RCP_CHECK_REMOTE_BRANCH", "main")
+
+
+_def_git_not_found = "git module not found (GitPython). Cannot check repo status"
+_def_remote_branch_miss = (
+    r"The branch '{remote_branch}' does not exist on the remote tracking server."
+)
+_def_detached = "Repository is in a detached HEAD state. Cannot verify tracking branch."
+_def_diff_branch = r"Your local branch ({branch_name}) is not same than {remote_branch}."
+_def_up2date_but_dirty = "The repository is up2date with remote but has local changes!"
+_def_ahead = "⚠️ Local is AHEAD of remote (You have unpushed commits)."
+_def_behind = "⚠️ Local is BEHIND remote (You need to pull changes)."
+_def_diverged = "🚨 Diverged! Both local and remote have unique, conflicting commits."
 
 
 def check_repo_up_to_date(
@@ -16,14 +35,14 @@ def check_repo_up_to_date(
     *,
     remote_name="origin",
     remote_branch=DEFAULT_REMOTE_BRANCH,
-    m_git_not_found="git module not found (GitPython). Cannot check repo status",
-    m_remote_branch_miss=r"The branch '{remote_branch}' does not exist on the remote tracking server.",
-    m_detached="Repository is in a detached HEAD state. Cannot verify tracking branch.",
-    m_diff_branch=r"Your local branch ({branch_name}) is not same than {remote_branch}.",
-    m_up2date_but_dirty="The repository is up2date with remote but has local changes!",
-    m_ahead="⚠️ Local is AHEAD of remote (You have unpushed commits).",
-    m_behind="⚠️ Local is BEHIND remote (You need to pull changes).",
-    m_diverged="🚨 Diverged! Both local and remote have unique, conflicting commits.",
+    m_git_not_found=_def_git_not_found,
+    m_remote_branch_miss=_def_remote_branch_miss,
+    m_detached=_def_detached,
+    m_diff_branch=_def_diff_branch,
+    m_up2date_but_dirty=_def_up2date_but_dirty,
+    m_ahead=_def_ahead,
+    m_behind=_def_behind,
+    m_diverged=_def_diverged,
 ) -> str | None:
     locs = dict(locals())
     del locs["repo_path"]  # keep as arg
@@ -53,38 +72,51 @@ def _check_repo_up_to_date(
     def ret_val(v):
         return v if not isinstance(v, str) else v.format(**locs)
 
+    def log(v):
+        logger.info("check repo status: %s", ret_val(v))
+
     if git is None:
+        log(_def_git_not_found)
         return ret_val(m_git_not_found)
 
     # Initialize the repository object
     repo = git.Repo(repo_path)
+    locs = locals()
 
     # 1. Ensure the repo isn't in a broken state and get the active branch name
     if repo.head.is_detached:
+        log(_def_detached)
         return ret_val(m_detached)
 
     branch_name = repo.active_branch.name
+    locs = locals()
     if branch_name != remote_branch:
+        log(_def_diff_branch)
         return ret_val(m_diff_branch)
 
     # 2. Fetch the latest references from the remote server
     # print("Fetching from remote...")
     origin = repo.remote(name=remote_name)
     origin.fetch()
+    locs = locals()
 
     # 3. Get the latest commit hashes for local and remote
     local_commit = repo.head.commit
+    locs = locals()
     try:
         remote_commit = origin.refs[remote_branch].commit
+        locs = locals()
     except IndexError:
+        log(_def_remote_branch_miss)
         return ret_val(m_remote_branch_miss)
 
     # 4. Compare the commits to determine the status
     if remote_commit == local_commit:
         if repo.is_dirty(untracked_files=True):
+            log(_def_up2date_but_dirty)
             return ret_val(m_up2date_but_dirty)
         else:
-            # print("No changes found. Clean workspace.")
+            log("✅ No changes found. Clean workspace.")
             return None
 
     # Determine the exact relationship
@@ -94,8 +126,18 @@ def _check_repo_up_to_date(
     is_behind = repo.is_ancestor(local_commit, remote_commit)
 
     if is_ahead and not is_behind:
+        log(_def_ahead)
         return ret_val(m_ahead)
     elif is_behind and not is_ahead:
+        log(_def_behind)
         return ret_val(m_behind)
     else:
+        log(_def_diverged)
         return ret_val(m_diverged)
+
+
+if __name__ == "__main__":
+    _rcp_repo_top_dir = Path(rcp_task_acquisition.__file__).parent.parent
+    if _rcp_repo_top_dir.name == "src":
+        v = check_repo_up_to_date(repo_path=_rcp_repo_top_dir.parent)
+        print(v)
