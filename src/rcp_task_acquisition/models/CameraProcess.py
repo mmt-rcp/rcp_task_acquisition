@@ -92,7 +92,8 @@ class multiCam_DLC_Cam(Process):
         processor.SetColorProcessing(PySpin.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
         while True:
             try:  # get a new msg command
-                msg = self.camq.get(timeout=0.005)
+                msg = self.camq.get(timeout=0.5)  # using 0.5s wait timeout,
+                # could even use more, given nothing else to check/wait on here.
             except Empty:
                 continue
 
