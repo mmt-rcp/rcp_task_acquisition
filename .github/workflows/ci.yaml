@@ -1,6 +1,10 @@
 name: Build and test
 on:
   pull_request:
+  push:
+    branches:
+      - main
+      - develop
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -39,6 +43,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip' # Automatically caches your packages to speed up builds
+        # NB: this uses the requirements.txt, and if not found fallback to pyproject.toml. content file hash.
+        # we use requirements.txt so have higher cache reuse.
+        cache-dependency-path: |
+          requirements.txt
     - name: Prepare build
       run: pip install build
     - name: Build wheel
