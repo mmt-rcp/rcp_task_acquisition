@@ -361,6 +361,12 @@ class multiCam_DLC_Cam(Process):
             cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
         self.camq_p2read.put("done")
 
+    def _cmd_Stop(self, ctx: CamCtx):
+        pass  # TODO
+
+    def _cmd_TrigOff(self, ctx: CamCtx):
+        pass  # TODO
+
     def _cmd_updateSettings(self, ctx: CamCtx):
         cam = ctx.cam
         nodemap = cam.GetNodeMap()
