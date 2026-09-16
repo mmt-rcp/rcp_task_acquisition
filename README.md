@@ -70,8 +70,6 @@ This is the outline for installing this program with the expected hardware confi
         - Use `pip install -e .[dev] --find-links ./library` to get all dev tools included
         - `git config blame.ignoreRevsFile .git-blame-ignore-revs`  # only once/first time
         - `pre-commit install`  # only once/first time
-   Temporary fix of psychopy -> vlc dependency:
-    - `python ./library/patch_python_vlc.py`  # after python-vlc is installed
    Finally:
     - `create-shortcut`  # when shortcuts change
 3. The final step in the terminal (`create-shortcut`) creates an icon on the Desktop which can be selected to run the code.

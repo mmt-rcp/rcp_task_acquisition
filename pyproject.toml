@@ -16,7 +16,7 @@ dependencies = [
 	"wxpython == 4.2.5 ; platform_system == 'Windows'",  # UI
 		# NB: limiting to <4.3 as current latest(4.3.1) makes laggy cam content refresh in UI
 	"wxpython >= 4.2.5, < 5 ; platform_system != 'Windows'",  # UI
-	"psychopy >= 2026.1, < 2027",  # experiments run
+	"psychopy >= 2026.2.4, < 2026.3",  # experiments run
 	"numpy >= 2, < 3 ; python_version >= '3.12'",
 	"numpy >= 1.24, < 2 ; python_version < '3.12'",
 	"ruamel.yaml >= 0.19, < 1",  # yaml files

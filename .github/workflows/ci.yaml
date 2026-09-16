@@ -60,8 +60,6 @@ jobs:
     - name: Install Result
       run: |
         pip list
-    - name: Patch temporary python-vlc
-      run: python library/patch_python_vlc.py
     - name: Execute tests
       shell: bash
       run: |
