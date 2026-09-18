@@ -1,13 +1,11 @@
 import glob
 import os
+import platform
 import shutil
 from datetime import datetime
 from pathlib import Path, PurePath
 
-import pywintypes
-import win32con
-import win32file
-
+from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger("./utils/deidentify_dates")
@@ -17,6 +15,13 @@ from rcp_task_acquisition.utils.constants import CONFIG_FILE_PATH
 
 
 def set_all_times(path, dt):
+    if win_os.win32con is None:
+        raise RuntimeError(f"Cannot yet use elsewhere than on Windows")
+
+    pywintypes = win_os.pywintypes
+    win32con = win_os.win32con
+    win32file = win_os.win32api
+
     ts = dt.timestamp()
     os.utime(path, (ts, ts))  # accessed + modified
 
