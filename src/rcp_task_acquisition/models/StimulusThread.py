@@ -158,6 +158,8 @@ class StimulusThread(Process):
                     self.resultsq.put(results)
                 elif msg == Msg.CLOSE_WINDOW:
                     self.close_window()
+                else:
+                    logger.warning("Unhandled message: %s", msg)
             except SystemExit:
                 logger.debug("interrupted stimulus")
                 self.end_stimulus()
