@@ -1,6 +1,20 @@
 name: Build and test
 on:
   pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      pytest_extra_args:
+        description: 'Extra args for pytest'
+        required: false
+        default: ''
+        type: string
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -71,6 +85,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip' # Automatically caches your packages to speed up builds
+    - name: Preconfig pip
+      shell: bash
+      run: |
+        pip config --user set install.progress_bar off
+        pip config --user set install.color always
+        pip config --user set global.color always
     - name: Use system python distribution packages
       if: matrix.os != 'windows-latest'
       # this allows to use the wxpython installed from system libs (via APT above),
@@ -129,7 +149,16 @@ jobs:
       if: matrix.os != 'windows-latest'
       # required for pyglet which tries to list the monitors, when it's imported...
       uses: pyvista/setup-headless-display-action@v3
-    - name: Execute tests
+    - name: Execute tests with coverage
       shell: bash
       run: |
-        pytest -v ./tests
+        export PYTEST_ADDOPTS="--color=yes"
+        export COVERAGE_PROCESS_START="$PWD/.coveragerc"
+        site_pkgs_dir=$(python -c "import site; print(site.getsitepackages()[0])")
+        echo "import coverage; coverage.process_startup()" > "${site_pkgs_dir}/usercustomize.pth"
+        coverage run -m pytest -v ${{ github.event.inputs.pytest_extra_args }}
+    - name: Coverage
+      shell: bash
+      run: |
+        coverage combine
+        coverage report
