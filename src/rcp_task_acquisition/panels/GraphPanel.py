@@ -33,6 +33,8 @@ class GraphPanel(wx.Panel):
         self.input_checkboxes = []
         self.constant_labels = []
         self.test_lines = []
+        self.default_index: list[int] = []
+        self.voltage = []
         self.test_focus = None
         self.color_index = 0
         self.hardware_indices = [-1] * 3
@@ -91,9 +93,11 @@ class GraphPanel(wx.Panel):
         self.default_index = []
         for item in DEFAULTS:
             try:
-                self.default_index.append(options.index(item))
-            except:
+                item_idx = options.index(item)
+            except ValueError:
                 pass
+            else:
+                self.default_index.append(item_idx)
         for choice in self.labjack_choices:
             choice.SetItems(options)
         count = 0
