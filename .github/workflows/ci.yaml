@@ -10,35 +10,99 @@ jobs:
     env:
       FORCE_COLOR: 1
     # The matrix defines the runners and Python versions dynamically
-    strategy: # If one job fails, GitHub will still finish the rest of the matrix
-      fail-fast: false
+    strategy:
+      fail-fast: true
       matrix:
-        os:
-          # - ubuntu-latest  TODO
-          - windows-latest
-        python-version:
-          - "3.10"
-          - "3.12"
+        # this creates 3 sub-jobs:
+        os: [windows-latest]
+        python-version: ["3.10", "3.12"]
+        include:
+          - os: ubuntu-24.04
+            python-version: "3.12"
+            experimental: true
 #    permissions:
 #      contents: write
     steps:
-    - name: Install VLC via Winget
+    - name: Windows pre-install
       if: matrix.os == 'windows-latest'
+      run: winget install VideoLAN.VLC --silent --accept-source-agreements --accept-package-agreements
+    - name: Linux pre-install
+      if: matrix.os != 'windows-latest'
       run: |
-        winget install VideoLAN.VLC --silent --accept-source-agreements --accept-package-agreements
+        sudo apt-get update
+        sudo apt-get install -y portaudio19-dev vlc python3-wxgtk4.0 python3-pyaudio \
+          libglu1-mesa libxi-dev libxmu-dev libglu1-mesa-dev
+          # for GL/pyglet
+        # libgtk-3-dev build-essential
+        # portaudio19 required for build of pyaudio.
+        # gtk-3 for wxpython
     - uses: actions/checkout@v4
       with:
         fetch-depth: '0'
         lfs: true
     - name: Show files
       shell: bash
+      run: ls -lt ./library
+    - name: Install spinnaker on Linux
+      if: matrix.os != 'windows-latest'
+      shell: bash
       run: |
-        ls -lt ./library
+        set -xv
+        cd library && mkdir tmp && cd tmp
+        tar xzf ../spinnaker-4.4.0.246-noble-amd64-pkg.tar.gz
+        cd spinnaker-4.4.0.246-noble-amd64
+        # this one has to be preset:
+        echo "libgentl        libspinnaker/accepted-flir-eula boolean true" | sudo debconf-set-selections
+        # others are not needed:
+        ## Would you like to allow optional analytics data collection?
+        # echo "libgentl        libspinnaker/analytics-consent  boolean false" | sudo debconf-set-selections
+        ## Declined "FLIR Spinnaker® SDK License Agreement"
+        # echo "libgentl        libspinnaker/error-flir-eula    select false" | sudo debconf-set-selections
+        ## FLIR Spinnaker® SDK License Agreement (ARROW keys scroll, TAB key to move to "Ok")
+        # echo "libgentl        libspinnaker/present-flir-eula  note" | sudo debconf-set-selections
+        ## for internal use only
+        #
+        # Now: the preinst script of this one is tricky: after look at it, setting SUDO_USER= is the only way
+        # I currently found to make it installed ok in this non-interactive way:
+        sudo SUDO_USER= DEBIAN_FRONTEND=noninteractive apt-get install -y ./libgentl*.deb
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./*.deb  # all the rest
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip' # Automatically caches your packages to speed up builds
+    - name: Use system python distribution packages
+      if: matrix.os != 'windows-latest'
+      # this allows to use the wxpython installed from system libs (via APT above),
+      # given on Linux there is no public wheel,
+      # and it must be locally compiled if you don't have otherwise a previous wheel available.
+      shell: bash
+      run: |
+        set -x
+        which python pip
+        pip list
+        # pre-upgrade these:
+        pip install -U setuptools typing_extensions packaging
+          # given newer version are required in the following pip install below..
+        pip list
+        #
+        /usr/bin/python3 -V
+        /usr/bin/python3 -m site
+        /usr/bin/python3 -m pip list
+        systemsitepkgdir=/usr/lib/python3/dist-packages
+        python -V
+        python -m site
+        sitepkgdir=$(python -c "import site; print(site.getsitepackages()[-1])")
+        # add a .pth to load/add the system site-packages dir with the current "python" interpreter:
+        cat << END > "${sitepkgdir}/_load_system_site_pkg_dir.pth"
+        import sys; sys.path.insert(len(sys.path) - 1, '${systemsitepkgdir}'); sys.path.insert(0, '${sitepkgdir}')
+        # this double path.insert ensures that new packages will still be installed in the current sitepkgdir.
+        END
+        python -m site
+        pip list
+        sudo chown -R "$USER" "${systemsitepkgdir}"
+          # during install of the project below, this allows some other dependencies to be upgraded,
+          # and uninstalled from that system path.
     - name: Prepare build
       run: pip install build
     - name: Build wheel
@@ -55,11 +119,14 @@ jobs:
       shell: bash
       run: |
         # pip install --find-links ./library $(ls ./dist/*.whl)[test]
-        pip install --find-links ./library -e .[test]
+        pip install --prefer-binary --find-links ./library -e .[test]
         # NB: for now need install as editable, for inline config files
     - name: Install Result
-      run: |
-        pip list
+      run: pip list
+    - name: Setup headless display
+      if: matrix.os != 'windows-latest'
+      # required for pyglet which tries to list the monitors, when it's imported...
+      uses: pyvista/setup-headless-display-action@v3
     - name: Execute tests
       shell: bash
       run: |
