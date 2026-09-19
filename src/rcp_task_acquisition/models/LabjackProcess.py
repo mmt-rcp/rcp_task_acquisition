@@ -1,5 +1,7 @@
 import platform
 from multiprocessing import Process
+from typing import Optional, Any
+
 import numpy as np
 import ctypes
 
@@ -90,6 +92,7 @@ class LabJackDataStream(Process):
         voltage_ranges.append(0)
         self.input_names = input_names
         self.voltage_ranges = voltage_ranges
+        self.handle: Optional[Any] = None  # ljm handle
 
     def _set_high_prio(
         self,
@@ -124,25 +127,23 @@ class LabJackDataStream(Process):
             aScanList.append(2580)
         logger.debug(aScanList)
         numAddresses = len(aScanList)
+
+        def try_ljm():
+            self.handle = ljm.openS("ANY", "ANY", "ANY")
+            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
+            ljm.eWriteNames(
+                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
+            )
+            self.actualscanRate.value = ljm.eStreamStart(
+                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
+            )
+
         try:
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
-        except:
+            try_ljm()
+        except Exception as err:
+            logger.exception("Failed open LJM: %s", err)
             ljm.closeAll()
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
+            try_ljm()
         self.stream_started.value = True
         while not self.finished.value:
             if self.create_csv.value:
@@ -241,8 +242,8 @@ class LabJackDataStream(Process):
     def stop(self):
         try:
             ljm.eStreamStop(self.handle)
-        except:
-            logger.debug("labjack stream already stopped")
+        except Exception as err:
+            logger.debug("labjack stream already stopped: %s", err)
         self.create_csv.value = False
         self.session_file = ""
         self.labjack_csv = ""
