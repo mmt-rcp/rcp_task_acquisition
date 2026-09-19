@@ -1,4 +1,5 @@
 import ctypes
+import multiprocessing
 import os
 import shutil
 import time
@@ -9,6 +10,7 @@ import cv2
 import numpy as np
 
 import rcp_task_acquisition.models.CameraProcess as spin
+from rcp_task_acquisition.models.CameraProcess import CameraCommand
 from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
 from rcp_task_acquisition.utils import file_utils
@@ -47,8 +49,8 @@ class CamSettings:
     frameBuff: np.ndarray
     array4feed: Array
     frmGrab: Value
-    camq: None
-    camq_p2read: None
+    camq: multiprocessing.Queue
+    camq_p2read: multiprocessing.Queue
     frame_size: None | FrameDims
 
 
@@ -73,13 +75,15 @@ class Camera:
         self.session = 0
         self.participant_monitor = monitor
         self.framerate = None
+        self.cam_dict: dict[str, CamSettings] = {}
+        self.cam: list[spin.multiCam_DLC_Cam] = []
 
     def setup(self, config, is_unconnected, requested_framerate):
         self.cam_cfg = config
         self.cam_crop = Crop()
         self.framerate = requested_framerate
         self.reset_variables()
-        self.cam_dict = {}
+        self.cam_dict.clear()
 
         for name in self.cam_cfg:
             if not self.cam_cfg[name]["in_use"]:
@@ -299,13 +303,12 @@ class Camera:
             self.warning.update_error(WarnCat.SPACE).display()
 
         logger.info(f"Total estimated run time: {totTime}")
-        for ndx, s in enumerate(self.cam_dict):
-            camID = str(s)
-            self.cam_dict[camID].camq.put("recordPrep")
-            name_base = "%s_%s_trial%03d" % (path_base, self.cam_dict[camID].name, count)
+        for ndx, cam_d in enumerate(self.cam_dict.values()):
+            cam_d.camq.put(CameraCommand.RECORD_PREP)
+            name_base = "%s_%s_trial%03d" % (path_base, cam_d.name, count)
             new_base = os.path.join(sess_dir, name_base)
-            self.cam_dict[camID].camq.put(new_base)
-            self.cam_dict[camID].camq_p2read.get()
+            cam_d.camq.put(new_base)
+            cam_d.camq_p2read.get()
 
         self.camaq.value = 1
         self.startAq()
@@ -318,38 +321,37 @@ class Camera:
     def initThreads(self):
         self.camq = {}
         self.camq_p2read = {}
-        self.cam = []
+        self.cam.clear()
         for ndx, camID in enumerate(self.cam_dict):
-            self.cam_dict[camID].camq = Queue()
-            self.cam_dict[camID].camq_p2read = Queue()
-            self.cam.append(
-                spin.multiCam_DLC_Cam(
-                    self.cam_dict[camID].camq,
-                    self.cam_dict[camID].camq_p2read,
-                    camID,
-                    list(self.cam_dict),
-                    self.cam_dict[camID].frame_dims,
-                    self.camaq,
-                    self.frmaq,
-                    self.cam_dict[camID].array4feed,
-                    self.cam_dict[camID].frmGrab,
-                    DOWNSAMPLE_VAL,
-                )
+            cam_d = self.cam_dict[camID]
+            cam_d.camq = Queue()
+            cam_d.camq_p2read = Queue()
+            cam = spin.multiCam_DLC_Cam(
+                cam_d.camq,
+                cam_d.camq_p2read,
+                camID,
+                list(self.cam_dict),
+                cam_d.frame_dims,
+                self.camaq,
+                self.frmaq,
+                cam_d.array4feed,
+                cam_d.frmGrab,
+                DOWNSAMPLE_VAL,
             )
-
-            self.cam[ndx].start()
+            self.cam.append(cam)
+            cam.start()
         time.sleep(1)
-        for cam in self.cam_dict:
-            initialization = "InitS" if not self.cam_dict[cam].is_primary else "InitM"
-            self.cam_dict[cam].camq.put(initialization)
-            self.cam_dict[cam].camq_p2read.get()
+        for cam_d in self.cam_dict.values():
+            initialization = CameraCommand.INIT_M if cam_d.is_primary else CameraCommand.INIT_S
+            cam_d.camq.put(initialization)
+            cam_d.camq_p2read.get()
 
     def deinitThreads(self):
-        for n, camID in enumerate(self.cam_dict):
-            self.cam_dict[camID].camq.put("Release")
-            self.cam_dict[camID].camq_p2read.get()
-            self.cam_dict[camID].camq.close()
-            self.cam_dict[camID].camq_p2read.close()
+        for n, cam_d in enumerate(self.cam_dict.values()):
+            cam_d.camq.put(CameraCommand.RELEASE)
+            cam_d.camq_p2read.get()
+            cam_d.camq.close()
+            cam_d.camq_p2read.close()
             self.cam[n].terminate()
 
     def startAq(self):
@@ -360,10 +362,10 @@ class Camera:
         if self.camaq.value < 2:
             self.camaq.value = 1
 
-        for cam in self.cam_dict:
-            self.cam_dict[cam].camq.put("Start")
+        for cam_d in self.cam_dict.values():
+            cam_d.camq.put(CameraCommand.START)
         for cam in self.primary_cams:
-            self.cam_dict[cam].camq.put("TrigOff")
+            self.cam_dict[cam].camq.put(CameraCommand.TRIG_OFF)
 
     def stopAq(self):
         if self.serial.serSuccess:
@@ -373,20 +375,22 @@ class Camera:
         video_errors = []
         self.camaq.value = 0
         threshold = 1
-        for cam in self.secondary_cams:
-            self.cam_dict[cam].camq.put("Stop")
-            update = self.cam_dict[cam].camq_p2read.get()
+        for camID in self.secondary_cams:
+            cam_d = self.cam_dict[camID]
+            cam_d.camq.put(CameraCommand.STOP)
+            update = cam_d.camq_p2read.get()
             if update != "done":
                 if int(update) > threshold:
-                    error_message.append(f"{update}% of camera frames dropped for {cam}")
-                self.cam_dict[cam].camq_p2read.get()
-        for cam in self.primary_cams:
-            self.cam_dict[cam].camq.put("Stop")
-            update = self.cam_dict[cam].camq_p2read.get()
+                    error_message.append(f"{update}% of camera frames dropped for {camID}")
+                cam_d.camq_p2read.get()
+        for camID in self.primary_cams:
+            cam_d = self.cam_dict[camID]
+            cam_d.camq.put(CameraCommand.STOP)
+            update = cam_d.camq_p2read.get()
             if update != "done":
                 if int(update) > threshold:
-                    error_message.append(f"{update}% of camera frames dropped for {cam}")
-                self.cam_dict[cam].camq_p2read.get()
+                    error_message.append(f"{update}% of camera frames dropped for {camID}")
+                cam_d.camq_p2read.get()
         logger.warning(error_message)
         error = ""
         if video_errors:
@@ -404,31 +408,32 @@ class Camera:
         self.aqH = []
         self.recSet = []
         for n, camID in enumerate(self.cam_dict):
-            self.cam_dict[camID].camq.put("updateSettings")
-            suc_test = self.cam_dict[camID].camq_p2read.get()
+            cam_d = self.cam_dict[camID]
+            cam_d.camq.put(CameraCommand.UPDATE_SETTINGS)
+            suc_test = cam_d.camq_p2read.get()
             if suc_test == -1:
                 raise ValueError("Cameras unresponsive")
             message = "crop" if self.crop else "full"
-            self.cam_dict[camID].camq.put(message)
+            cam_d.camq.put(message)
 
             # self.recSet.append(self.cam_dict[camID].camq_p2read.get())
-            self.aqW.append(self.cam_dict[camID].camq_p2read.get())
-            self.aqH.append(self.cam_dict[camID].camq_p2read.get())
+            self.aqW.append(cam_d.camq_p2read.get())
+            self.aqH.append(cam_d.camq_p2read.get())
 
     def get_exposure(self, event):
-        for n, camID in enumerate(self.cam_dict):
-            self.cam_dict[camID].camq.put("setExposure")
+        for n, cam_d in enumerate(self.cam_dict.values()):
+            cam_d.camq.put(CameraCommand.SET_EXPOSURE)
         self.startAq()
         self.camaq.value = 1
         time.sleep(1)
         self.camaq.value = 0
         self.stopAq()
-        for n, camID in enumerate(self.cam_dict):
-            self.cam_dict[camID].camq.put("getExposure")
-            self.cam_dict[camID].exposure = self.cam_dict[camID].camq_p2read.get()
+        for n, cam_d in enumerate(self.cam_dict.values()):
+            cam_d.camq.put(CameraCommand.GET_EXPOSURE)
+            cam_d.exposure = cam_d.camq_p2read.get()
 
-        for n, camID in enumerate(self.cam_dict):
-            self.cam_dict[camID].camq.put("setBalance")
+        for n, cam_d in enumerate(self.cam_dict.values()):
+            cam_d.camq.put(CameraCommand.SET_BALANCE)
         self.startAq()
         self.camaq.value = 1
         time.sleep(1)
@@ -436,15 +441,13 @@ class Camera:
         self.stopAq()
         primary_rate = self.framerate
         if len(self.primary_cams) <= 1:
-            self.cam_dict[self.primary_cams[0]].camq.put("getBalance")
+            self.cam_dict[self.primary_cams[0]].camq.put(CameraCommand.GET_BALANCE)
             rate = self.cam_dict[self.primary_cams[0]].camq_p2read.get()
             primary_rate = self.cam_dict[self.primary_cams[0]].actual_framerate = rate
-        for n, camID in enumerate(self.cam_dict):
-            if not self.cam_dict[camID].is_primary:
-                self.cam_dict[camID].actual_framerate = primary_rate / int(
-                    self.cam_dict[camID].decrease_val
-                )
-                self.cam_dict[camID].camq.put("getBalance")
+        for n, cam_d in enumerate(self.cam_dict.values()):
+            if not cam_d.is_primary:
+                cam_d.actual_framerate = primary_rate / int(cam_d.decrease_val)
+                cam_d.camq.put(CameraCommand.GET_BALANCE)
 
     def update_crop(self, value):
         self.crop = value
