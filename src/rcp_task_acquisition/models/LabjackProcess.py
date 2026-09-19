@@ -3,16 +3,11 @@ from multiprocessing import Process
 import numpy as np
 import ctypes
 
-if platform.system() == "Windows":
-    import win32api, win32process, win32con
-else:
-    win32api = win32process = win32con = None
-
-
 from labjack import ljm
 
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils import win_os
 
 logger = get_logger("./models/LabjackProcess")
 
@@ -99,9 +94,9 @@ class LabJackDataStream(Process):
     def _set_high_prio(
         self,
         *,
-        win32api=win32api,
-        win32process=win32process,
-        win32con=win32con,  # noqa
+        win32api=win_os.win32api,
+        win32process=win_os.win32process,
+        win32con=win_os.win32con,  # noqa
     ):
         if win32api is None:
             pass  # todo
