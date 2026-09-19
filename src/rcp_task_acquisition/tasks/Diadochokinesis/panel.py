@@ -10,7 +10,7 @@ from rcp_task_acquisition.tasks.Diadochokinesis.constants import (
 )
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panel/Diadochokinesis")
+logger = get_logger(__name__)
 
 
 class DdkPanel(TrialPanel):

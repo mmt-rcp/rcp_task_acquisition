@@ -5,7 +5,7 @@ from psychopy.visual import GratingStim, Window
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/displays")
+logger = get_logger(__name__)
 
 
 _lowStateTexture = np.full([16, 16], -1).astype(np.int8)

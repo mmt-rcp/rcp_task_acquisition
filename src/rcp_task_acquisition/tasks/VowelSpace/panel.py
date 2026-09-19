@@ -4,7 +4,7 @@ from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.VowelSpace.constants import VIDEO_PATHS
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panel/VowelSpace")
+logger = get_logger(__name__)
 
 
 class VowelSpacePanel(TrialPanel):

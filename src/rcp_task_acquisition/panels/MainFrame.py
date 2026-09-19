@@ -36,7 +36,7 @@ from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.task_acquisistion_version import __version__
 
-logger = get_logger("./panels/MainFrame")
+logger = get_logger(__name__)
 
 
 class MainFrame(wx.Frame):
