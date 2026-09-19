@@ -6,7 +6,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.VowelSpace import constants as c
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/VowelSpace")
+logger = get_logger(__name__)
 
 
 class VowelSpace(bases.StimulusBase):

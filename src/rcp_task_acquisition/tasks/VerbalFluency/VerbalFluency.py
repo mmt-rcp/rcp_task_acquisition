@@ -4,7 +4,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.VerbalFluency.constants import TRIAL_TIME, VERBAL_FLUENCY_PATHS
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/VerbalFluency")
+logger = get_logger(__name__)
 
 
 class VerbalFluency(bases.StimulusBase):

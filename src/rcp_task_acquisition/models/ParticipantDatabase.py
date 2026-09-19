@@ -4,7 +4,7 @@ from pathlib import Path
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/ParticipantDatabase")
+logger = get_logger(__name__)
 
 
 class ParticipantDatabase:

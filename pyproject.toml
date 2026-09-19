@@ -27,6 +27,8 @@ dependencies = [
 	"pywin32 >= 312, < 400 ; platform_system == 'Windows'",  # 312 is available since python 3.10 already.
 	"spinnaker_python >= 4.3, < 4.5",
 	"setuptools-scm >= 9.2.2, < 10",  # normally only necessary for build of project wheel
+	"verboselogs >= 1.6.2, < 2",
+	"coloredlogs >= 15, < 16",
 ]
 
 [project.optional-dependencies]
