@@ -49,7 +49,10 @@ class WarningHandler:
     def display(self):
         logger.debug(self.msg)
         warning_box = wx.MessageDialog(
-            parent=None, message=self.msg, caption="Warning!", style=wx.OK | wx.ICON_EXCLAMATION
+            parent=None,
+            message=self.msg,
+            caption="Warning!",
+            style=wx.OK | wx.ICON_EXCLAMATION | wx.STAY_ON_TOP,
         )
         warning_box.ShowModal()
         warning_box.Destroy()
