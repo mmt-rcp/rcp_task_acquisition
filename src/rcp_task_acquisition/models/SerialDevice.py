@@ -3,7 +3,7 @@ import serial
 from rcp_task_acquisition.utils.constants import BAUDRATE, WRITE_TIMEOUT
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/Serial")
+logger = get_logger(__name__)
 
 
 class SerialDevice:

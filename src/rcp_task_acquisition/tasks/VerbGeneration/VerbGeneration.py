@@ -6,7 +6,7 @@ import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/VerbGeneration")
+logger = get_logger(__name__)
 
 
 # Sets up display window, fixation cross, text pages and image stimuli

@@ -5,7 +5,7 @@ import wx.lib.dialogs
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/ParticipantMonitorPanel")
+logger = get_logger(__name__)
 
 
 def get_proportions(original_size, scaled_width):

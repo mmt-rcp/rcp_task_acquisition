@@ -8,7 +8,7 @@ from pathlib import Path, PurePath
 from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/deidentify_dates")
+logger = get_logger(__name__)
 
 import rcp_task_acquisition.utils.file_utils as fu
 from rcp_task_acquisition.utils.constants import CONFIG_FILE_PATH

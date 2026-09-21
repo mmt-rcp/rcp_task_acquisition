@@ -4,7 +4,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/UpdrsTap")
+logger = get_logger(__name__)
 
 
 class BasicTaps(bases.StimulusBase):

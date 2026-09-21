@@ -5,7 +5,7 @@ import wx
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/LabjackFrontend")
+logger = get_logger(__name__)
 
 
 class WarnCat(str, enum.Enum):

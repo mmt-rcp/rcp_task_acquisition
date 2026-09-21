@@ -2,7 +2,7 @@ import wx
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/TrialPanel")
+logger = get_logger(__name__)
 
 
 class TrialPanel(wx.Panel):

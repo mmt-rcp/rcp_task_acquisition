@@ -4,7 +4,7 @@ from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panel/UpdrsTap")
+logger = get_logger(__name__)
 
 
 class FingerTapPanel(TrialPanel):

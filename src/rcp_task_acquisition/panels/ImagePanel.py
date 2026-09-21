@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/ImagePanel")
+logger = get_logger(__name__)
 
 
 class ImagePanel(wx.Panel):

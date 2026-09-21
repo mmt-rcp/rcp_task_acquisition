@@ -1,18 +1,18 @@
-import platform
-from multiprocessing import Process
-import numpy as np
 import ctypes
 
+import numpy as np
 from labjack import ljm
 
-from rcp_task_acquisition.utils.constants import SCANS_PER_READ
-from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils import win_os
+from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 
-logger = get_logger("./models/LabjackProcess")
+
+logger = get_logger(__name__)
 
 
-class LabJackDataStream(Process):
+class LabJackDataStream(ProcessWithLogging):
     def __init__(
         self,
         arr_length,

@@ -6,7 +6,7 @@ from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/LaunchPanel")
+logger = get_logger(__name__)
 
 
 class LaunchPanel:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/task_acquisition_version")
+logger = get_logger(__name__)
 
 
 top_dir = Path(__file__).parent.parent.resolve()
