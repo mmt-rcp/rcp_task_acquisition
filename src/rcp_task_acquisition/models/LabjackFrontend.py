@@ -14,7 +14,7 @@ from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/LabjackFrontend")
+logger = get_logger(__name__)
 
 
 class LabjackFrontend:
