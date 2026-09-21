@@ -658,8 +658,8 @@ class HardwarePanel(wx.Panel):
                     else:
                         hardware.voltage_range.Hide()
                     self.Layout()
-            except:
-                pass
+            except Exception as err:
+                logger.exception("Error update lists: %s", err)
 
     def update_task(self):
         if self.task == None:

@@ -149,7 +149,8 @@ class Camera:
         self.initThreads()
         try:
             self.updateSettings(event)
-        except:
+        except Exception as err:
+            logger.exception("Error updating settings: %s", err)
             logger.info("\nTrying to fix cameras. Please wait...\n")
             self.deinitThreads()
             self.camReset(event)
@@ -157,7 +158,8 @@ class Camera:
 
             try:
                 self.updateSettings(event)
-            except:
+            except Exception as err:
+                logger.exception("Error reupdating settings: %s", err)
                 return False
         self.get_exposure(event)
         self.updateSettings(event)

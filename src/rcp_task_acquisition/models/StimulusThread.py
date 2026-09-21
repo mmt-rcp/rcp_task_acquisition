@@ -146,7 +146,8 @@ class StimulusThread(Process):
                             trial_data = ast.literal_eval(msgq_data)
                         else:
                             trial_data = msgq_data
-                    except:
+                    except Exception as err:
+                        logger.exception("Cannot evaluate stim thread data: %s", err)
                         trial_data = msgq_data
                     # trial_data = trial_data.replace("(", "")
                     self.stimulus.update_data(trial_data)
