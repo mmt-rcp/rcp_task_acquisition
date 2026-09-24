@@ -241,21 +241,12 @@ class LaunchPanel:
 
     def remove_participants(self, event):
         self.ignore_pop_up = True
-        user_string, user_index = "", -1
-
-        id_string = self.current_list[self.participant_id.GetSelection()]
-        for user_index, user_string in enumerate(self.participant_list):
-            if user_string == id_string:
-                user = user_string
-                index = user_index
-                break
-        # user = self.participant_list[index]
-        if index == -1:
+        id_to_delete = self.participant_id.GetValue()
+        if id_to_delete == "":
             return
-        id_to_delete = self.participant_tuple[index][0]
         dlg = wx.MessageDialog(
             None,
-            f"Are you sure you want to delete {user}?",
+            f"Are you sure you want to delete {id_to_delete}?",
             "Warning",
             wx.YES_NO | wx.ICON_QUESTION,
         )
