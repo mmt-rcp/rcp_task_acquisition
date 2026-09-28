@@ -3,6 +3,7 @@ from multiprocessing import Process
 import numpy as np
 import ctypes
 
+import labjack.ljm.ljm
 from labjack import ljm
 
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
@@ -133,7 +134,10 @@ class LabJackDataStream(Process):
             self.actualscanRate.value = ljm.eStreamStart(
                 self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
             )
-        except:
+        except BaseException as err:
+            if isinstance(err, ljm.ljm.LJMError):
+                if err.errorCode == 2605:
+                    ljm.eStreamStop(self.handle)
             ljm.closeAll()
             self.handle = ljm.openS("ANY", "ANY", "ANY")
             ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
