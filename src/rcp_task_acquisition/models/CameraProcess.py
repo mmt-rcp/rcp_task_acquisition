@@ -483,7 +483,7 @@ class multiCam_DLC_Cam(Process):
         if ctx.method == "crop":
             roi = self.frmdim
             logger.debug(f"roi: {self.frmdim}")
-            record_frame_rate = self.framerate  # int(user_cfg['cam_config']['framerate'])
+            ctx.record_frame_rate = self.framerate  # int(user_cfg['cam_config']['framerate'])
             # Set width
             node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
             width_max = node_width.GetMax()
@@ -524,7 +524,7 @@ class multiCam_DLC_Cam(Process):
         else:
             ctx.aqW = int(self.frmdim[3] * self.dwnsmplfac)
             ctx.aqH = int(self.frmdim[1] * self.dwnsmplfac)
-            record_frame_rate = 10
+            ctx.record_frame_rate = 10
 
         frame_results = np.zeros([ctx.aqH, ctx.aqW, 3], "ubyte")
         ctx.frameSml = np.zeros(
@@ -536,7 +536,7 @@ class multiCam_DLC_Cam(Process):
 
         # Ensure desired frame rate does not exceed the maximum
         max_frmrate = cam.AcquisitionFrameRate.GetMax()
-        ctx.frmrate_time_to_set = min(max_frmrate, record_frame_rate)
+        ctx.frmrate_time_to_set = min(max_frmrate, ctx.record_frame_rate)
         # cam.AcquisitionFrameRate.SetValue(frmrate_time_to_set)
         if not ctx.ismaster:
             cam.AcquisitionFrameRateEnable.SetValue(False)
@@ -544,10 +544,10 @@ class multiCam_DLC_Cam(Process):
             cam.AcquisitionFrameRate.SetValue(ctx.frmrate_time_to_set)
         exposure_time_to_set = cam.ExposureTime.GetValue()
         logger.info(
-            f"max fr: {max_frmrate}, record: {record_frame_rate}, self.framerate: {self.framerate}"
+            f"max fr: {max_frmrate}, record: {ctx.record_frame_rate}, self.framerate: {self.framerate}"
         )
         logger.info(f"exposure: {exposure_time_to_set}")
-        # record_frame_rate = cam.AcquisitionFrameRate.GetValue()
+        # ctx.record_frame_rate = cam.AcquisitionFrameRate.GetValue()
 
         cam.AcquisitionFrameRateEnable.SetValue(False)
         if cam.ExposureAuto.GetAccessMode() != PySpin.RW:
@@ -562,7 +562,7 @@ class multiCam_DLC_Cam(Process):
         ctx.max_exposure = cam.ExposureTime.GetMax()
         logger.debug(f"{ctx.camStr} max exposure: {ctx.max_exposure}")
         exposure_time_request = ctx.max_exposure  # int(user_cfg[camStr]['exposure'])
-        exposure_time_to_set = floor(1 / record_frame_rate * 1000 * 1000)
+        exposure_time_to_set = floor(1 / ctx.record_frame_rate * 1000 * 1000)
         exposure_time_to_set = min(exposure_time_request, exposure_time_to_set)
         # max_exposure = cam.ExposureTime.GetMax()
         ctx.max_exposure = min(ctx.max_exposure, exposure_time_to_set) * 0.75
@@ -614,8 +614,8 @@ class multiCam_DLC_Cam(Process):
         else:
             cam.AcquisitionFrameRate.SetValue(ctx.frmrate_time_to_set)
         if ctx.ismaster:
-            record_frame_rate = cam.AcquisitionFrameRate.GetValue()
-            self.camq_p2read.put(record_frame_rate)
+            ctx.record_frame_rate = cam.AcquisitionFrameRate.GetValue()
+            self.camq_p2read.put(ctx.record_frame_rate)
         logger.info(f"Frame rate {ctx.camStr}: {self.framerate}")
 
     def create_primary(self, cam):
