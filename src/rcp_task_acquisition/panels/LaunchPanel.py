@@ -5,6 +5,7 @@ from rcp_task_acquisition.panels.HardwarePanel import HardwarePanel
 from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger("./panels/LaunchPanel")
 
@@ -29,7 +30,8 @@ class LaunchPanel:
             text box for any overarching participant notes. final string will be added to the metadata
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, rcp_context: RcpRunContext):
+        self._rcp_context = rcp_context
         self.args = None
         self.task = None
         self.is_hidden = False
@@ -45,7 +47,7 @@ class LaunchPanel:
         }
         # Basic panel set up. 3 different steps (Protocol, metadata and buttons) to help with
         # organization and padding between sections
-        self.participant_panel = ParticipantPanel(None)
+        self.participant_panel = ParticipantPanel(None, rcp_context=self._rcp_context)
         self.current_list = []
         self.regular_size = wx.Size(650, 400)
         self.hardware_size = wx.Size(650, 800)
@@ -60,7 +62,7 @@ class LaunchPanel:
         self.panel.SetupScrolling(
             scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False
         )
-        self.hardware_panel = HardwarePanel(task_config, self.panel)
+        self.hardware_panel = HardwarePanel(task_config, self.panel, rcp_context=self._rcp_context)
         self.hardware_panel.Hide()
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_metadata(button_width), 0, wx.EXPAND | wx.ALL, 10)

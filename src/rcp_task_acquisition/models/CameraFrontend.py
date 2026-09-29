@@ -399,7 +399,7 @@ class Camera:
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
     def updateSettings(self, event):
-        self.user_cfg = file_utils.read_config("userdata.yaml")
+        # self.user_cfg = file_utils.read_config("userdata.yaml")  UNUSED
         self.aqW = []
         self.aqH = []
         self.recSet = []

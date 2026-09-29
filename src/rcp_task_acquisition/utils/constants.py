@@ -11,11 +11,11 @@ CODE_DIR = Path(__file__).resolve().parent.parent
 STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(
     CODE_DIR.resolve().parent.parent, "config_files"
 )
-config_path = os.path.join(CONFIG_FILE_PATH, "userdata.yaml")
+DEFAULT_USER_CONFIG_PATH = Path(CONFIG_FILE_PATH, "userdata.yaml")
 ruamelFile = ruamel.yaml.YAML()
 
-with open(config_path, "r") as config_file:
-    config = ruamelFile.load(config_file)
+with DEFAULT_USER_CONFIG_PATH.open("r") as fh:
+    config = ruamelFile.load(fh)
 
 
 RAW_DATA_DIR = Path(config["RawDataDir"])
@@ -63,27 +63,7 @@ CAMERA_HEADERS = [
 HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]
 
 
-HARDWARE_LIST = [
-    "Photodetector",
-    "Subject Mic",
-    "Experimenter Mic",
-    "PC Audio",
-    "Grip Force Sensor",
-    "Force Sensor X",
-    "Force Sensor Y",
-    "Force Sensor Z",
-    "Camera Sync TTL",
-    "Grasp Start Pad",
-    "Extra Digital In 1",
-    "Extra Digital In 2",
-    "Slow Barcode",
-    "Return From DS7A",
-    "Trigger to DS7A",
-    "TTL to E-Phys",
-    "Digital Accessory",
-]
-
-LABJACK_PIN_LIST = [
+LABJACK_PIN_LIST: list[str] = [
     "AIN0",
     "AIN1",
     "AIN2",
