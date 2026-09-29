@@ -110,6 +110,15 @@ class LabJackDataStream(Process):
                     "Could not set current process to high prio: %s", win32api.GetLastError()
                 )
 
+    def _attempt_connect(self, aScanList):
+        numAddresses = len(aScanList)
+        self.handle = ljm.openS("ANY", "ANY", "ANY")
+        ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
+        ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
+        self.actualscanRate.value = ljm.eStreamStart(
+            self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
+        )
+
     def run(self):
         self._set_high_prio()
         first_write = True
@@ -126,34 +135,28 @@ class LabJackDataStream(Process):
         logger.debug(aScanList)
         numAddresses = len(aScanList)
         try:
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
+            self._attempt_connect(aScanList)
         except BaseException as err:
             if isinstance(err, ljm.ljm.LJMError):
                 if err.errorCode == 2605:
                     ljm.eStreamStop(self.handle)
             ljm.closeAll()
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
+            self._attempt_connect(aScanList)
         self.stream_started.value = True
         while not self.finished.value:
             if self.create_csv.value:
                 self.labjack_csv = self.folder_queue.get()
                 write_to_csv = True
                 self.create_csv.value = False
-            data = ljm.eStreamRead(self.handle)
+            try:
+                data = ljm.eStreamRead(self.handle)
+            except ljm.ljm.LJMError as err:
+                if err.errorCode == 1263:
+                    ljm.eStreamStop(self.handle)
+                    ljm.closeAll()
+                    self._attempt_connect(aScanList)
+                data = ljm.eStreamRead(self.handle)
+
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
                 logger.warning("ERROR!! OVERFLOW!!")
