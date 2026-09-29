@@ -40,7 +40,7 @@ This is the outline for installing this program with the expected hardware confi
         - Always accept any license during installation when prompted
         - Use all default settings unless stated here
     - NVIDIA Graphics Driver (580.88-quadro-rtx-desktop-notebook-win10-win11-64bit-international-dch-whql.exe)
-    - Spinnaker SDK (4.4.0.246)
+    - Spinnaker SDK (4.3.0.190)
         - Download requires create account
         - Deselect **Agree to allow analytics..** and select **next**
         - Select **Application Development** and select **next**
