@@ -24,7 +24,7 @@ class App(wx.App):
             parent=None,
             title="Loading application",
         )
-        diag.SetSize(wx.GetDisplaySize())
+        # diag.SetSize(wx.GetDisplaySize())
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.AddStretchSpacer()
         txt = wx.StaticText(
@@ -85,9 +85,11 @@ class App(wx.App):
             # could be a wheel install.. todo
             up2date_status = None
         if up2date_status is not None:
-            wx.CallAfter(lambda: wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP))
+            wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP)
 
     def OnInit(self):
+        self._check_repo_status()
+
         if False:
             # eventually use image from file:
             self._show_splash_screen()
@@ -102,8 +104,6 @@ class App(wx.App):
         return True
 
     def _load_imports(self):
-        self._check_repo_status()
-
         from rcp_task_acquisition.panels.SwitchPanel import SwitchPanel  # delayed import on purpose
 
         self.SwitchPanel = SwitchPanel
