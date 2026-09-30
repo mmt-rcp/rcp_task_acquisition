@@ -6,7 +6,7 @@ from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.NBack.configs import NBACK_TYPES
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/NBack")
+logger = get_logger(__name__)
 
 
 class NbackPanel(TrialPanel):
