@@ -652,11 +652,11 @@ class HardwarePanel(wx.Panel):
                 choice_list.SetItems(new_options)
                 if selection != -1:
                     choice_list.SetSelection(new_options.index(selection))
-
-                    if "A" in primary_list[original_selection]:
-                        hardware.voltage_range.Show()
-                    else:
-                        hardware.voltage_range.Hide()
+                    if isinstance(hardware, HardwareRow):
+                        if "A" in primary_list[original_selection]:
+                            hardware.voltage_range.Show()
+                        else:
+                            hardware.voltage_range.Hide()
                     self.Layout()
             except Exception as err:
                 logger.exception("Error update lists: %s", err, stack_info=True)
