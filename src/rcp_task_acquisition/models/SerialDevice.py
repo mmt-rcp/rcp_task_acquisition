@@ -13,18 +13,17 @@ class SerialDevice:
 
     def init_serial(self):
         for i in range(2, 10):
+            port = f"COM{i}"
             try:
                 # self.ser = serial.Serial('/dev/ttyACM'+str(i),
                 #                          baudrate=self.baudrate,
                 #                          write_timeout = self.write_timeout)
-                self.ser = serial.Serial(
-                    "COM" + str(i), baudrate=BAUDRATE, write_timeout=WRITE_TIMEOUT
-                )
+                self.ser = serial.Serial(port, baudrate=BAUDRATE, write_timeout=WRITE_TIMEOUT)
                 self.serSuccess = True
                 logger.info("Serial connected")
                 break
             except Exception as err:
-                logger.exception("Failed tried open serial #%s: %s", i, err)
+                logger.debug("Failed tried open serial #%s: %s", i, err)
             if self.serSuccess:
                 break
         if not self.serSuccess:
