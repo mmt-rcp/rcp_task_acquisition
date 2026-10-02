@@ -13,11 +13,12 @@ from rcp_task_acquisition.models.AsyncVideoWriter import AsyncFFmpegGPUWriter  #
 from rcp_task_acquisition.utils import file_utils
 from rcp_task_acquisition.utils.camera_utils import identify_dropped_frames
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
 
-logger = get_logger("./models/CameraProcess")
+logger = get_logger(__name__)
 
 
-class multiCam_DLC_Cam(Process):
+class multiCam_DLC_Cam(ProcessWithLogging):
     def __init__(
         self, camq, camq_p2read, camID, idList, frmdim, aq, frm, array4feed, frmGrab, dwnsmplfac
     ):

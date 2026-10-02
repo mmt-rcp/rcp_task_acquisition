@@ -6,7 +6,7 @@ from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/LaunchPanel")
+logger = get_logger(__name__)
 
 
 class LaunchPanel:
@@ -74,7 +74,7 @@ class LaunchPanel:
         self.participant_list, self.participant_tuple = (
             self.participant_panel.get_all_participants()
         )
-        print(f"list: {self.participant_list}, tuple: {self.participant_tuple}")
+        logger.info(f"list: {self.participant_list}, tuple: {self.participant_tuple}")
         self.participant_id.SetItems(self.participant_list)
 
     def _setup_metadata(self, button_width):
@@ -219,7 +219,7 @@ class LaunchPanel:
             self.update_list_bool = False
             current_text = self.participant_id.GetValue()
 
-            print(f"current_text: {current_text}")
+            logger.info(f"current_text: {current_text}")
             test_text = current_text.replace(" ", "").lower()
             if test_text == "":
                 current_text = test_text
@@ -301,7 +301,7 @@ class LaunchPanel:
         new_index = -1
         self.get_participants(None)
         for index, current_id in enumerate(self.participant_tuple):
-            print(f"here: {index}, {current_id}")
+            logger.info(f"here: {index}, {current_id}")
             if current_id[0] == participant_id:
                 new_index = index
         self.participant_id.SetSelection(new_index)
@@ -342,8 +342,7 @@ class LaunchPanel:
         participant_id = self.participant_id.GetValue()
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
-        logger.debug(f"participant panel: {self.participant_tuple}")
-        print(f"participant panel: {self.participant_tuple}")
+        logger.info(f"participant panel: {self.participant_tuple}")
         self.dialog.SetSize(self.regular_size)
         self.panel.SetupScrolling(
             scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False

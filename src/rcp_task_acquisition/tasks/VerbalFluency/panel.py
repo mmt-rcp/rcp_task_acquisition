@@ -12,7 +12,7 @@ from rcp_task_acquisition.tasks.VerbalFluency.constants import (
 )
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/VerbalFluencyPanel")
+logger = get_logger(__name__)
 
 
 class VerbalFluencyPanel(TrialPanel):

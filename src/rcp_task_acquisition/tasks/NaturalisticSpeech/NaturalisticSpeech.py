@@ -7,7 +7,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.NaturalisticSpeech.constants import IMG_DIR, NON_IMAGE_TASKS
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/NaturalisticSpeech")
+logger = get_logger(__name__)
 
 
 # Sets up display window, fixation cross, text pages and image stimuli
