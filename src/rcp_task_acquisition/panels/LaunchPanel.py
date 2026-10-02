@@ -292,6 +292,7 @@ class LaunchPanel:
         self.panel.Destroy()
         self.participant_panel.exit_event()
         self.dialog.Destroy()
+        wx.Exit()
 
     def add_participant(self, event):
         self.ignore_pop_up = True

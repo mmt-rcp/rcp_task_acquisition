@@ -18,3 +18,4 @@ spinnaker_python >= 4.3, < 4.5 ; python_version >= '3.12'
 verboselogs >= 1.6.2, < 2
 coloredlogs >= 15, < 16
 setuptools-scm >= 9.2.2, < 10
+GitPython >= 3.1, < 4  # to get repo status vs remote
