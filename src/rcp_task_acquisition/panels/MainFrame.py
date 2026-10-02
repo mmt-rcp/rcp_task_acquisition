@@ -356,10 +356,10 @@ class MainFrame(wx.Frame):
                 return
             try:
                 self.msgq.put(Msg.UPDATE_DATA)
-
                 data = str(self.trial_panel.get_result())
                 self.msgq.put(data)
-            except:
+            except Exception as err:
+                logger.exception("Error requesting update data and get result: %s", err)
                 self.results_list.append(self.trial_panel.get_result())
 
             self.trial_panel.run_trial(self.count)
@@ -798,14 +798,14 @@ class MainFrame(wx.Frame):
         try:
             self.msgq.put(Msg.CLOSE_WINDOW)
             self.thread.join()
-        except:
-            logger.debug("no current stimulus thread")
+        except Exception as err:
+            logger.debug("no current stimulus thread: %s", err, exc_info=True)
 
         try:
             self.trial_panel.close_task_panel()
             self.trial_panel.Destroy()
-        except:
-            pass
+        except Exception as err:
+            logger.debug("error close task panel: %s", err, exc_info=True)
         self.ctrl_panel.Destroy()
         self.statusbar.SetStatusText("")
         self.Destroy()
@@ -974,8 +974,8 @@ class MainFrame(wx.Frame):
         try:
             self.repeat_button = self.trial_panel.repeat_trial
             self.repeat_button.Bind(wx.EVT_TOGGLEBUTTON, self.repeat_event)
-        except:
-            pass
+        except Exception as err:
+            logger.debug("Error binding toggle button: %s", err, exc_info=True)
         self.trial_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
         self.initCams(event)
         self.lj.update_hardware(hardware_lists)

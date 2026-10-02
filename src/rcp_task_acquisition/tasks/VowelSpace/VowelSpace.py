@@ -93,7 +93,6 @@ class VowelSpace(bases.StimulusBase):
             CHUNK = 1024
             file = c.VS_PATHS[trial]
             import wave
-
             import pyaudio
 
             path = os.path.join(c.STIM_DIR, file)
@@ -122,5 +121,5 @@ class VowelSpace(bases.StimulusBase):
             stream.close()
             p.terminate()
 
-        except:
-            logger.warning("No file, continuing without....")
+        except Exception as err:
+            logger.warning("Error playing vowel phrase: %s", err, exc_info=True)

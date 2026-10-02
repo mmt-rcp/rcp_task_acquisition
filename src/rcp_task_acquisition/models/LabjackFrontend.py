@@ -187,8 +187,8 @@ class LabjackFrontend:
         self.graph_panel.draw()
         try:
             self.labjack_process.join()
-        except:
-            logger.info("No open Labjack process")
+        except Exception as err:
+            logger.info("No open Labjack process: %s", err)
         logger.info("labjack_stopped")
         return self.scan_rate.value
 
