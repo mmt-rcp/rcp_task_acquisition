@@ -12,7 +12,7 @@ except ModuleNotFoundError:
     git = None
 
 
-logger = get_logger("./utils/displays")
+logger = get_logger(__name__)
 
 
 DEFAULT_REMOTE_BRANCH = os.getenv("RCP_CHECK_REMOTE_BRANCH", "main")
