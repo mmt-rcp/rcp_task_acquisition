@@ -13,7 +13,7 @@ from rcp_task_acquisition.tasks.ToneTaps.constants import (
 from rcp_task_acquisition.utils.constants import GLOBAL_CLOCK
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/ToneTaps")
+logger = get_logger(__name__)
 
 
 # Parameters

@@ -14,7 +14,7 @@ from rcp_task_acquisition.utils.constants import CODE_DIR
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/NBack")
+logger = get_logger(__name__)
 
 LETTERS = ["D", "F", "H", "J", "K", "L", "M", "S", "T", "V"]
 

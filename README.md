@@ -40,7 +40,7 @@ This is the outline for installing this program with the expected hardware confi
         - Always accept any license during installation when prompted
         - Use all default settings unless stated here
     - NVIDIA Graphics Driver (580.88-quadro-rtx-desktop-notebook-win10-win11-64bit-international-dch-whql.exe)
-    - Spinnaker SDK (4.4.0.246)
+    - Spinnaker SDK (4.3.0.190)
         - Download requires create account
         - Deselect **Agree to allow analytics..** and select **next**
         - Select **Application Development** and select **next**
@@ -57,7 +57,7 @@ This is the outline for installing this program with the expected hardware confi
 1. In the search bar at the bottom of the screen, search for and select **Anaconda Prompt**
 2. The code can be installed in any part of computer but for following this installation, it will be installed in **Documents**
     - `cd Documents`  # Always
-    - `conda create -n rcp-task-acquisition python=3.12`  # only first time
+    - `conda create -n rcp-task-acquisition python=3.10`  # only first time
     - `conda activate rcp-task-acquisition` # Always
     - `conda install -c conda-forge pywinhook`  # only first time
       // other possibility is to get Visual C++ Build tools
@@ -188,4 +188,3 @@ The code should come with the defaults in labjack already specified, however if 
    - 1
    graph: ''
    ```
-

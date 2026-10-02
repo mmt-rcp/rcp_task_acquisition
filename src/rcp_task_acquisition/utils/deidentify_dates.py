@@ -8,7 +8,7 @@ from pathlib import Path, PurePath
 from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/deidentify_dates")
+logger = get_logger(__name__)
 
 import rcp_task_acquisition.utils.file_utils as fu
 from rcp_task_acquisition.utils.constants import CONFIG_FILE_PATH
@@ -20,7 +20,7 @@ def set_all_times(path, dt):
 
     pywintypes = win_os.pywintypes
     win32con = win_os.win32con
-    win32file = win_os.win32api
+    win32file = win_os.win32file
 
     ts = dt.timestamp()
     os.utime(path, (ts, ts))  # accessed + modified
@@ -127,4 +127,4 @@ def run_all_dates():
 
     deidentify = DateDeidentification(config)
     deidentify.deidentify_all_data()
-    print("Data deidentification done!")
+    logger.info("Data deidentification done!")
