@@ -16,7 +16,7 @@ from rcp_task_acquisition.utils.constants import (
 )
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/bases.py")
+logger = get_logger(__name__)
 
 
 class StimulusBase:

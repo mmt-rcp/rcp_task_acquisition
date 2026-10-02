@@ -6,7 +6,7 @@ import rcp_task_acquisition.tasks.NaturalisticSpeech.constants as c
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/NaturalisticSpeechPanel")
+logger = get_logger(__name__)
 
 
 class NaturalisticSpeechPanel(TrialPanel):

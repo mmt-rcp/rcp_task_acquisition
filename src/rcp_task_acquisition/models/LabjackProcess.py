@@ -1,19 +1,19 @@
-import platform
-from multiprocessing import Process
-import numpy as np
 import ctypes
+from typing import Optional, Any
 
-import labjack.ljm.ljm
+import numpy as np
 from labjack import ljm
 
-from rcp_task_acquisition.utils.constants import SCANS_PER_READ
-from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils import win_os
+from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 
-logger = get_logger("./models/LabjackProcess")
+
+logger = get_logger(__name__)
 
 
-class LabJackDataStream(Process):
+class LabJackDataStream(ProcessWithLogging):
     def __init__(
         self,
         arr_length,
@@ -91,6 +91,7 @@ class LabJackDataStream(Process):
         voltage_ranges.append(0)
         self.input_names = input_names
         self.voltage_ranges = voltage_ranges
+        self.handle: Optional[Any] = None  # ljm handle
 
     def _set_high_prio(
         self,
@@ -134,14 +135,17 @@ class LabJackDataStream(Process):
             aScanList.append(2580)
         logger.debug(aScanList)
         numAddresses = len(aScanList)
+
         try:
             self._attempt_connect(aScanList)
         except BaseException as err:
+            logger.exception("Failed open LJM: %s", err)
             if isinstance(err, ljm.ljm.LJMError):
                 if err.errorCode == 2605:
                     ljm.eStreamStop(self.handle)
             ljm.closeAll()
             self._attempt_connect(aScanList)
+
         self.stream_started.value = True
         while not self.finished.value:
             if self.create_csv.value:
@@ -248,8 +252,8 @@ class LabJackDataStream(Process):
     def stop(self):
         try:
             ljm.eStreamStop(self.handle)
-        except:
-            logger.debug("labjack stream already stopped")
+        except Exception as err:
+            logger.debug("labjack stream already stopped: %s", err)
         self.create_csv.value = False
         self.session_file = ""
         self.labjack_csv = ""
