@@ -3,7 +3,7 @@ import pandas as pd
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/camera_utils")
+logger = get_logger(__name__)
 
 
 def identify_dropped_frames(timestamp_file, frame_rate):

@@ -15,7 +15,7 @@ from rcp_task_acquisition.utils import file_utils
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/CameraFrontend")
+logger = get_logger(__name__)
 
 
 @dataclass

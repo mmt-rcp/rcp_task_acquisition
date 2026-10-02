@@ -10,7 +10,7 @@ from rcp_task_acquisition.utils.constants import (
 )
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/file_utils")
+logger = get_logger(__name__)
 
 
 def get_screen_config():
