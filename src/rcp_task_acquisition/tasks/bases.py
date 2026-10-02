@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pyaudio
 from psychopy import core, visual
+from psychopy.visual.movies import MovieStim
 from psychopy.visual.vlcmoviestim import VlcMovieStim
 
 from rcp_task_acquisition.utils.constants import (
@@ -152,15 +153,16 @@ class StimulusBase:
             return
 
         logger.debug(path)
-        video = VlcMovieStim(
-            self.display,
-            path,
-            size=self.display.size,
-            pos=[0, 0],
-            flipVert=False,
-            flipHoriz=False,
-            loop=False,
-        )
+        video = MovieStim(self.display, path, size=self.display.size, pos=[0, 0])
+        # video = VlcMovieStim(
+        #     self.display,
+        #     path,
+        #     size=self.display.size,
+        #     pos=[0, 0],
+        #     flipVert=False,
+        #     flipHoriz=False,
+        #     loop=False,
+        # )
 
         video.play()
         while video.status != visual.FINISHED:
@@ -171,7 +173,11 @@ class StimulusBase:
                 self.video_status.value = VideoStatus.PLAY.value
             elif self.video_status.value == VideoStatus.STOP.value:
                 self.video_status.value = VideoStatus.FINISHED.value
-                video.stop()
+                try:
+                    video.stop()
+                except Exception as err:
+                    logger.error("Error stopping video, but continuing .. error: %s", err)
+                    # see https://github.com/psychopy/psychopy/issues/7793
                 self.display.idle(time_list=[])
                 self.video_lock.set()
                 self.video_lock.clear()
