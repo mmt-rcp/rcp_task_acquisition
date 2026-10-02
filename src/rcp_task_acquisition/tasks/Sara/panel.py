@@ -5,7 +5,7 @@ from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.Sara.constants import ASSESMENTS
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/SaraPanel")
+logger = get_logger(__name__)
 
 
 class SaraPanel(TrialPanel):

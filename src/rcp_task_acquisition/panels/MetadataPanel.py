@@ -5,7 +5,7 @@ import wx.lib.scrolledpanel as scrolled
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/MetadataPanel")
+logger = get_logger(__name__)
 
 
 @dataclass

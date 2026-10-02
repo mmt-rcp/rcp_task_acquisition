@@ -14,8 +14,9 @@ from rcp_task_acquisition.utils.constants import (
 )
 from rcp_task_acquisition.utils.file_utils import read_config, write_config
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
 
-logger = get_logger("./panels/HardwarePanel")
+logger = get_logger(__name__)
 
 
 # keeping track of each row for the hardware/camera selection
@@ -43,7 +44,7 @@ class CameraRow:
     in_use_protocol: bool = False
 
 
-class CamProcess(Process):
+class CamProcess(ProcessWithLogging):
     """
     For some reason the PySpin instance does not like being created on the main thread.
     (it works here and then will cause freezing when trying to run the main gui)
