@@ -21,8 +21,9 @@ from rcp_task_acquisition.tasks.VerbGeneration.VerbGeneration import VerbGenerat
 from rcp_task_acquisition.tasks.VowelSpace.VowelSpace import VowelSpace
 from rcp_task_acquisition.utils.displays import Window
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
 
-logger = get_logger("./models/StimulusThread")
+logger = get_logger(__name__)
 
 
 class Msg(str, Enum):
@@ -40,7 +41,7 @@ class Msg(str, Enum):
     SEND_METADATA = "send_metadata"
 
 
-class StimulusThread(Process):
+class StimulusThread(ProcessWithLogging):
     def __init__(
         self,
         msgq,
@@ -146,7 +147,8 @@ class StimulusThread(Process):
                             trial_data = ast.literal_eval(msgq_data)
                         else:
                             trial_data = msgq_data
-                    except:
+                    except Exception as err:
+                        logger.exception("Cannot evaluate stim thread data: %s", err)
                         trial_data = msgq_data
                     # trial_data = trial_data.replace("(", "")
                     self.stimulus.update_data(trial_data)
