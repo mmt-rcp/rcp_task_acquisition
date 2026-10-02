@@ -14,7 +14,7 @@ from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/LabjackFrontend")
+logger = get_logger(__name__)
 
 
 class LabjackFrontend:
@@ -105,7 +105,7 @@ class LabjackFrontend:
         self.button_list = []
         self.extended_list = []
         for index, item in enumerate(list(self.all_hardware[1])):
-            print(f"self.all_hardware: {item}")
+            logger.info(f"self.all_hardware: {item}")
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
                 logger.debug(f"hardware: {self.all_hardware[1][index]}")
@@ -121,7 +121,7 @@ class LabjackFrontend:
             #         self.button_list.append((int(item[-1]), "e"))
             else:
                 self.analog_list.append(item)
-        print(
+        logger.info(
             f"digital: {self.digital_list}, extended: {self.extended_list}, Analog: {self.analog_list}, button: {self.button_list}"
         )
         self.inputs_list = [self.analog_list, self.digital_list, self.extended_list]
@@ -187,8 +187,8 @@ class LabjackFrontend:
         self.graph_panel.draw()
         try:
             self.labjack_process.join()
-        except:
-            logger.info("No open Labjack process")
+        except Exception as err:
+            logger.info("No open Labjack process: %s", err)
         logger.info("labjack_stopped")
         return self.scan_rate.value
 

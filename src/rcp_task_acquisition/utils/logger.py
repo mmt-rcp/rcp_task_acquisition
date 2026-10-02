@@ -1,12 +1,15 @@
-import datetime
 import logging
 import os
 from pathlib import Path
 
-from rcp_task_acquisition.utils.constants import RAW_DATA_DIR
+import rcp_task_acquisition
+from rcp_task_acquisition.utils.logging import get_verbose_logger
+from rcp_task_acquisition.utils.trial import get_new_log_file
 
 
-def get_logger(name: str = "cart") -> logging.Logger:
+def _get_logger(name: str = "cart", *, log_filename=None) -> logging.Logger:
+    # NB: old implementation, see new utils.logging.get_verbose_logger
+    # keeping for now as ref.
     """
     Get a logger with both file and console output.
 
@@ -17,14 +20,9 @@ def get_logger(name: str = "cart") -> logging.Logger:
         logging.Logger: Configured logger instance
     """
     # log_dir = Path(RAW_DATA_DIR+ "/logs") #Path("/home/rcp/task-acquisition/logs")
-    date_string = datetime.datetime.now().strftime("%Y%m%d")
-    log_str = os.path.join(RAW_DATA_DIR, date_string)
-    log_dir = Path(log_str)
-    # Ensure the log directory exists
-    log_dir.mkdir(parents=True, exist_ok=True)
+    if log_filename is None:
+        log_filename = get_new_log_file()
 
-    # Log file name
-    log_filename = os.path.join(log_dir, f"{date_string}_log.log")
     if not os.path.exists(log_filename):
         open(log_filename, "w").close()
 
@@ -54,3 +52,12 @@ def get_logger(name: str = "cart") -> logging.Logger:
         logger.addHandler(console_handler)
 
     return logger
+
+
+def get_logger(name_path: str):
+    rep = name_path.split(".")
+    if rep[0] == "rcp_task_acquisition":
+        rep[0] = "rcp"
+    else:
+        rep = ["rcp"] + rep
+    return get_verbose_logger(".".join(rep))

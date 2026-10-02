@@ -9,7 +9,7 @@ from rcp_task_acquisition.models.ParticipantDatabase import ParticipantDatabase
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 
-logger = get_logger("./panels/ParticipantPanel")
+logger = get_logger(__name__)
 
 
 class ParticipantPanel:

@@ -8,7 +8,7 @@ from rcp_task_acquisition.panels.MainFrame import MainFrame
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 
-logger = get_logger("./panels/SwitchPanel")
+logger = get_logger(__name__)
 
 
 class ActivePanel(Enum):

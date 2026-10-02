@@ -18,6 +18,10 @@ with DEFAULT_USER_CONFIG_PATH.open("r") as fh:
     config = ruamelFile.load(fh)
 
 
+def get_rcp_config() -> dict:
+    return config
+
+
 RAW_DATA_DIR = Path(config["RawDataDir"])
 VIDEO_DIR = Path(config["VideoDir"])
 

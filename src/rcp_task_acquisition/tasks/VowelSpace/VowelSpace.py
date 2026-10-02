@@ -6,7 +6,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.VowelSpace import constants as c
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/VowelSpace")
+logger = get_logger(__name__)
 
 
 class VowelSpace(bases.StimulusBase):
@@ -93,7 +93,6 @@ class VowelSpace(bases.StimulusBase):
             CHUNK = 1024
             file = c.VS_PATHS[trial]
             import wave
-
             import pyaudio
 
             path = os.path.join(c.STIM_DIR, file)
@@ -122,5 +121,5 @@ class VowelSpace(bases.StimulusBase):
             stream.close()
             p.terminate()
 
-        except:
-            logger.warning("No file, continuing without....")
+        except Exception as err:
+            logger.warning("Error playing vowel phrase: %s", err, exc_info=True)

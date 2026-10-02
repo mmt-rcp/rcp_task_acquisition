@@ -1,25 +1,95 @@
-# set up matplotlib to be compatible on commandline/spyder
+import multiprocessing
+import os
+import shlex
+import sys
+
 import matplotlib
 import wx
 
 from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 
+from rcp_task_acquisition.utils.constants import get_rcp_config
+
+# set up matplotlib to be compatible on commandline/spyder
 matplotlib.use("qtagg")
 
+from rcp_task_acquisition.utils import logging, trial
 from rcp_task_acquisition.panels.SwitchPanel import SwitchPanel
 
 
 def run_app():
-    app = wx.App()
+
+    console_start_log_level = os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO")
+    logging.setup_logging(
+        multiprocess_enabled=True,
+        date_format=logging.DateTimeFormats.hour_time_precise,
+        time_precision=3,
+        console_handler_level=console_start_log_level,
+    )
+
+    cfg = get_rcp_config()
     user_cfg_path, user_cfg, task_cfg_path, tasks_cfg = config.load_rcp_config()
     rcp_context = RcpRunContext(
         config_file_path=user_cfg_path,
         user_config=user_cfg,
         tasks_config=tasks_cfg,
     )
-    SwitchPanel(rcp_context=rcp_context)
-    app.MainLoop()
+
+    unit_serial = cfg.get("unitRef")
+    log_file_path = trial.get_new_log_file(unit_serial=unit_serial)
+    log_q_listener = logging.get_log_queue_listener()
+    if log_q_listener is not None:
+        log_q_listener.add_file_handler(
+            log_file_path,
+            formatter=logging.PreciseTimeFormatter(
+                logging.MULTIPROC_LOG_FORMAT,
+                datefmt=logging.DateTimeFormats.hour_time_precise,
+                time_precision=3,
+            ),
+        )
+
+    logger = logging.get_verbose_logger("rcp")
+    logger.notice("Starting application..")
+
+    # todo
+    # logger.notice("Activated app_model with version %s", app_version)
+    logger.debug("start cmdline=%s", shlex.join(sys.argv))
+    logger.debug("start env:\n%s", "\n".join(f"{k}={v!r}" for k, v in os.environ.items()))
+
+    rc = -1
+
+    try:
+        app = wx.App()
+        SwitchPanel(rcp_context=rcp_context)  # todo move within App
+        logger.info("Running main loop..")
+        rc = app.MainLoop()
+        logger.verbose("app main loop returned %s", rc)
+        return rc
+    except KeyboardInterrupt:
+        logger.notice("interrupted by user / keyboard interrupt from:", exc_info=True)
+    except SystemExit:
+        logger.notice("interrupted by system exit from:", exc_info=True)
+    except BaseException as err:
+        logger.exception("Fatal error: %s", err)
+        rc = 1
+    finally:
+        (logger.success if rc == 0 else logger.error)("exiting application with exitcode=%s", rc)
+        logger.debug("closing log manager..")
+        try:
+            logging.stop_multiproc_logging()
+        finally:
+            # logging.setup_logging()
+            try:
+                ctx = multiprocessing.get_context()
+                mgr = ctx.Manager()
+                # logger.info("ctx=%s mgr=%s", ctx, mgr)
+                # logger.info("%s - %s", vars(ctx), vars(mgr))
+                mgr.shutdown()
+            except BaseException as err:  # noqa
+                # logger.exception("while shutting down multiproc manager: %s", err)
+                pass
+    return rc
 
 
 if __name__ == "__main__":
