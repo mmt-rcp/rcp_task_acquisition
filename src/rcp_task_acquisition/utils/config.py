@@ -9,11 +9,12 @@ import dacite
 import ruamel.yaml
 import ruamel.yaml.util
 import yaml
+from yaml import Node as Node
 
 from rcp_task_acquisition.utils import constants
 
 
-def _load_dict(dct, target_items, target_cls, enum_items):
+def _load_enum_to_dct_class_items(dct, target_items, target_cls, enum_items):
     empty = {}
     for member in enum_items:
         prev = target_items.get(member, None)
@@ -81,7 +82,7 @@ class _HardwareConfig:
 class HardwareConfig(_HardwareConfig):
     def __init__(self, *, items: dict | None = None, **kwargs):
         items = {} if items is None else items
-        _load_dict(kwargs, items, HardwareItemConfig, HardwareItem)
+        _load_enum_to_dct_class_items(kwargs, items, HardwareItemConfig, HardwareItem)
         super().__init__(items=items, **kwargs)
 
     @staticmethod
@@ -117,17 +118,26 @@ class _CamerasConfig:
     items: dict[str, CameraConfig] = dataclasses.field(default_factory=dict)
 
 
-@dataclasses.dataclass(kw_only=True)
-class CamerasConfig(_CamerasConfig):
-    def __init__(self, *, items: dict | None = None, **kwargs):
-        items = {} if items is None else items
-        _load_dict(kwargs, items, CameraConfig, CameraItem)
-        super().__init__(items=items, **kwargs)
+class CamerasDictConfig(dict[str, CameraConfig]):
+    """Dict subclass with some helper properties accessor, and automatic handling to CameraConfig"""
+
+    def __new__(cls, arg0=None, **kwargs):
+        items = {}
+        if arg0 is not None:
+            kwargs.update((k, v) for k, v in arg0)
+        _load_enum_to_dct_class_items(kwargs, items, CameraConfig, CameraItem)
+        self = super().__new__(cls)
+        # super().__init__()
+        self.update(items)
+        return self
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
 
     @staticmethod
-    def _make_accessor(em) -> HardwareItemConfig:
-        def wrapped(self) -> HardwareItemConfig:
-            return self.items[em]
+    def _make_accessor(em) -> CameraConfig:
+        def wrapped(self) -> CameraConfig:
+            return self[em]
 
         return property(wrapped)  # noqa
 
@@ -147,14 +157,15 @@ class _RcpUserConfig:
     unitRef: str = ""
     RawDataDir: str = ""
     VideoDir: str = ""
-    cameras: dict[str, CameraConfig] = dataclasses.field(default_factory=dict)
+    cameras: CamerasDictConfig = dataclasses.field(default_factory=CamerasDictConfig)
     hardware: dict[str, HardwareItemConfig] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(kw_only=True)
 class RcpUserConfig(_RcpUserConfig):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    pass
+    # def __init__(self, **kwargs):  # for debug
+    #     super().__init__(**kwargs)
 
 
 def load_rcp_user_config(file_path: Path | None = None) -> tuple[Path, RcpUserConfig]:
@@ -168,8 +179,8 @@ def load_rcp_user_config(file_path: Path | None = None) -> tuple[Path, RcpUserCo
 def load_rcp_user_config_buffer(buffer) -> RcpUserConfig:
     # loader = ruamel.yaml.YAML(pure=True)
     # dct = loader.load(buffer)
-    # NB: ruamel.yaml allows to have the comments handled. but the return "dct" object (and basically all inner values),
-    # is "Commented" maps/sequences...
+    # NB: ruamel.yaml allows to have the comments handled. but the returned "dict"(-kind) instance,
+    # and basically all inner values, are "Commented" maps/sequences...
     # Preferring to have pure Python types (dict/list/tuples/etc..) instead.
     loader = yaml.SafeLoader
     dct = yaml.load(buffer, Loader=loader)
@@ -178,6 +189,7 @@ def load_rcp_user_config_buffer(buffer) -> RcpUserConfig:
         dct,
         config=dacite.Config(
             type_hooks={
+                CamerasDictConfig: lambda v: CamerasDictConfig(**v)
                 # RcpConfig: lambda v: RcpConfig(**v),
                 # CamerasConfig: lambda v: CamerasConfig(**dict(v)),
                 # HardwareConfig: lambda v: HardwareConfig(**dict(v)),
@@ -239,3 +251,42 @@ def load_rcp_config(config_dir: Path | None = None):
     user_cfg_path, user_cfg = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
     task_cfg_path, tasks_cfg = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
     return user_cfg_path, user_cfg, task_cfg_path, tasks_cfg
+
+
+def save_rcp_user_config(config: RcpUserConfig, file_path: Path) -> None:
+    with file_path.open("w") as fh:
+        save_rcp_user_config_buffer(config, fh)
+
+
+class RcpConfigYamlDumper(yaml.SafeDumper):
+    # tag = "!RcpConfigYamlDumper"
+
+    def represent_cameras_dict_config(self, data: CamerasDictConfig) -> Node:
+        return self.represent_dict({str(k): v for k, v in data.items()})
+
+    yaml_representers = {CamerasDictConfig: represent_cameras_dict_config}
+
+
+RcpConfigYamlDumper.add_representer(CameraItem, yaml.representer.SafeRepresenter.represent_str)
+RcpConfigYamlDumper.add_representer(
+    HardwareItemConfig, yaml.representer.SafeRepresenter.represent_str
+)
+
+
+def to_dict(obj: typing.Any):
+    if isinstance(obj, (str, CamerasDictConfig)):
+        return obj
+    if isinstance(obj, (list, tuple, typing.Sequence)):
+        return tuple(to_dict(v) for v in obj)
+    elif isinstance(obj, (dict, typing.Mapping)):
+        return {k: to_dict(v) for k, v in obj.items()}
+    elif dataclasses.is_dataclass(obj):
+        return {k: to_dict(v) for k, v in obj.__dict__.items()}
+    return obj
+
+
+def save_rcp_user_config_buffer(config: RcpUserConfig, buffer: typing.TextIO) -> None:
+    dumper = RcpConfigYamlDumper
+    # dct = dataclasses.asdict(config)
+    dct = to_dict(config)
+    yaml.dump(dct, buffer, dumper, default_flow_style=False)

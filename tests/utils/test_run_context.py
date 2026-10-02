@@ -28,7 +28,7 @@ def test_load_default():
     assert isinstance(cfg.cam_config, config.CamConfig)
 
 
-def test_load_buffer():
+def test_load_save_buffer():
     buffer = io.StringIO(
         """
 cameras:
@@ -51,11 +51,15 @@ cameras:
     )
     cfg = config.load_rcp_user_config_buffer(buffer)
     assert isinstance(cfg, RcpUserConfig)
-    assert len(cfg.cameras) == 1
+    assert len(cfg.cameras) == 6
     assert "leftCamTop" in cfg.cameras
-    cam = cfg.cameras["leftCamTop"]
-    assert cam.gamma == 0.333
-    assert cam.crop == [90, 540, 0, 540]
+    left_cam_top = cfg.cameras["leftCamTop"]
+    assert cfg.cameras.left_cam_top is left_cam_top
+    assert left_cam_top.gamma == 0.333
+    assert left_cam_top.crop == [90, 540, 0, 540]
     assert len(cfg.hardware) == 0
     assert cfg.unitRef == ""
     # etc...
+    buffer = io.StringIO()
+    config.save_rcp_user_config_buffer(cfg, buffer)
+    print(buffer.getvalue())
