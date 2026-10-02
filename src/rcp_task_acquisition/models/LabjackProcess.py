@@ -133,15 +133,14 @@ class LabJackDataStream(ProcessWithLogging):
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
         if self.digital_inputs or self.extended_inputs:
             aScanList.append(2580)
-        logger.debug(aScanList)
-        numAddresses = len(aScanList)
+        logger.debug("ljm: addresses=%s", aScanList)
 
         try:
             self._attempt_connect(aScanList)
         except BaseException as err:
             logger.exception("Failed open LJM: %s", err)
             if isinstance(err, ljm.ljm.LJMError):
-                if err.errorCode == 2605:
+                if err.errorCode == 2605:  # STREAM_IS_ACTIVE
                     ljm.eStreamStop(self.handle)
             ljm.closeAll()
             self._attempt_connect(aScanList)
@@ -155,11 +154,13 @@ class LabJackDataStream(ProcessWithLogging):
             try:
                 data = ljm.eStreamRead(self.handle)
             except ljm.ljm.LJMError as err:
-                if err.errorCode == 1263:
-                    ljm.eStreamStop(self.handle)
-                    ljm.closeAll()
-                    self._attempt_connect(aScanList)
-                data = ljm.eStreamRead(self.handle)
+                logger.verbose("ljm.eStreamRead failed: %s", err)
+                # if err.errorCode == 1263:  # LJME_NO_RESPONSE_BYTES_RECEIVED
+                ljm.eStreamStop(self.handle)
+                ljm.closeAll()
+                self._attempt_connect(aScanList)
+                # data = ljm.eStreamRead(self.handle)
+                continue
 
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
@@ -169,6 +170,11 @@ class LabJackDataStream(ProcessWithLogging):
                 logger.warning(f"prev data[2]: {data_2}")
                 logger.warning(f"data[1]: {data[1]}")
                 logger.warning(f"data[2]: {data[2]}")
+                ljm.eStreamStop(self.handle)
+                ljm.closeAll()
+                self._attempt_connect(aScanList)
+                continue
+
             data_1 = data[1]
             data_2 = data[2]
             if int(data[1]) > 48:
