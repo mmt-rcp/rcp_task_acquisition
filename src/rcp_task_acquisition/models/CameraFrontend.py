@@ -1,6 +1,7 @@
 import ctypes
 import multiprocessing
 import os
+import queue
 import shutil
 import time
 from dataclasses import dataclass
@@ -351,7 +352,10 @@ class Camera:
     def deinitThreads(self):
         for n, cam_d in enumerate(self.cam_dict.values()):
             cam_d.camq.put(CameraCommand.RELEASE)
-            cam_d.camq_p2read.get()
+            try:
+                cam_d.camq_p2read.get(timeout=5)
+            except queue.Empty:
+                logger.warning("timeout get from p2read")
             cam_d.camq.close()
             cam_d.camq_p2read.close()
             self.cam[n].terminate()
