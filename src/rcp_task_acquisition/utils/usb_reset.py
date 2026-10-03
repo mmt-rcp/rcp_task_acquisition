@@ -1,3 +1,4 @@
+import argparse
 import platform
 import subprocess
 
@@ -24,9 +25,36 @@ def find_labjack_usb_id() -> list[str]:
     raise RuntimeError(f"find_labjack_usb_id not implemented here")  # TODO
 
 
+def execute_usb_reset(usb_id: str):
+    print(f"resetting {usb_id}")
+    if platform.system() == "Windows":
+        cmd = [
+            # "runas",
+            # "/noprofile",
+            # "/user:Administrator",
+            "pnputil.exe",
+            "/restart-device",
+            usb_id,
+        ]
+        prog = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+        # prog.stdin.write('password')
+        out, err = prog.communicate()
+        print(f"{prog.returncode=}")
+        print(f"{out=}, {err=}")
+
+
 def main():
-    for usb_id in find_labjack_usb_id():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reset", action="store_true")
+    parser.add_argument("usb_id", nargs="*", default=[])
+    args = parser.parse_args()
+    # print(args)
+    if not args.usb_id:
+        args.usb_id = find_labjack_usb_id()
+    for usb_id in args.usb_id:
         print(usb_id)
+        if args.reset:
+            execute_usb_reset(usb_id)
 
 
 if __name__ == "__main__":
