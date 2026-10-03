@@ -30,7 +30,7 @@ from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
 from rcp_task_acquisition.utils import file_utils
-from rcp_task_acquisition.utils.constants import PLOT_LENGTH, RAW_DATA_DIR, VideoStatus
+from rcp_task_acquisition.utils.constants import PLOT_LENGTH, VideoStatus
 from rcp_task_acquisition.utils.deidentify_dates import DateDeidentification
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
@@ -862,7 +862,7 @@ class MainFrame(wx.Frame):
             self.recording = True
 
             if self.calibrate:
-                calibrate_path = Path(RAW_DATA_DIR).parent
+                calibrate_path = Path(user_cfg.RawDataDir).parent
                 date_string = datetime.datetime.now().strftime("%Y%m%d")
 
                 base_dir = self.base_dir = Path(calibrate_path, "CalibrationData", date_string)

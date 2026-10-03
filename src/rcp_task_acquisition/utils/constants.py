@@ -2,7 +2,6 @@ import os
 from enum import Enum
 from pathlib import Path
 
-import ruamel.yaml
 from psychopy import core
 
 BASEDIR = Path(__file__).resolve().parent.parent.parent.parent
@@ -12,18 +11,7 @@ STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(
     CODE_DIR.resolve().parent.parent, "config_files"
 )
 DEFAULT_USER_CONFIG_PATH = Path(CONFIG_FILE_PATH, "userdata.yaml")
-ruamelFile = ruamel.yaml.YAML()
 
-with DEFAULT_USER_CONFIG_PATH.open("r") as fh:
-    config = ruamelFile.load(fh)
-
-
-def get_rcp_config() -> dict:
-    return config
-
-
-RAW_DATA_DIR = Path(config["RawDataDir"])
-VIDEO_DIR = Path(config["VideoDir"])
 
 STIM_CONFIG_FILE_NAME = "visualStimulusConfig.yaml"
 SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"

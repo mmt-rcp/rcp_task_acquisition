@@ -11,7 +11,6 @@ import wx.adv
 from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 
-from rcp_task_acquisition.utils.constants import get_rcp_config
 
 # set up matplotlib to be compatible on commandline/spyder
 # import matplotlib
@@ -124,7 +123,6 @@ class App(wx.App):
 
 
 def run_app():
-    from rcp_task_acquisition.utils.constants import get_rcp_config
     from rcp_task_acquisition.utils import logging, trial
 
     console_start_log_level = os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO")
@@ -142,7 +140,10 @@ def run_app():
         tasks_config=tasks_cfg,
     )
 
-    log_file_path = trial.get_new_log_file(unit_serial=user_cfg.unitRef)
+    log_file_path = trial.get_new_log_file(
+        base_dir=user_cfg.RawDataDir,
+        unit_serial=user_cfg.unitRef,
+    )
     log_q_listener = logging.get_log_queue_listener()
     if log_q_listener is not None:
         log_q_listener.add_file_handler(

@@ -1,5 +1,6 @@
 import os
 import pathlib as pl
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,16 +12,27 @@ from rcp_task_acquisition.utils.constants import (
     DURATION,
     FREQUENCY,
     SAMPLING_RATE,
-    VIDEO_DIR,
     VideoStatus,
 )
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
 
 class StimulusBase:
-    def __init__(self, display, frame, timer, video_lock, *, video_status=None, finish=None):
+    def __init__(
+        self,
+        display,
+        frame,
+        timer,
+        video_lock,
+        *,
+        video_status=None,
+        finish=None,
+        rcp_context: RcpRunContext,
+    ):
+        self._rcp_context = rcp_context
         self.display = display
         self.frame = frame
         self.prev_flip_time = None
@@ -141,12 +153,14 @@ class StimulusBase:
         pass
 
     def play_instructional_video(self, trial_name):
+        # todo: unused: what todo ?
+        user_cfg = self._rcp_context.user_config
         logger.debug(f"Trial name: {trial_name}")
         if trial_name == "":
             file = self.instructions_dict
         else:
             file = self.instructions_dict[trial_name]
-        path = os.path.join(VIDEO_DIR, str(file))
+        path = Path(user_cfg.VideoDir, str(file))
         if not os.path.exists(path):
             self.video_status.value = VideoStatus.ERROR.value
             return
