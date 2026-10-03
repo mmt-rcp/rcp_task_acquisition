@@ -168,6 +168,7 @@ class MainFrame(wx.Frame):
             self.contrast_test,
             self.focus_test,
             self.participant_monitor,
+            rcp_context=rcp_context,
         )
 
         self.init.Bind(wx.EVT_TOGGLEBUTTON, self.initCams)
@@ -928,13 +929,15 @@ class MainFrame(wx.Frame):
         keyCode = event.GetKeyCode()
         # Save the new ROI parameters
         if keyCode in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+            pass
             # Write the new parameters to the user config file
-            if self.set_crop.GetValue():
-                self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
-            file_utils.write_config(self.user_cfg)
-            self.set_crop.SetValue(False)
-            self.widget_panel.Enable(True)
-            self.play.SetFocus()
+            # TODO: dead: refering to attributes never assigned
+            # if self.set_crop.GetValue():
+            #     self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
+            # file_utils.write_config(self.user_cfg)
+            # self.set_crop.SetValue(False)
+            # self.widget_panel.Enable(True)
+            # self.play.SetFocus()
         # Modify existing ROI parameters
         elif self.set_crop.GetValue() == True and keyCode in (314, 316, 315, 317, 65, 83, 127):
             self.cam_crop.set_key_crop(self.axes, keyCode)

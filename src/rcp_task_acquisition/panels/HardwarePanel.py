@@ -14,7 +14,6 @@ from rcp_task_acquisition.utils.constants import (
     HEADERS,
     LABJACK_PIN_LIST,
 )
-from rcp_task_acquisition.utils.file_utils import write_config
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
@@ -90,7 +89,7 @@ class HardwarePanel(wx.Panel):
     """
 
     def __init__(self, task_config, parent=None, *, rcp_context: RcpRunContext):
-        self._rcp_context = rcp_context
+        self._rcp_context: RcpRunContext = rcp_context
         self.args = None
         self.row_list = [member.value for member in HardwareItem]
         self.protocol = None
@@ -518,16 +517,20 @@ class HardwarePanel(wx.Panel):
                     name = self._get_name(camera)
                     self.args.append(name)
             self.task_config[self.task]["settings"] = self.args
-            write_config("taskconfig.yaml", self.task_config)
-        write_config("userdata.yaml", dataclasses.asdict(ctx.user_config))
+            config.save_rcp_tasks_config(
+                self.task_config, ctx.config_dir.joinpath("taskconfig.yaml")
+            )
+            # write_config("taskconfig.yaml", self.task_config)
+        config.save_rcp_user_config(ctx.user_config, ctx.config_dir.joinpath("userdata.yaml"))
+        # write_config("userdata.yaml", dataclasses.asdict(ctx.user_config))
         dlg = wx.MessageDialog(
             None, "Hardware settings saved!", "Notification", wx.OK | wx.ICON_INFORMATION
         )
         dlg.ShowModal()
         dlg.Destroy()
 
-    def _create_hardware_config(self) -> dict[str, config.HardwareItemConfig] | None:
-        items: dict[str, config.HardwareItemConfig] = {}
+    def _create_hardware_config(self) -> config.HardwareDictConfig | None:
+        cfg = config.HardwareDictConfig()
         for hardware in self.hardware_list:
             if hardware.in_use_all:
                 labjack_pin = hardware.labjack.GetCurrentSelection()
@@ -548,13 +551,13 @@ class HardwarePanel(wx.Panel):
                         ]
                     )
                     voltage_range = (voltage * -1, voltage)
-                items[name] = config.HardwareItemConfig(
+                cfg[name] = config.HardwareItemConfig(
                     labjack_input=labjack_value,
                     voltage_range=voltage_range,
                 )
-        return items
+        return cfg
 
-    def _update_cameras_config(self) -> dict[str, config.CameraConfig] | None:
+    def _update_cameras_config(self) -> config.CamerasDictConfig | None:
         ctx = self._rcp_context
         cameras = ctx.user_config.cameras
         for camera in self.camera_list:
@@ -612,6 +615,7 @@ class HardwarePanel(wx.Panel):
     def _update_lists(self, item_list: list[CameraRow] | list[HardwareRow], is_labjack=True):
         selected_list = []
         primary_list = LABJACK_PIN_LIST if is_labjack else self.cam_serial_numbers
+        # self._rcp_context
         for hardware in item_list:
             choice_list = hardware.labjack if is_labjack else hardware.serial
             if type(choice_list) == wx.Choice and choice_list.GetSelection() != -1:

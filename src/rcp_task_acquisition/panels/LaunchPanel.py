@@ -3,7 +3,6 @@ import wx.lib.scrolledpanel as scrolled
 
 from rcp_task_acquisition.panels.HardwarePanel import HardwarePanel
 from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
-from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 
@@ -35,7 +34,7 @@ class LaunchPanel:
         self.args = None
         self.task = None
         self.is_hidden = False
-        task_config = read_config("taskconfig.yaml")
+        task_config = rcp_context.tasks_config  # read_config("taskconfig.yaml")
         self.task_list = list(task_config.keys())
         self.task_list.append("all_hardware")
         self.protocol_choice = None

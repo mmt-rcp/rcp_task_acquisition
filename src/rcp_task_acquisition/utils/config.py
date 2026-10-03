@@ -20,12 +20,15 @@ ItemsEnumType = typing.TypeVar("ItemsEnumType")
 
 class DictConfig(dict[str, ItemConfigType], typing.Generic[ItemConfigType, ItemsEnumType]):
     item_cls: typing.Type[ItemConfigType]
-    enum_cls: typing.Type[ItemsEnumType]
+    enum_cls: typing.Type[ItemsEnumType] | None
 
     def __new__(cls, arg0=None, **kwargs):
         dct = {}
         if arg0 is not None:
-            kwargs.update((k, v) for k, v in arg0)
+            if isinstance(arg0, typing.Mapping):
+                kwargs.update(arg0)
+            else:
+                kwargs.update((k, v) for k, v in arg0)
         _load_enum_to_dct_class_items(kwargs, dct, cls.item_cls, cls.enum_cls)  # noqa
         self = super().__new__(cls)
         self.update(dct)
@@ -35,7 +38,10 @@ class DictConfig(dict[str, ItemConfigType], typing.Generic[ItemConfigType, Items
         super().__init__()
 
     def fill_defaults(self):
-        for member in self.enum_cls:
+        enum_cls = self.enum_cls
+        if enum_cls is None:
+            return
+        for member in enum_cls:
             if member not in self:
                 self[member] = self.item_cls()
 
@@ -56,14 +62,21 @@ def _load_enum_to_dct_class_items(
     fill_default: bool = False,
 ):
     empty = {}
-    for member in enum_items:
-        prev = target_items.get(member, None)
-        sub = dct.pop(member.value, None)
-        if prev is not None and sub is not None:
-            raise ValueError(f"{member.value} provided via both items dict and kwargs")
-        if sub is None and not fill_default:
-            continue
-        target_items[member] = sub if isinstance(sub, target_cls) else target_cls(**(sub or empty))
+    if enum_items is not None:
+        for member in enum_items:
+            prev = target_items.get(member, None)
+            sub = dct.pop(member.value, None)
+            if prev is not None and sub is not None:
+                raise ValueError(f"{member.value} provided via both items dict and kwargs")
+            if sub is None and not fill_default:
+                continue
+            target_items[member] = (
+                sub if isinstance(sub, target_cls) else target_cls(**(sub or empty))
+            )
+    else:
+        for k, v in dct.items():
+            target_items[k] = v if isinstance(v, target_cls) else target_cls(**(v or empty))
+        dct.clear()
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -237,21 +250,17 @@ class RcpTaskConfig:
     settings: list[str] = dataclasses.field(default_factory=list)
 
 
-@dataclasses.dataclass(kw_only=True)
-class _RcpTasksConfig:
-    items: dict[str, RcpTaskConfig] = dataclasses.field(default_factory=dict)
+class RcpTasksConfig(DictConfig[RcpTaskConfig, None]):
+    item_cls = RcpTaskConfig
+    enum_cls = None
 
 
 @dataclasses.dataclass(kw_only=True)
-class RcpTasksConfig(RcpTaskConfig):
-    pass
-    # def __init__(self, *, items: dict | None = None, **kwargs):
-    #     items = {} if items is None else items
-    #     _load_dict(kwargs, items, RcpTaskConfig, HardwareItem)
-    #     super().__init__(items=items, **kwargs)
+class RcpTasksConfigWrapper:
+    tasks: RcpTasksConfig = dataclasses.field(default_factory=RcpTasksConfig)
 
 
-def load_rcp_tasks_config(file_path: Path | None = None) -> tuple[Path, RcpTaskConfig]:
+def load_rcp_tasks_config(file_path: Path | None = None) -> tuple[Path, RcpTasksConfig]:
     if file_path is None:
         file_path = Path(constants.CONFIG_FILE_PATH, "taskconfig.yaml")
     with file_path.open() as fh:
@@ -262,15 +271,22 @@ def load_rcp_tasks_config(file_path: Path | None = None) -> tuple[Path, RcpTaskC
 def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> RcpTasksConfig:
     loader = yaml.SafeLoader
     dct = yaml.load(buffer, Loader=loader)
+
+    def gen_tasks_config(v):
+        return RcpTasksConfig(**v)
+
     cfg = dacite.from_dict(
-        RcpTasksConfig,
-        dct,
+        RcpTasksConfigWrapper,
+        {"tasks": dct},
         config=dacite.Config(
-            type_hooks={},
+            type_hooks={
+                RcpTasksConfig: gen_tasks_config,
+                RcpTaskConfig: lambda v: RcpTaskConfig(**v),
+            },
             check_types=False,
         ),
     )
-    return cfg
+    return cfg.tasks
 
 
 def load_rcp_config(config_dir: Path | None = None):
@@ -279,11 +295,6 @@ def load_rcp_config(config_dir: Path | None = None):
     user_cfg_path, user_cfg = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
     task_cfg_path, tasks_cfg = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
     return user_cfg_path, user_cfg, task_cfg_path, tasks_cfg
-
-
-def save_rcp_user_config(config: RcpUserConfig, file_path: Path) -> None:
-    with file_path.open("w") as fh:
-        save_rcp_user_config_buffer(config, fh)
 
 
 #
@@ -354,3 +365,22 @@ def save_rcp_user_config_buffer(config: RcpUserConfig, buffer: typing.TextIO) ->
     # ruamel.yaml.safe_dump(config, buffer, Dumper=dumper,
     #           # default_flow_style=False
     #           )
+
+
+def save_rcp_user_config(config: RcpUserConfig, file_path: Path) -> None:
+    with file_path.open("w") as fh:
+        save_rcp_user_config_buffer(config, fh)
+
+
+def save_rcp_tasks_config_buffer(config: RcpTasksConfig, buffer: typing.TextIO) -> None:
+    dct = to_raw_recursive(config)
+    yaml.safe_dump(
+        dct,
+        buffer,
+        sort_keys=False,  # rely on dataclasses fields order
+    )
+
+
+def save_rcp_tasks_config(config: RcpTasksConfig, file_path: Path) -> None:
+    with file_path.open("w") as fh:
+        save_rcp_tasks_config_buffer(config, fh)

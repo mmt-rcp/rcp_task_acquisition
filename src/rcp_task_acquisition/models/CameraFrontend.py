@@ -17,6 +17,7 @@ from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
 from rcp_task_acquisition.utils import file_utils
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
@@ -56,7 +57,18 @@ class CamSettings:
 
 
 class Camera:
-    def __init__(self, serial, panel, image_panel, contrast_test, focus_test, monitor):
+    def __init__(
+        self,
+        serial,
+        panel,
+        image_panel,
+        contrast_test,
+        focus_test,
+        monitor,
+        *,
+        rcp_context: RcpRunContext,
+    ):
+        self._rcp_context = rcp_context
         self.serial = serial
         self.shared = Value(ctypes.c_byte, 0)
         self.camaq = Value(ctypes.c_byte, 0)
@@ -340,6 +352,7 @@ class Camera:
                 cam_d.array4feed,
                 cam_d.frmGrab,
                 DOWNSAMPLE_VAL,
+                rcp_context=self._rcp_context,
             )
             self.cam.append(cam)
             cam.start()

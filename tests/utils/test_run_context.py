@@ -27,6 +27,8 @@ def test_load_default():
     effective_path, cfg = config.load_rcp_user_config()
     assert isinstance(effective_path, Path)
     assert isinstance(cfg, RcpUserConfig)
+    assert isinstance(cfg.hardware, config.HardwareDictConfig)
+    assert isinstance(cfg.cameras, config.CamerasDictConfig)
     assert isinstance(cfg.cam_config, config.CamConfig)
 
 
@@ -112,3 +114,35 @@ def test_accessor(rcp_run_ctx):
     # etc.. :
     for m in hard.enum_cls:
         assert getattr(hard, m.name.lower()) is hard[m]
+
+
+def test_tasks_config():
+    buffer = io.StringIO("""
+first task with space:
+  settings:
+  - Photodetector
+  - Subject Mic
+n_back:
+  settings:
+  - Photodetector
+  - Subject Mic
+  - Experimenter Mic
+  """)
+    cfg = config.load_rcp_tasks_config_buffer(buffer)
+    assert len(cfg) == 2
+    assert tuple(cfg) == ("first task with space", "n_back")
+    n_back = cfg["n_back"]
+    assert isinstance(n_back, config.RcpTaskConfig)
+    assert len(n_back.settings) == 3
+    cfg["another"] = config.RcpTaskConfig(settings=["foobar"])
+    buffer = io.StringIO()
+    config.save_rcp_tasks_config_buffer(cfg, buffer)
+    out = buffer.getvalue()
+    # print(out)
+    # assert "another" in out
+    buffer.seek(0)
+    cfg2 = config.load_rcp_tasks_config_buffer(buffer)
+    assert cfg2["another"].settings == ["foobar"]
+    assert cfg == cfg2
+    cfg.pop("another")
+    assert cfg != cfg2
