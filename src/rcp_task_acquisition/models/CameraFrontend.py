@@ -1,6 +1,7 @@
 import ctypes
 import multiprocessing
 import os
+import queue
 import shutil
 import time
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
 from rcp_task_acquisition.utils import file_utils
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
@@ -55,7 +57,18 @@ class CamSettings:
 
 
 class Camera:
-    def __init__(self, serial, panel, image_panel, contrast_test, focus_test, monitor):
+    def __init__(
+        self,
+        serial,
+        panel,
+        image_panel,
+        contrast_test,
+        focus_test,
+        monitor,
+        *,
+        rcp_context: RcpRunContext,
+    ):
+        self._rcp_context = rcp_context
         self.serial = serial
         self.shared = Value(ctypes.c_byte, 0)
         self.camaq = Value(ctypes.c_byte, 0)
@@ -339,6 +352,7 @@ class Camera:
                 cam_d.array4feed,
                 cam_d.frmGrab,
                 DOWNSAMPLE_VAL,
+                rcp_context=self._rcp_context,
             )
             self.cam.append(cam)
             cam.start()
@@ -351,7 +365,10 @@ class Camera:
     def deinitThreads(self):
         for n, cam_d in enumerate(self.cam_dict.values()):
             cam_d.camq.put(CameraCommand.RELEASE)
-            cam_d.camq_p2read.get()
+            try:
+                cam_d.camq_p2read.get(timeout=5)
+            except queue.Empty:
+                logger.warning("timeout get from p2read")
             cam_d.camq.close()
             cam_d.camq_p2read.close()
             self.cam[n].terminate()
@@ -405,7 +422,7 @@ class Camera:
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
     def updateSettings(self, event):
-        self.user_cfg = file_utils.read_config("userdata.yaml")
+        # self.user_cfg = file_utils.read_config("userdata.yaml")  UNUSED
         self.aqW = []
         self.aqH = []
         self.recSet = []

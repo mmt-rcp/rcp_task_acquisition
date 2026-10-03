@@ -30,10 +30,11 @@ from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
 from rcp_task_acquisition.utils import file_utils
-from rcp_task_acquisition.utils.constants import PLOT_LENGTH, RAW_DATA_DIR, VideoStatus
+from rcp_task_acquisition.utils.constants import PLOT_LENGTH, VideoStatus
 from rcp_task_acquisition.utils.deidentify_dates import DateDeidentification
 from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 from rcp_task_acquisition.utils.task_acquisistion_version import __version__
 
 logger = get_logger(__name__)
@@ -42,7 +43,15 @@ logger = get_logger(__name__)
 class MainFrame(wx.Frame):
     """Contains the main GUI and button boxes"""
 
-    def __init__(self, parent=None):
+    base_dir: Path
+    metapath: Path
+    sess_string: str
+    session: int
+    path_base: str
+    date_string: str
+
+    def __init__(self, parent=None, *, rcp_context: RcpRunContext):
+        self._rcp_context = rcp_context
         self.task_cfg = None
         self.task = None
         self.cam_cfg = {}
@@ -58,7 +67,7 @@ class MainFrame(wx.Frame):
         self.serial_device = SerialDevice()
         self.cam_crop = Crop()
         # setting up screen for stimulus thread
-        self.user_cfg = file_utils.read_config("userdata.yaml")
+        # self.user_cfg = file_utils.read_config("userdata.yaml")
         # screen_settings = self.user_cfg["screen_settings"]
 
         self.warning = WarningHandler()
@@ -159,6 +168,7 @@ class MainFrame(wx.Frame):
             self.contrast_test,
             self.focus_test,
             self.participant_monitor,
+            rcp_context=rcp_context,
         )
 
         self.init.Bind(wx.EVT_TOGGLEBUTTON, self.initCams)
@@ -638,7 +648,7 @@ class MainFrame(wx.Frame):
             self.user_cfg["unitRef"],
             self.sess_string,
         )
-        self.metapath = os.path.join(self.sess_dir, meta_name)
+        self.metapath = Path(self.sess_dir, meta_name)
         cameras = {}
         self.meta["version"] = str(__version__)
         self.meta["actual_scan_rate"] = self.labjack_scan_rate
@@ -681,7 +691,7 @@ class MainFrame(wx.Frame):
 
         if metadata_notes.show() == wx.ID_OK:
             yaml = YAML()
-            with open(Path(self.metapath), "r", encoding="utf-8") as file:
+            with self.metapath.open("r", encoding="utf-8") as file:
                 metadata = yaml.load(file)
 
             metadata["actual_scan_rate"] = self.labjack_scan_rate
@@ -694,7 +704,7 @@ class MainFrame(wx.Frame):
             if self.task == "sara":
                 metadata["trial_data"] = self.trial_panel.add_metadata()
 
-            with open(Path(self.metapath), "w", encoding="utf-8") as f:
+            with self.metapath.open("w", encoding="utf-8") as f:
                 yaml.dump(metadata, f)
 
             deidentify = DateDeidentification(self.user_cfg)
@@ -711,7 +721,7 @@ class MainFrame(wx.Frame):
             params = json.loads(self.resultsq.get())
         except Exception as e:
             logger.error(f"update task metadata error: {e}")
-        with open(Path(self.metapath), "r", encoding="utf-8") as file:
+        with self.metapath.open("r", encoding="utf-8") as file:
             metadata = yaml.load(file)
 
         metadata["trial_data"] = params
@@ -720,24 +730,27 @@ class MainFrame(wx.Frame):
         if self.task == "sara":
             metadata["trial_data"] = self.trial_panel.add_metadata()
 
-        with open(Path(self.metapath), "w", encoding="utf-8") as f:
+        with self.metapath.open("w", encoding="utf-8") as f:
             yaml.dump(metadata, f)
 
     def create_file(self):
+        ctx = self._rcp_context
+        user_cfg = ctx.user_config
+        unit_ref = user_cfg.unitRef
         date_string = datetime.datetime.now().strftime("%Y%m%d")
-        self.base_dir = os.path.join(RAW_DATA_DIR, date_string, self.user_cfg["unitRef"])
-        if not os.path.exists(self.base_dir):
-            os.makedirs(self.base_dir)
-
-        prev_expt_list = [name for name in os.listdir(self.base_dir) if name.startswith("session")]
+        base_dir = Path(ctx.user_config.RawDataDir).joinpath(date_string, unit_ref)
+        self.base_dir = base_dir
+        if not base_dir.exists():
+            base_dir.mkdir(parents=True, exist_ok=True)
+        prev_expt_list = [v.name for v in base_dir.glob("session*")]
         file_count = len(prev_expt_list) + 1
         self.session = file_count
         self.sess_string = "%s%03d" % ("session", file_count)
-        self.sess_dir = os.path.join(self.base_dir, self.sess_string)
-        if not os.path.exists(self.sess_dir):
-            os.makedirs(self.sess_dir)
+        self.sess_dir = Path(self.base_dir, self.sess_string)
+        if not self.sess_dir.exists():
+            self.sess_dir.mkdir(parents=True, exist_ok=True)
         self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-        self.path_base = f"{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}"
+        self.path_base = f"{self.date_string}_{unit_ref}_{self.sess_string}"
         # msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
 
     def initCams(self, event):
@@ -842,28 +855,31 @@ class MainFrame(wx.Frame):
         self.cams.update_crop(value)
 
     def recordCam(self, event):
+        ctx = self._rcp_context
+        user_cfg = ctx.user_config
         if self.rec.GetValue() or self.task_button.GetValue():
             if self.recording:
                 return
             self.recording = True
 
             if self.calibrate:
-                calibrate_path = Path(RAW_DATA_DIR).parent
+                calibrate_path = Path(user_cfg.RawDataDir).parent
                 date_string = datetime.datetime.now().strftime("%Y%m%d")
 
-                self.base_dir = os.path.join(calibrate_path, "CalibrationData", date_string)
-                if not os.path.exists(self.base_dir):
-                    os.makedirs(self.base_dir)
+                base_dir = self.base_dir = Path(calibrate_path, "CalibrationData", date_string)
+                if not base_dir.exists():
+                    base_dir.mkdir(parents=True, exist_ok=True)
 
-                prev_expt_list = [name for name in os.listdir(self.base_dir)]
+                prev_expt_list = [p.name for p in base_dir.glob("*")]
+                # prev_expt_list = [name for name in os.listdir(self.base_dir)]
                 file_count = len(prev_expt_list) + 1
                 self.session = file_count
                 self.sess_string = "%s_%03d" % (self.task, file_count)
-                self.sess_dir = os.path.join(self.base_dir, self.sess_string)
-                if not os.path.exists(self.sess_dir):
-                    os.makedirs(self.sess_dir)
+                self.sess_dir = Path(self.base_dir, self.sess_string)
+                if not self.sess_dir.exists():
+                    self.sess_dir.mkdir(parents=True, exist_ok=True)
                 self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-                self.path_base = f"{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}"
+                self.path_base = f"{self.date_string}_{user_cfg.unitRef}_{self.sess_string}"
                 self.task_button.SetLabel("Stop Recording")
                 self.trial_panel.reset(0)
                 self.trial_panel.show()
@@ -913,13 +929,15 @@ class MainFrame(wx.Frame):
         keyCode = event.GetKeyCode()
         # Save the new ROI parameters
         if keyCode in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+            pass
             # Write the new parameters to the user config file
-            if self.set_crop.GetValue():
-                self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
-            file_utils.write_config(self.user_cfg)
-            self.set_crop.SetValue(False)
-            self.widget_panel.Enable(True)
-            self.play.SetFocus()
+            # TODO: dead: refering to attributes never assigned
+            # if self.set_crop.GetValue():
+            #     self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
+            # file_utils.write_config(self.user_cfg)
+            # self.set_crop.SetValue(False)
+            # self.widget_panel.Enable(True)
+            # self.play.SetFocus()
         # Modify existing ROI parameters
         elif self.set_crop.GetValue() == True and keyCode in (314, 316, 315, 317, 65, 83, 127):
             self.cam_crop.set_key_crop(self.axes, keyCode)

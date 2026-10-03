@@ -10,10 +10,11 @@ import numpy as np
 import PySpin
 
 from rcp_task_acquisition.models.AsyncVideoWriter import AsyncFFmpegGPUWriter  # AsyncVideoWriter
-from rcp_task_acquisition.utils import file_utils
+from rcp_task_acquisition.utils import file_utils, config
 from rcp_task_acquisition.utils.camera_utils import identify_dropped_frames
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
@@ -50,7 +51,6 @@ class CamCtx:
     camStr: str = ""
     method: str = "none"
     file_path: str = ""
-    user_cfg: dict
     current_exposure_time: float = 0
     max_exposure: float = 0
     frmrate_time_to_set: float = 0
@@ -60,9 +60,22 @@ class CamCtx:
 
 class multiCam_DLC_Cam(ProcessWithLogging):
     def __init__(
-        self, camq, camq_p2read, camID, idList, frmdim, aq, frm, array4feed, frmGrab, dwnsmplfac
+        self,
+        camq,
+        camq_p2read,
+        camID,
+        idList,
+        frmdim,
+        aq,
+        frm,
+        array4feed,
+        frmGrab,
+        dwnsmplfac,
+        *,
+        rcp_context: RcpRunContext,
     ):
         super().__init__()
+        self._rcp_context = rcp_context
         self.camID = camID
         self.camq = camq
         self.camq_p2read = camq_p2read
@@ -81,56 +94,69 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self.height = None
         self.dwnsmplfac = dwnsmplfac
 
-        pref = "_cmd_"
-        self._command_handlers: dict[str, Callable[[CamCtx], None]] = dict(  # noqa
-            (name, func)
-            for name, func in (
-                (func_name[len(pref) :], getattr(self, func_name))
-                for func_name in dir(self)
-                if func_name.startswith(pref)
-            )
-            if callable(func)
-        )
+        self._command_handlers: dict[str, Callable] = {
+            CameraCommand.INIT_S: self._cmd_InitS,
+            CameraCommand.INIT_C: self._cmd_InitC,
+            CameraCommand.INIT_M: self._cmd_InitM,
+            CameraCommand.UPDATE_SETTINGS: self._cmd_updateSettings,
+            CameraCommand.GET_EXPOSURE: self._cmd_getExposure,
+            CameraCommand.GET_BALANCE: self._cmd_getBalance,
+            CameraCommand.START: self._cmd_Start,
+            CameraCommand.SET_EXPOSURE: self._cmd_setExposure,
+            CameraCommand.SET_BALANCE: self._cmd_setBalance,
+            CameraCommand.RELEASE: self._cmd_Release,
+            CameraCommand.TRIG_OFF: self._cmd_TrigOff,
+            CameraCommand.STOP: self._cmd_Stop,
+            CameraCommand.RECORD_PREP: self._cmd_recordPrep,
+        }
+        # prefer explicit as above.
+        # pref = "_cmd_"
+        # self._command_handlers: dict[str, Callable[[CamCtx], None]] = dict(  # noqa
+        #     (name, func)
+        #     for name, func in (
+        #         (func_name[len(pref) :], getattr(self, func_name))
+        #         for func_name in dir(self)
+        #         if func_name.startswith(pref)
+        #     )
+        #     if callable(func)
+        # )
 
     def run(self):
         ctx = CamCtx()
         # exposure_max = 4000
-        config = file_utils.read_config("userdata.yaml")
-        user_cfg = ctx.user_cfg = config["cameras"]
-        camStrList = []
+        user_config = self._rcp_context.user_config
+        cams_cfg = user_config.cameras
         camStr = None
-        for s in user_cfg:
-            if not user_cfg[s]["in_use"]:
+        for name, cfg in cams_cfg.items():
+            if not cfg.in_use:
                 continue
-            camStrList.append(s)
-            if self.camID == str(user_cfg[s]["serial"]):
-                camStr = s
+            if self.camID == cfg.serial:
+                camStr = name
         if camStr is None:
-            logger.error("cam serail not found")
+            logger.error("cam serial not found")
             return
         assert isinstance(camStr, str)
-        logger.debug(camStr)
+        # logger.debug(camStr)
         ctx.camStr = camStr
         # camCt = len(self.camStrList)
-
-        framerate_decrease = user_cfg[camStr]["framerate_decrease_factor"]
+        cfg = cams_cfg[camStr]
+        framerate_decrease = cfg.framerate_decrease_factor
         if framerate_decrease != 1:
             ctx.is_decreased = True
         # if gig_e:
-        self.framerate = round(int(config["cam_config"]["framerate"]) / int(framerate_decrease))
+        self.framerate = round(user_config.cam_config.framerate / framerate_decrease)
         # else:
-        # self.framerate =int(config['cam_config']['framerate'])
         ctx.current_exposure_time = 1000  # = int(user_cfg[camStr]['exposure'])
 
-        ctx.aqW = int(user_cfg[camStr]["crop"][1] * self.dwnsmplfac)
-        ctx.aqH = int(user_cfg[camStr]["crop"][3] * self.dwnsmplfac)
+        ctx.aqW = int(cfg.crop[1] * self.dwnsmplfac)
+        ctx.aqH = int(cfg.crop[3] * self.dwnsmplfac)
 
         # frame_results = np.zeros([int(self.frmdim[1]*self.dwnsmplfac),int(self.frmdim[3]*self.dwnsmplfac),3],'ubyte')
         # frame_results = np.zeros([aqH,aqW,3],'ubyte')
         ctx.frameSml = np.zeros(
             [
-                int(ctx.aqH / self.dwnsmplfac / user_cfg[camStr]["bin"]),
-                int(ctx.aqW / self.dwnsmplfac / user_cfg[camStr]["bin"]),
+                int(ctx.aqH / self.dwnsmplfac / cfg.bin),
+                int(ctx.aqW / self.dwnsmplfac / cfg.bin),
                 3,
             ],
             "ubyte",
@@ -368,20 +394,21 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
     def _cmd_updateSettings(self, ctx: CamCtx):
         cam = ctx.cam
+        cam_cfg = self._rcp_context.user_config.cameras[ctx.camStr]
         nodemap = cam.GetNodeMap()
-        binsize = ctx.user_cfg[ctx.camStr]["bin"]
+        binsize = cam_cfg.bin
         # Horizontal Flip
         reverseX = PySpin.CBooleanPtr(nodemap.GetNode("ReverseX"))
         if PySpin.IsAvailable(reverseX) and PySpin.IsWritable(reverseX):
-            reverseX.SetValue(ctx.user_cfg[ctx.camStr]["flip"])
+            reverseX.SetValue(cam_cfg.flip)
 
         # Vertical Flip
         reverseY = PySpin.CBooleanPtr(nodemap.GetNode("ReverseY"))
         if PySpin.IsAvailable(reverseY) and PySpin.IsWritable(reverseY):
-            reverseY.SetValue(ctx.user_cfg[ctx.camStr]["flip"])
+            reverseY.SetValue(cam_cfg.flip)
 
-        cam.BinningHorizontal.SetValue(int(binsize))
-        cam.BinningVertical.SetValue(int(binsize))
+        cam.BinningHorizontal.SetValue(binsize)
+        cam.BinningVertical.SetValue(binsize)
 
         # cam.IspEnable.SetValue(False)
         node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionMode"))
@@ -393,7 +420,9 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             )
             # todo: previous was returning from main run() method,
             # could maybe continue instead ?
-            raise SystemExit
+            raise SystemExit(
+                "Unable to set acquisition mode to continuous (enum retrieval). Aborting..."
+            )
             return False
         # Retrieve entry node from enumeration node
         node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName("Continuous")
@@ -405,7 +434,9 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             )
             # todo: previous was returning from main run() method,
             # could maybe continue instead ?
-            raise SystemExit
+            raise SystemExit(
+                "Unable to set acquisition mode to continuous (entry retrieval). Aborting..."
+            )
         acquisition_mode_continuous = node_acquisition_mode_continuous.GetValue()
         # Set integer value from entry node as new value of enumeration node
         node_acquisition_mode.SetIntValue(acquisition_mode_continuous)
@@ -475,8 +506,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             logger.warning("ISP Enable node is not available or read-only.")
 
         # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
-        ctx.user_cfg = file_utils.read_config("userdata.yaml")["cameras"]
-        user_cfg = ctx.user_cfg
+        # ctx.user_cfg = file_utils.read_config("userdata.yaml")["cameras"]
+        # user_cfg: config.Di =
         self.camq_p2read.put("done")
         ctx.method = self.camq.get()
         if ctx.method == "crop":
@@ -488,7 +519,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             width_max = node_width.GetMax()
 
             logger.debug(f"node_width:{width_max}")
-            width_to_set = np.floor(width_max / roi[3] * user_cfg[ctx.camStr]["crop"][1] / 4) * 4
+            width_to_set = np.floor(width_max / roi[3] * cam_cfg.crop[1] / 4) * 4
             if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
                 node_width.SetValue(int(width_to_set))
             else:
@@ -496,7 +527,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             # Set height
             node_height = PySpin.CIntegerPtr(nodemap.GetNode("Height"))
             height_max = node_height.GetMax()
-            height_to_set = np.floor(height_max / roi[1] * user_cfg[ctx.camStr]["crop"][3] / 4) * 4
+            height_to_set = np.floor(height_max / roi[1] * cam_cfg.crop[3] / 4) * 4
             if PySpin.IsAvailable(node_height) and PySpin.IsWritable(node_height):
                 node_height.SetValue(int(height_to_set))
             else:
@@ -504,21 +535,21 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             logger.debug(f"node height: {height_max}")
             # Apply offset X
             node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
-            offset_x = np.floor(width_max / roi[3] * user_cfg[ctx.camStr]["crop"][0] / 4) * 4
+            offset_x = np.floor(width_max / roi[3] * cam_cfg.crop[0] / 4) * 4
             if PySpin.IsAvailable(node_offset_x) and PySpin.IsWritable(node_offset_x):
                 node_offset_x.SetValue(int(offset_x))
             else:
                 logger.warning("Offset X not available...")
             # Apply offset Y
             node_offset_y = PySpin.CIntegerPtr(nodemap.GetNode("OffsetY"))
-            offset_y = np.floor(height_max / roi[1] * user_cfg[ctx.camStr]["crop"][2] / 4) * 4
+            offset_y = np.floor(height_max / roi[1] * cam_cfg.crop[2] / 4) * 4
             if PySpin.IsAvailable(node_offset_y) and PySpin.IsWritable(node_offset_y):
                 node_offset_y.SetValue(int(offset_y))
             else:
                 logger.warning("Offset Y not available...")
 
-            ctx.aqW = int(user_cfg[ctx.camStr]["crop"][1] * self.dwnsmplfac)
-            ctx.aqH = int(user_cfg[ctx.camStr]["crop"][3] * self.dwnsmplfac)
+            ctx.aqW = int(cam_cfg.crop[1] * self.dwnsmplfac)
+            ctx.aqH = int(cam_cfg.crop[3] * self.dwnsmplfac)
 
         else:
             ctx.aqW = int(self.frmdim[3] * self.dwnsmplfac)
@@ -531,7 +562,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         )
 
         cam.AcquisitionFrameRateEnable.SetValue(True)
-        cam.Gain.SetValue(ctx.user_cfg[ctx.camStr]["gain"])
+        cam.Gain.SetValue(cam_cfg.gain)
 
         # Ensure desired frame rate does not exceed the maximum
         max_frmrate = cam.AcquisitionFrameRate.GetMax()
@@ -568,8 +599,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam.ExposureTime.SetValue(ctx.current_exposure_time)
 
         cam.AcquisitionFrameRateEnable.SetValue(True)
-        cam.Gain.SetValue(ctx.user_cfg[ctx.camStr]["gain"])
-        cam.Gamma.SetValue(ctx.user_cfg[ctx.camStr]["gamma"])
+        cam.Gain.SetValue(cam_cfg.gain)
+        cam.Gamma.SetValue(cam_cfg.gamma)
         # Ensure desired frame rate does not exceed the maximum  # gst: this is not ensured. TODO
         max_frmrate = cam.AcquisitionFrameRate.GetMax()
         if not ctx.ismaster:
@@ -605,9 +636,10 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
     def _cmd_getBalance(self, ctx: CamCtx):
         cam = ctx.cam
+        cam_cfg = self._rcp_context.user_config.cameras[ctx.camStr]
         cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
-        cam.Gain.SetValue(ctx.user_cfg[ctx.camStr]["gain"])
-        cam.Gamma.SetValue(ctx.user_cfg[ctx.camStr]["gamma"])
+        cam.Gain.SetValue(cam_cfg.gain)
+        cam.Gamma.SetValue(cam_cfg.gamma)
         if not ctx.ismaster:
             cam.AcquisitionFrameRateEnable.SetValue(False)
         else:
