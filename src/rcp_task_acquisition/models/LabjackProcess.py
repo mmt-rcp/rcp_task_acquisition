@@ -1,6 +1,6 @@
-from typing import Optional, Any
-
 import ctypes
+import time
+from typing import Optional, Any
 
 import numpy as np
 from labjack import ljm
@@ -92,7 +92,7 @@ class LabJackDataStream(ProcessWithLogging):
         voltage_ranges.append(0)
         self.input_names = input_names
         self.voltage_ranges = voltage_ranges
-        self.handle: Optional[Any] = None  # ljm handle
+        self.handle: Optional[int] = None  # ljm handle ; it's a fd basically
 
     def _set_high_prio(
         self,
@@ -112,6 +112,44 @@ class LabJackDataStream(ProcessWithLogging):
                     "Could not set current process to high prio: %s", win32api.GetLastError()
                 )
 
+    def _disconnect(self):
+        handle = self.handle
+        if handle is None:
+            return
+        self.handle = None
+        ljm.eStreamStop(handle)
+        ljm.close(handle)
+
+    def _attempt_connect(self, scan_list):
+        self._disconnect()
+        try:
+            self.__attempt_connect(scan_list)
+            return
+        except ljm.ljm.LJMError as err:
+            logger.error("LJM: failed attempt connect: %s", err, exc_info=True, stacklevel=2)
+            # if err.errorCode == 2605:  # STREAM_IS_ACTIVE
+            #     ljm.eStreamStop(self.handle)
+        self._disconnect()
+        ljm.closeAll()
+        self.__attempt_connect(scan_list)
+
+    def __attempt_connect(self, scan_list):
+        numAddresses = len(scan_list)
+        self.handle = ljm.openS("ANY", "ANY", "ANY")
+        # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
+        # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 0)
+        ljm_buff_sz = ljm.readLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE")
+        logger.verbose("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE=%s", ljm_buff_sz)
+        # see: https://share.google/aimode/dbpqwwqov0aM2cwJs
+        # Key Details
+        # • Default Value: 0 (uses the operating system default, which typically enables auto-tuning).
+        # This is recommended for most use cases.
+        ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
+        self.actualscanRate.value = ljm.eStreamStart(
+            self.handle, SCANS_PER_READ, numAddresses, scan_list, self.attemptedscanRate
+        )
+        logger.info("started LJM stream on %s", self.handle)
+
     def run(self):
         self._set_high_prio()
         first_write = True
@@ -125,32 +163,33 @@ class LabJackDataStream(ProcessWithLogging):
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
         if self.digital_inputs or self.extended_inputs:
             aScanList.append(2580)
-        logger.debug(aScanList)
-        numAddresses = len(aScanList)
+        logger.debug("ljm: addresses=%s", aScanList)
 
-        def try_ljm():
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
-
-        try:
-            try_ljm()
-        except Exception as err:
-            logger.exception("Failed open LJM: %s", err)
-            ljm.closeAll()
-            try_ljm()
         self.stream_started.value = True
         while not self.finished.value:
+            if self.handle is None:
+                try:
+                    self._attempt_connect(aScanList)
+                except BaseException as err:
+                    logger.exception("Failed open LJM: %s ; will retry in 1s", err)
+                    time.sleep(1)
+                    continue
+
             if self.create_csv.value:
                 self.labjack_csv = self.folder_queue.get()
                 write_to_csv = True
                 self.create_csv.value = False
-            data = ljm.eStreamRead(self.handle)
+
+            try:
+                data = ljm.eStreamRead(self.handle)
+            except ljm.ljm.LJMError as err:
+                logger.verbose("ljm.eStreamRead failed: %s", err)
+                # if err.errorCode == 1263:  # LJME_NO_RESPONSE_BYTES_RECEIVED
+                # ljm.eStreamStop(self.handle)
+                self._disconnect()
+                ljm.closeAll()
+                continue
+
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
                 logger.warning("ERROR!! OVERFLOW!!")
@@ -159,6 +198,12 @@ class LabJackDataStream(ProcessWithLogging):
                 logger.warning(f"prev data[2]: {data_2}")
                 logger.warning(f"data[1]: {data[1]}")
                 logger.warning(f"data[2]: {data[2]}")
+                # ljm.eStreamStop(self.handle)
+                self._disconnect()
+                ljm.closeAll()
+                # self._attempt_connect(aScanList)
+                continue
+
             data_1 = data[1]
             data_2 = data[2]
             if int(data[1]) > 48:
@@ -240,15 +285,12 @@ class LabJackDataStream(ProcessWithLogging):
         self.session_file = session_dir
 
     def stop(self):
-        try:
-            ljm.eStreamStop(self.handle)
-        except Exception as err:
-            logger.debug("labjack stream already stopped: %s", err)
+        self._disconnect()
+        ljm.closeAll()
         self.create_csv.value = False
         self.session_file = ""
         self.labjack_csv = ""
         self.numpy_arr[:] = np.nan
-        ljm.closeAll()
 
     def is_successful(self):
         return self.is_success
