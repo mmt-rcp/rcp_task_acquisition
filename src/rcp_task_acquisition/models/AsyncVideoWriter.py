@@ -109,7 +109,16 @@ class AsyncVideoWriter:
 class AsyncFFmpegGPUWriter:
     STOP = object()
 
-    def __init__(self, video_file, timestamp_file, fps, width, height, max_queue=512, qp=23):
+    def __init__(
+        self,
+        video_file: str,
+        timestamp_file: str,
+        fps: int,
+        width: int,
+        height: int,
+        max_queue: int = 512,
+        qp: int = 23,
+    ):
         self.video_file = video_file
         self.timestamp_file = timestamp_file
         self.fps = fps

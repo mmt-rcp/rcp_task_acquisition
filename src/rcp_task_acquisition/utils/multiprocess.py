@@ -1,13 +1,13 @@
 import logging.config
 from multiprocessing import Process
+from typing import Callable
 
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.logging import (
+    install_log_exception_hook,
     make_log_dict_config,
     setup_logging,
-    install_log_exception_hook,
 )
-
 
 logger = get_logger(__name__)
 
@@ -17,6 +17,8 @@ def void_run_no_target(self):
 
 
 class ProcessWithLogging(Process):
+    _orig_run: Callable
+
     @classmethod
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -29,11 +31,8 @@ class ProcessWithLogging(Process):
 
     def __init__(self, *args, target=None, **kwargs) -> None:
         self._orig_target = target
-        super().__init__(
-            *args,
-            **kwargs,
-            target=self.pre_run,
-        )
+        kwargs["target"] = self.pre_run
+        super().__init__(*args, **kwargs)
         self._logging_config = make_log_dict_config()
 
     def pre_run(self, *args, **kwargs):
@@ -58,7 +57,7 @@ class ProcessWithLogging(Process):
             "%s: starting target=%s args=%s kwargs=%s", self.name, target, self._args, self._kwargs
         )
         try:
-            target(*args) if kwargs is None else target(*args, **kwargs)  # noqa
+            target(*args) if kwargs is None else target(*args, **kwargs)
         except BaseException as err:
             logger.exception("exiting due to: %s", err)
             raise

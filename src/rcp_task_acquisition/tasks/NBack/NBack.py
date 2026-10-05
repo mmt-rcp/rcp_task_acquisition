@@ -76,7 +76,7 @@ def _is_practice_block(trial_num: int) -> bool:
     return trial_num == 10
 
 
-def _all_stimuli_paths() -> list[Path]:
+def _all_stimuli_paths() -> list[str]:
     # """Return the list of all available stimuli paths (length = STIMULI_COUNT)."""
     # base = cfg.RESOURCES_DIR / "stimuli"
     # paths = [base / f"attneave_{i}.png" for i in range(1, cfg.STIMULI_COUNT + 1)]
@@ -612,13 +612,3 @@ class N_back(bases.StimulusBase):
             )
 
         return texts
-
-    def finish(self):
-        label = "end_text"
-        return visual.TextStim(
-            self.display,
-            text=("Task complete\nThank you for participating!"),
-            name=label,
-            wrapWidth=1000,
-            height=50,
-        )

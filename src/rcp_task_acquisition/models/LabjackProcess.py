@@ -1,15 +1,16 @@
-from typing import Optional, Any
-
 import ctypes
+import multiprocessing
+from multiprocessing import sharedctypes
+from typing import Any
 
 import numpy as np
 from labjack import ljm
 
 from rcp_task_acquisition.utils import win_os
+from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
-from rcp_task_acquisition.utils.constants import SCANS_PER_READ
-
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt
 
 logger = get_logger(__name__)
 
@@ -17,14 +18,14 @@ logger = get_logger(__name__)
 class LabJackDataStream(ProcessWithLogging):
     def __init__(
         self,
-        arr_length,
-        is_finished,
-        labjack_arr,
-        create_csv,
-        folder_queue,
-        labjack_list,
-        graph_indices,
-        button_pressed,
+        arr_length: int,
+        is_finished: SharedBool,
+        labjack_arr: sharedctypes.SynchronizedArray,
+        create_csv: SharedBool,
+        folder_queue: multiprocessing.Queue,
+        labjack_list: list,
+        graph_indices: tuple[SharedInt, SharedInt, SharedInt],
+        button_pressed: SharedBool,
         inputs,
         button_list,
         press_counter,
@@ -92,14 +93,14 @@ class LabJackDataStream(ProcessWithLogging):
         voltage_ranges.append(0)
         self.input_names = input_names
         self.voltage_ranges = voltage_ranges
-        self.handle: Optional[Any] = None  # ljm handle
+        self.handle: Any | None = None  # ljm handle
 
     def _set_high_prio(
         self,
         *,
         win32api=win_os.win32api,
         win32process=win_os.win32process,
-        win32con=win_os.win32con,  # noqa
+        win32con=win_os.win32con,
     ):
         if win32api is None:
             pass  # todo

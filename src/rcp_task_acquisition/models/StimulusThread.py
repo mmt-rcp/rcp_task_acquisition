@@ -1,12 +1,11 @@
 import ast
 import json
 import math
+import multiprocessing
 import time
 from enum import Enum
-from multiprocessing import Process
 from queue import Empty
 
-import rcp_task_acquisition.utils.file_utils as files
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
 from rcp_task_acquisition.tasks.HardwareTest import HardwareTest
@@ -22,6 +21,8 @@ from rcp_task_acquisition.tasks.VowelSpace.VowelSpace import VowelSpace
 from rcp_task_acquisition.utils.displays import Window
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.typing import SharedBool, SharedEvent, SharedInt
 
 logger = get_logger(__name__)
 
@@ -44,29 +45,32 @@ class Msg(str, Enum):
 class StimulusThread(ProcessWithLogging):
     def __init__(
         self,
-        msgq,
-        finish,
-        shared,
-        frame,
-        screen_config,
-        task,
-        button,
-        press_count,
-        video_status,
-        resultsq,
-        stimulus_timer,
-        event_lock,
+        msgq: multiprocessing.Queue,
+        finish: SharedInt,
+        shared: SharedInt,
+        frame: SharedInt,
+        screen_config: int,
+        task: str,
+        button: SharedBool,
+        press_count: SharedInt,
+        video_status: SharedInt,
+        resultsq: multiprocessing.Queue,
+        stimulus_timer: SharedInt,
+        event_lock: SharedEvent,
+        *,
+        rcp_context: RcpRunContext,
     ):
         super().__init__()
+        self._rcp_context = rcp_context
         self.msgq = msgq
         self.screenConfig = screen_config
         self.shared = shared
         self.finish = finish
         self.frame = frame
         self.button = button
-        self.stimulusConfig = files.get_stimulus_config("taskconfig.yaml")
+        # self.stimulusConfig = files.get_stimulus_config("taskconfig.yaml")
         self.totalStimFrames = 0
-        self.stimulus = None
+        self.stimulus: StimulusBase | None = None
         self.resultsq = resultsq
         self.press_count = press_count
         self.video_status = video_status
@@ -136,6 +140,7 @@ class StimulusThread(ProcessWithLogging):
                         "video_lock": self.video_lock,
                         "video_status": self.video_status,
                         "finish": self.finish,
+                        "rcp_context": self._rcp_context,
                     }
                     HardwareTest(base_vars).present()
                 elif msg == Msg.UPDATE_DATA:
@@ -180,6 +185,7 @@ class StimulusThread(ProcessWithLogging):
             "video_lock": self.video_lock,
             "video_status": self.video_status,
             "finish": self.finish,
+            "rcp_context": self._rcp_context,
         }
         logger.debug(f"base vars: {base_vars}")
         base_cls = dict(
@@ -194,15 +200,12 @@ class StimulusThread(ProcessWithLogging):
             tone_taps_closed=ToneTapsClosed,
             verb_generation=VerbGeneration,
         ).get(self.task, StimulusBase)
-        #
         extra_args = []
         if self.task == "n_back":
             extra_args.append(self.button)
         elif self.task == "tone_taps_closed":
             extra_args.append(self.press_count)
-        #
         self.stimulus = base_cls(base_vars, *extra_args)
-        #
         logger.info(f"stimuli: {self.stimulus}")
 
     def end_stimulus(self):
@@ -211,7 +214,9 @@ class StimulusThread(ProcessWithLogging):
 
     def send_metadata(self):
         # logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
-        results = self.stimulus.saveMetadata(self.stimulusConfig[self.task], None)
+        ctx = self._rcp_context
+        task_cfg = ctx.tasks_config[self.task]
+        results = self.stimulus.saveMetadata(task_cfg, None)  # TODO: not sure what's going on
         json_str = json.dumps(results)
         logger.debug(f"jsonstr: {json_str}")
         self.resultsq.put(json_str)
@@ -227,6 +232,6 @@ class StimulusThread(ProcessWithLogging):
     def setup_videos(self, video_filename_dict):
         pass
 
-    def play_video(self, trial=None):
-        if self.stimulus != None:
+    def play_video(self, trial):
+        if self.stimulus is not None:
             self.stimulus.play_instructional_video(trial)

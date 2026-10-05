@@ -11,15 +11,24 @@ import numpy as np
 import wx
 
 from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
+from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt
 
 logger = get_logger(__name__)
 
 
 class LabjackFrontend:
     def __init__(
-        self, array_length, ctrl_panel, timer, args, button_pressed, press_count, hardware_test
+        self,
+        array_length: int,
+        ctrl_panel: GraphPanel,
+        timer: wx.Timer,
+        args: list[list],
+        button_pressed: SharedBool,
+        press_count: SharedInt,
+        hardware_test: SharedBool,
     ):
 
         self.constants = []
@@ -30,11 +39,11 @@ class LabjackFrontend:
         self.hardware = [
             item for item in list(args[0]) if item not in PLOT_CONSTANTS
         ]  # list(args[0])
-        self.hardware_indices = [
+        self.hardware_indices = (
             Value(ctypes.c_int, -1),
             Value(ctypes.c_int, -1),
             Value(ctypes.c_int, -1),
-        ]
+        )
         self.prev_graph_list = [-1, -1, -1]
         self.digital_list = []
         self.analog_list = []
@@ -69,6 +78,7 @@ class LabjackFrontend:
         self.serial_state = 0
         self.serial_bool = False
         self.ser_success = False
+        self.labjack_process: LabJackDataStream
 
     def labjack_stream(self, event):
         labjack_button = self.graph_panel.get_graph_button()

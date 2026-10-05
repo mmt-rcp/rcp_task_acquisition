@@ -1,11 +1,13 @@
-from __future__ import annotations  # noqa
+from __future__ import annotations
 
 import os
+import types
 from pathlib import Path
 
 import rcp_task_acquisition
 from rcp_task_acquisition.utils.logger import get_logger
 
+git: types.ModuleType | None = None
 try:
     import git
 except ModuleNotFoundError:

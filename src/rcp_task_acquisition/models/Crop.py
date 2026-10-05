@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import patches
 
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -60,11 +61,11 @@ class Crop:
         #     self.croprec[ndx].set_alpha(0.6)
         # self.figure.canvas.draw()
 
-    def adjust_crop(self, event, axes, cam_list, cam_config):
+    def adjust_crop(self, event, axes, cam_list, cam_config: config.CamerasDictConfig):
         self.cropAxes = event.inaxes
         ndx = axes.index(event.inaxes)
         s = cam_list[ndx]
-        self.croproi[ndx] = cam_config[s]["crop"]
+        self.croproi[ndx] = cam_config[s].crop
         roi_x = event.xdata
         roi_y = event.ydata
         x_center = self.croproi[ndx][1] / 2

@@ -29,7 +29,7 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.timer.value = 0
         if self.show_image:
             if not self.photo:
-                logger.warn("No Photo is selected")
+                logger.warning("No Photo is selected")
                 return
 
             logger.debug(self.photo)

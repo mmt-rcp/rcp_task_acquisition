@@ -1,3 +1,5 @@
+from multiprocessing import sharedctypes
+
 import wx
 
 from rcp_task_acquisition.utils.logger import get_logger
@@ -17,9 +19,11 @@ class TrialPanel(wx.Panel):
         self.instruction_paths = {}
 
         # so there is no error for tasks without videos
-        self.start_video_button = None
-        self.pause_video_button = None
-        self.video_title = None
+        self.start_video_button: wx.ToggleButton | None = None
+        self.pause_video_button: wx.ToggleButton | None = None
+        self.video_title: wx.StaticText | None = None
+
+        self.timer: sharedctypes.Synchronized[int]
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
@@ -153,5 +157,5 @@ class TrialPanel(wx.Panel):
     def update_values(self):
         pass
 
-    def add_timer(self, timer):
+    def add_timer(self, timer: sharedctypes.Synchronized):
         self.timer = timer

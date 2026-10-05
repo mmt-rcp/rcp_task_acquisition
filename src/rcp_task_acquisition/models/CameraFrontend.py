@@ -1,6 +1,7 @@
 import ctypes
 import multiprocessing
 import os
+import queue
 import shutil
 import time
 from dataclasses import dataclass
@@ -8,14 +9,21 @@ from multiprocessing import Array, Queue, Value
 
 import cv2
 import numpy as np
+import wx
 
 import rcp_task_acquisition.models.CameraProcess as spin
 from rcp_task_acquisition.models.CameraProcess import CameraCommand
 from rcp_task_acquisition.models.Crop import Crop
-from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
-from rcp_task_acquisition.utils import file_utils
+from rcp_task_acquisition.models.SerialDevice import SerialDevice
+from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
+from rcp_task_acquisition.panels.GraphPanel import GraphPanel
+from rcp_task_acquisition.panels.ImagePanel import ImagePanel
+from rcp_task_acquisition.panels.ParticipantMonitorPanel import MonitorPanel
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.typing import SharedArray, SharedInt
 
 logger = get_logger(__name__)
 
@@ -47,15 +55,26 @@ class CamSettings:
     contrast_tests: np.ndarray
     frame: np.ndarray
     frameBuff: np.ndarray
-    array4feed: Array
-    frmGrab: Value
+    array4feed: SharedArray
+    frmGrab: SharedInt
     camq: multiprocessing.Queue
     camq_p2read: multiprocessing.Queue
     frame_size: None | FrameDims
 
 
 class Camera:
-    def __init__(self, serial, panel, image_panel, contrast_test, focus_test, monitor):
+    def __init__(
+        self,
+        serial: SerialDevice,
+        panel: GraphPanel,
+        image_panel: ImagePanel,
+        contrast_test: wx.ToggleButton,
+        focus_test: wx.ToggleButton,
+        monitor: MonitorPanel,
+        *,
+        rcp_context: RcpRunContext,
+    ):
+        self._rcp_context = rcp_context
         self.serial = serial
         self.shared = Value(ctypes.c_byte, 0)
         self.camaq = Value(ctypes.c_byte, 0)
@@ -68,9 +87,7 @@ class Camera:
         self.contrast_test = contrast_test
         self.focus_test = focus_test
         self.warning = WarningHandler()
-        self.unconnected = []
-        self.camStrList = []
-        self.cam_settings = []
+        self.camStrList: list[str] = []
         self.trial = 0
         self.session = 0
         self.participant_monitor = monitor
@@ -78,35 +95,34 @@ class Camera:
         self.cam_dict: dict[str, CamSettings] = {}
         self.cam: list[spin.multiCam_DLC_Cam] = []
 
-    def setup(self, config, is_unconnected, requested_framerate):
-        self.cam_cfg = config
+    def setup(self, cams_cfg: config.CamerasDictConfig, is_unconnected: bool, requested_framerate):
         self.cam_crop = Crop()
         self.framerate = requested_framerate
         self.reset_variables()
         self.cam_dict.clear()
 
-        for name in self.cam_cfg:
-            if not self.cam_cfg[name]["in_use"]:
+        for name, cfg in cams_cfg.items():
+            if not cfg.in_use:
                 continue
 
             else:
-                cam_bin = int(self.cam_cfg[name]["bin"])
+                cam_bin = int(cfg.bin)
                 cam_dims = [
                     0,
                     int(CAM_MAX_HEIGHT / DOWNSAMPLE_VAL / cam_bin),
                     0,
                     int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
                 ]
-                is_primary = bool(self.cam_cfg[name]["ismaster"] or is_unconnected)
+                is_primary = bool(cfg.ismaster or is_unconnected)
                 new_cam = CamSettings(
                     name=name,
-                    serial=self.cam_cfg[name]["serial"],
+                    serial=cfg.serial,
                     is_primary=is_primary,
                     size=cam_dims[1] * cam_dims[3] * 3,
                     shape=[cam_dims[1], cam_dims[3], 3],
                     bin_val=cam_bin,
                     frame_dims=cam_dims,
-                    decrease_val=int(self.cam_cfg[name]["framerate_decrease_factor"]),
+                    decrease_val=int(cfg.framerate_decrease_factor),
                     actual_framerate=None,
                     exposure=None,
                     cam_tests=np.full(shape=30 * 2, fill_value=np.nan),
@@ -121,8 +137,8 @@ class Camera:
                 )
             self.cam_dict[new_cam.serial] = new_cam
 
-            self.cam_crop.add_crop(self.cam_cfg[new_cam.name]["crop"])
-            if self.cam_cfg[name]["ismaster"] or is_unconnected:
+            self.cam_crop.add_crop(cfg.crop)
+            if cfg.ismaster or is_unconnected:
                 self.primary_cams.append(new_cam.serial)
             else:
                 self.secondary_cams.append(new_cam.serial)
@@ -169,12 +185,11 @@ class Camera:
         self.camaq.value = 0
         self.stopAq()
 
-        for ndx, cam in enumerate(self.cam_dict):
-            self.cam_dict[cam].frame = np.zeros(self.cam_dict[cam].shape, dtype="ubyte")
-            self.cam_dict[cam].frameBuff[0:] = np.frombuffer(
-                self.cam_dict[cam].array4feed.get_obj(), self.dtype, self.cam_dict[cam].size
-            )
-            dimensions = self.cam_crop.croproi[ndx] if self.crop else self.cam_dict[cam].frame_dims
+        for ndx, cam_name in enumerate(self.cam_dict):
+            cam = self.cam_dict[cam_name]
+            cam.frame = np.zeros(cam.shape, dtype="ubyte")
+            cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
+            dimensions = self.cam_crop.croproi[ndx] if self.crop else cam.frame_dims
 
             new_dims = FrameDims(
                 x1=dimensions[0],
@@ -186,17 +201,11 @@ class Camera:
                 dispSize=dimensions[3] * dimensions[1] * 3,
             )
 
-            frame = (
-                self.cam_dict[cam]
-                .frameBuff[0 : new_dims.dispSize]
-                .reshape([new_dims.h, new_dims.w, 3])
-            )
+            frame = cam.frameBuff[0 : new_dims.dispSize].reshape([new_dims.h, new_dims.w, 3])
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             for f in range(3):
-                self.cam_dict[cam].frame[
-                    new_dims.y1 : new_dims.y2, new_dims.x1 : new_dims.x2, f
-                ] = frame[:, :, f]
-            self.cam_dict[cam].frame_size = new_dims
+                cam.frame[new_dims.y1 : new_dims.y2, new_dims.x1 : new_dims.x2, f] = frame[:, :, f]
+            cam.frame_size = new_dims
 
         self.im[0].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer]].frame)
         self.im[1].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].frame)
@@ -339,6 +348,7 @@ class Camera:
                 cam_d.array4feed,
                 cam_d.frmGrab,
                 DOWNSAMPLE_VAL,
+                rcp_context=self._rcp_context,
             )
             self.cam.append(cam)
             cam.start()
@@ -351,7 +361,10 @@ class Camera:
     def deinitThreads(self):
         for n, cam_d in enumerate(self.cam_dict.values()):
             cam_d.camq.put(CameraCommand.RELEASE)
-            cam_d.camq_p2read.get()
+            try:
+                cam_d.camq_p2read.get(timeout=5)
+            except queue.Empty:
+                logger.warning("timeout get from p2read")
             cam_d.camq.close()
             cam_d.camq_p2read.close()
             self.cam[n].terminate()
@@ -405,7 +418,6 @@ class Camera:
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
     def updateSettings(self, event):
-        self.user_cfg = file_utils.read_config("userdata.yaml")
         self.aqW = []
         self.aqH = []
         self.recSet = []
@@ -479,7 +491,6 @@ class Camera:
     def reset_variables(self):
         self.labjack_scan_rate = None
         self.camStrList = []
-        self.cam_settings = []
         self.secondary_cams = []
         self.primary_cams = []
         self.cam_pointer = 0

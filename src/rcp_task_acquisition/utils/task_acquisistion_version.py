@@ -22,7 +22,7 @@ def _get_from_setuptools_scm():
 __version__ = _get_from_setuptools_scm()
 logger.debug(__version__)
 
-if __version__ == None:
+if __version__ is None:
     try:
         __version__ = importlib_metadata.version("rcp_task_acquisition")
     except importlib_metadata.PackageNotFoundError:

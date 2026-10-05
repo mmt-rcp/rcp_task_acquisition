@@ -1,5 +1,5 @@
-import os
 import multiprocessing
+import os
 import shlex
 import sys
 import threading
@@ -8,6 +8,8 @@ from pathlib import Path
 import wx
 import wx.adv
 
+from rcp_task_acquisition.utils import config
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 # set up matplotlib to be compatible on commandline/spyder
 # import matplotlib
@@ -17,9 +19,10 @@ import wx.adv
 class App(wx.App):
     """RCP Task Acquisition"""
 
-    def __init__(self):
+    def __init__(self, rcp_context: RcpRunContext):
         self._action_thread: None | threading.Thread = None
         self._load_app_dialog: wx.Dialog
+        self._rcp_context = rcp_context
         super().__init__()
 
     def _show_start_dialog(self):
@@ -113,16 +116,13 @@ class App(wx.App):
         wx.CallAfter(self.OnLoadDone)  # must be executed in main UI thread
 
     def OnLoadDone(self):
-        panel = self.SwitchPanel()
+        panel = self.SwitchPanel(rcp_context=self._rcp_context)
         self._load_app_dialog.Hide()
         self._load_app_dialog.Close()
 
 
 def run_app():
-    from rcp_task_acquisition.utils.constants import get_rcp_config
     from rcp_task_acquisition.utils import logging, trial
-
-    cfg = get_rcp_config()
 
     console_start_log_level = os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO")
     logging.setup_logging(
@@ -132,8 +132,17 @@ def run_app():
         console_handler_level=console_start_log_level,
     )
 
-    unit_serial = cfg.get("unitRef")
-    log_file_path = trial.get_new_log_file(unit_serial=unit_serial)
+    user_cfg_path, user_cfg, task_cfg_path, tasks_cfg = config.load_rcp_config()
+    rcp_context = RcpRunContext(
+        config_file_path=user_cfg_path,
+        user_config=user_cfg,
+        tasks_config=tasks_cfg,
+    )
+
+    log_file_path = trial.get_new_log_file(
+        base_dir=user_cfg.RawDataDir,
+        unit_serial=user_cfg.unitRef,
+    )
     log_q_listener = logging.get_log_queue_listener()
     if log_q_listener is not None:
         log_q_listener.add_file_handler(
@@ -154,8 +163,9 @@ def run_app():
     logger.debug("start env:\n%s", "\n".join(f"{k}={v!r}" for k, v in os.environ.items()))
 
     rc = -1
+
     try:
-        app = App()
+        app = App(rcp_context=rcp_context)
         logger.info("Running main loop..")
         rc = app.MainLoop()
         logger.verbose("app main loop returned %s", rc)

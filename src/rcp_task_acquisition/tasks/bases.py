@@ -1,5 +1,6 @@
 import os
 import pathlib as pl
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -7,20 +8,43 @@ import pyaudio
 from psychopy import core, visual
 from psychopy.visual.vlcmoviestim import VlcMovieStim
 
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.utils.constants import (
     DURATION,
     FREQUENCY,
     SAMPLING_RATE,
-    VIDEO_DIR,
     VideoStatus,
 )
+from rcp_task_acquisition.utils.displays import Window
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.typing import SharedEvent, SharedInt
 
 logger = get_logger(__name__)
 
 
+_registered_stimuli_classes: list[type["StimulusBase"]] = []
+
+
 class StimulusBase:
-    def __init__(self, display, frame, timer, video_lock, *, video_status=None, finish=None):
+    panel_cls: type[TrialPanel] = TrialPanel
+
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        _registered_stimuli_classes.append(cls)
+
+    def __init__(
+        self,
+        display: Window,
+        frame: SharedInt,
+        timer: SharedInt,
+        video_lock: SharedEvent,
+        *,
+        video_status: SharedInt | None = None,
+        finish: SharedInt | None = None,
+        rcp_context: RcpRunContext,
+    ):
+        self._rcp_context = rcp_context
         self.display = display
         self.frame = frame
         self.prev_flip_time = None
@@ -28,7 +52,7 @@ class StimulusBase:
         self.header = None
         self.total_time = None
         self.flip_interval_arr = None
-        self.instructions_dict = {}
+        self.instructions_dict: dict[str, str] = {}
         self.current_trial = None
         self.video_status = video_status
         self.timer = timer
@@ -141,12 +165,13 @@ class StimulusBase:
         pass
 
     def play_instructional_video(self, trial_name):
+        user_cfg = self._rcp_context.user_config
         logger.debug(f"Trial name: {trial_name}")
         if trial_name == "":
             file = self.instructions_dict
         else:
             file = self.instructions_dict[trial_name]
-        path = os.path.join(VIDEO_DIR, str(file))
+        path = Path(user_cfg.VideoDir, str(file))
         if not os.path.exists(path):
             self.video_status.value = VideoStatus.ERROR.value
             return

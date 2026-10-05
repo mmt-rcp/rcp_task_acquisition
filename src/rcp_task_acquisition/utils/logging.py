@@ -6,27 +6,26 @@ import logging
 import logging.handlers
 import multiprocessing
 import operator
+import os
 import signal
+import sys
 import threading
 import time
-import os
-from pathlib import Path
-from logging import LogRecord
-from queue import Empty
-from multiprocessing import Process
-from typing import Any, Callable, Optional
-
-import sys
-import verboselogs
-import coloredlogs
+from collections.abc import Callable
 from datetime import datetime
+from logging import LogRecord
+from multiprocessing import Process
+from pathlib import Path
+from queue import Empty
+from typing import Any, Optional
 
+import coloredlogs
+import verboselogs
 
 _LogLevelT = str | int
 
 _orig_logger_set_level = logging.Logger.setLevel
 
-#
 
 _already_setup = False
 _base_logger: logging.Logger = logging.root
@@ -208,8 +207,6 @@ class LogQueueListenerProc(Process):
             logger.debug("new handlers: %s", self._listener.handlers)
             prev.close()
 
-    #
-
     def stop(self):
         self._command_queue.put(None)
         # os.kill(self.pid, signal.SIGINT)
@@ -219,7 +216,6 @@ class LogQueueListenerProc(Process):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         cfg = self._log_config
-        #
         console_handler = self._console_handler = make_console_handler(cfg)
 
         # NB: start the listener as soon as possible
@@ -340,7 +336,7 @@ class PreciseTimeFormatter(logging.Formatter):
         else:
             v = ""
         with_dot = ".%f" in datefmt
-        rep = f".%f" if with_dot and self._time_precision == 0 else "%f"
+        rep = ".%f" if with_dot and self._time_precision == 0 else "%f"
         datefmt = datefmt.replace(rep, v)
         s = ct.strftime(datefmt)
         return s
@@ -458,7 +454,6 @@ class WithThreadIdQueueListener(logging.handlers.QueueListener):
                     self._handle(record)
                     idx += 1
                 del buffer[:idx]
-            #
             if want_quit:
                 break
 
@@ -547,7 +542,6 @@ def setup_logging(
         level_styles = DEFAULT_LEVEL_STYLES
     if field_styles is None:
         field_styles = DEFAULT_FIELD_STYLES
-    #
     cfg = LogConfig(
         base_logger_name=base_logger_name,
         logger_level=logger_level,
@@ -560,17 +554,14 @@ def setup_logging(
         console_handler_level=console_handler_level,
         # stream: TextIO = sys.stdout,
     )
-    #
     stop_multiproc_logging()
     #
     # pre-set these too verbose loggers level:
     for _limit_name, v in _limit_loggers_level.items():
         logging.getLogger(_limit_name).setLevel(v["level"])
-    #
     base_logger = get_verbose_logger(base_logger_name)
     # set the base logger level before creating possible dedicated subproc log handling:
     base_logger.setLevel(root_level)
-    #
     if multiprocess_enabled:
         # using queue created using the desired fork method context:
         multiproc_ctx = multiprocessing.get_context(fork_method)
@@ -705,7 +696,6 @@ _prev_file_handler: logging.FileHandler | None = None
 def set_log_location(log_file: Path):
     global _prev_file_handler
     logger.verbose("Setting log file to %s", log_file)
-    #
     q_listener = get_log_queue_listener()
     if q_listener is not None:
         q_listener.switch_file_handler(log_file)
@@ -730,4 +720,4 @@ def set_log_location(log_file: Path):
 
 # finally:
 
-logger = get_verbose_logger(__name__)  # noqa
+logger = get_verbose_logger(__name__)

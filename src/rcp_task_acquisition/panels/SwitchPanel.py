@@ -6,6 +6,7 @@ from rcp_task_acquisition.models.Warnings import WarningHandler
 from rcp_task_acquisition.panels.LaunchPanel import LaunchPanel
 from rcp_task_acquisition.panels.MainFrame import MainFrame
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
@@ -16,10 +17,11 @@ class ActivePanel(Enum):
 
 
 class SwitchPanel:
-    def __init__(self) -> None:
+    def __init__(self, *, rcp_context: RcpRunContext) -> None:
+        self._rcp_context: RcpRunContext = rcp_context
         self.active_panel = True
-        self.launch_panel = LaunchPanel()
-        self.task_frame = MainFrame()
+        self.launch_panel = LaunchPanel(rcp_context=rcp_context)
+        self.task_frame = MainFrame(rcp_context=rcp_context)
         self.warning = WarningHandler()
 
         self.disable_timer = wx.Timer(self.launch_panel.panel, wx.ID_ANY)

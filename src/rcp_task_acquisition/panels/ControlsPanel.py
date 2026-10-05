@@ -1,5 +1,6 @@
 import wx
 
+from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ParticipantMonitorPanel import MonitorPanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.Calibration.panel import Calibration
@@ -16,7 +17,14 @@ from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
 
 
 class ControlsPanel(wx.Panel):
-    def __init__(self, parent, ctrl_panel, psychopy_monitor, monitor_size, task="task"):
+    def __init__(
+        self,
+        parent: wx.Window,
+        ctrl_panel: GraphPanel,
+        psychopy_monitor: int,
+        monitor_size: wx.Size,
+        task="task",
+    ):
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
 
         vertical_spacer = wx.GridBagSizer(5, 5)
