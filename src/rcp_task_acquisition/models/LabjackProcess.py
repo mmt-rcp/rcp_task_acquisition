@@ -5,8 +5,8 @@ import ctypes
 import numpy as np
 from labjack import ljm
 
-from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.process import set_high_prio
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 
@@ -94,26 +94,8 @@ class LabJackDataStream(ProcessWithLogging):
         self.voltage_ranges = voltage_ranges
         self.handle: Optional[Any] = None  # ljm handle
 
-    def _set_high_prio(
-        self,
-        *,
-        win32api=win_os.win32api,
-        win32process=win_os.win32process,
-        win32con=win_os.win32con,  # noqa
-    ):
-        if win32api is None:
-            pass  # todo
-        else:
-            pid = win32api.GetCurrentProcessId()
-            handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
-            ok = win32process.SetPriorityClass(handle, win32process.HIGH_PRIORITY_CLASS)
-            if not ok:
-                logger.warning(
-                    "Could not set current process to high prio: %s", win32api.GetLastError()
-                )
-
     def run(self):
-        self._set_high_prio()
+        set_high_prio()
         first_write = True
         logger.debug("Start labjack stream.")
         write_to_csv = False
