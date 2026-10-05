@@ -24,7 +24,7 @@ def test_default_base_dir(rcp_run_ctx):
 
 
 def test_load_default():
-    effective_path, cfg = config.load_rcp_user_config()
+    effective_path, cfg, _ = config.load_rcp_user_config()
     assert isinstance(effective_path, Path)
     assert isinstance(cfg, RcpUserConfig)
     assert isinstance(cfg.hardware, config.HardwareDictConfig)
@@ -54,7 +54,7 @@ cameras:
         in_use: true
 """
     )
-    cfg = config.load_rcp_user_config_buffer(buffer)
+    cfg, _ = config.load_rcp_user_config_buffer(buffer)
     assert isinstance(cfg, RcpUserConfig)
     assert len(cfg.cameras) == 1
     assert "leftCamTop" in cfg.cameras
@@ -70,11 +70,28 @@ cameras:
     out = buffer.getvalue()
     assert f"serial: '{serial}'" in out
     buffer.seek(0)
-    cfg2 = config.load_rcp_user_config_buffer(buffer)
+    cfg2, _ = config.load_rcp_user_config_buffer(buffer)
     assert cfg == cfg2
     #
-    with pytest.raises(KeyError):
-        cfg2.hardware.experimenter_mic  # noqa
+
+
+def test_auto_generate_on_attribute_access(rcp_run_ctx):
+    def to_attr_name(v):
+        return v.lower().replace(" ", "_").replace("-", "_")
+
+    hardware = rcp_run_ctx.user_config.hardware
+    for hard_item in config.HardwareItem:
+        assert hard_item not in hardware
+        hard = getattr(hardware, to_attr_name(hard_item.name))
+        assert hard_item in hardware
+        assert hard is hardware[hard_item]
+    #
+    cameras = rcp_run_ctx.user_config.cameras
+    for cam_item in config.CameraItem:
+        assert cam_item not in cameras
+        cam = getattr(cameras, to_attr_name(cam_item.name))
+        assert cam_item in cameras
+        assert cam is cameras[cam_item]
 
 
 def test_load_save_default(rcp_run_ctx):
@@ -84,7 +101,7 @@ def test_load_save_default(rcp_run_ctx):
     buffer = io.StringIO()
     config.save_rcp_user_config_buffer(cfg, buffer)
     buffer.seek(0)
-    cfg2 = config.load_rcp_user_config_buffer(buffer)
+    cfg2, _ = config.load_rcp_user_config_buffer(buffer)
     assert cfg == cfg2
 
 
@@ -118,7 +135,7 @@ def test_accessor(rcp_run_ctx):
 
 def test_tasks_config():
     buffer = io.StringIO("""
-first task with space:
+first task with space:  # comment1
   settings:
   - Photodetector
   - Subject Mic
@@ -128,7 +145,7 @@ n_back:
   - Subject Mic
   - Experimenter Mic
   """)
-    cfg = config.load_rcp_tasks_config_buffer(buffer)
+    cfg, commented_cfg = config.load_rcp_tasks_config_buffer(buffer)
     assert len(cfg) == 2
     assert tuple(cfg) == ("first task with space", "n_back")
     n_back = cfg["n_back"]
@@ -141,7 +158,7 @@ n_back:
     # print(out)
     # assert "another" in out
     buffer.seek(0)
-    cfg2 = config.load_rcp_tasks_config_buffer(buffer)
+    cfg2, _ = config.load_rcp_tasks_config_buffer(buffer)
     assert cfg2["another"].settings == ["foobar"]
     assert cfg == cfg2
     cfg.pop("another")

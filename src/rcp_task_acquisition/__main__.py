@@ -122,9 +122,15 @@ class App(wx.App):
 
 
 def run_app():
+    from rcp_task_acquisition import cmdline
+
+    args = cmdline.parse_args()
+
     from rcp_task_acquisition.utils import logging, trial
 
-    console_start_log_level = os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO")
+    console_start_log_level = (
+        os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO") if args.log_level is None else args.log_level
+    )
     logging.setup_logging(
         multiprocess_enabled=True,
         date_format=logging.DateTimeFormats.hour_time_precise,
@@ -132,11 +138,13 @@ def run_app():
         console_handler_level=console_start_log_level,
     )
 
-    user_cfg_path, user_cfg, task_cfg_path, tasks_cfg = config.load_rcp_config()
+    user_cfg_data, tasks_cfg_data = config.load_rcp_config(args.config_dir)
+    user_cfg = user_cfg_data[1]
+
     rcp_context = RcpRunContext(
-        config_file_path=user_cfg_path,
+        config_file_path=user_cfg_data[0],
         user_config=user_cfg,
-        tasks_config=tasks_cfg,
+        tasks_config=tasks_cfg_data[1],
     )
 
     log_file_path = trial.get_new_log_file(

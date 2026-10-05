@@ -92,8 +92,9 @@ class Camera:
         self.session = 0
         self.participant_monitor = monitor
         self.framerate = None
+        self.crop = False
         self.cam_dict: dict[str, CamSettings] = {}
-        self.cam: list[spin.multiCam_DLC_Cam] = []
+        self.multi_cameras: list[spin.multiCam_DLC_Cam] = []
 
     def setup(self, cams_cfg: config.CamerasDictConfig, is_unconnected: bool, requested_framerate):
         self.cam_crop = Crop()
@@ -143,7 +144,7 @@ class Camera:
             else:
                 self.secondary_cams.append(new_cam.serial)
         camCt = len(self.cam_dict)
-        cam_names = [self.cam_dict[cam].name for cam in self.cam_dict]
+        cam_names = [cam.name for cam in self.cam_dict.values()]
         self.ctrl_panel.hardware_test(30 * 2, camCt, cam_names)
 
         self.figure, self.axes, self.canvas = self.image_panel.getfigure()
@@ -242,38 +243,34 @@ class Camera:
         if self.camaq.value == 2:
             return
         self.participant_monitor.update_screen()
-        for ndx, im in enumerate(self.cam_dict):
-            if self.cam_dict[im].frmGrab.value == 1:
-                self.cam_dict[im].frameBuff[0:] = np.frombuffer(
-                    self.cam_dict[im].array4feed.get_obj(), self.dtype, self.cam_dict[im].size
-                )
-                dims = self.cam_dict[im].frame_size
-                frame = self.cam_dict[im].frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
+        for ndx, cam in enumerate(self.cam_dict.values()):
+            if cam.frmGrab.value == 1:
+                cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
+                dims = cam.frame_size
+                frame = cam.frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 for f in range(3):
-                    self.cam_dict[im].frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[
-                        :, :, f
-                    ]
-                self.cam_dict[im].frame_size = dims
+                    cam.frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[:, :, f]
+                cam.frame_size = dims
 
                 if ndx == self.cam_pointer:
-                    self.im[0].set_data(self.cam_dict[im].frame)
+                    self.im[0].set_data(cam.frame)
                 elif ndx == self.cam_pointer + 1:
-                    self.im[1].set_data(self.cam_dict[im].frame)
-                self.cam_dict[im].frmGrab.value = 0
+                    self.im[1].set_data(cam.frame)
+                cam.frmGrab.value = 0
 
                 if self.hardware_test:
-                    self.cam_dict[im].cam_tests = np.roll(self.cam_dict[im].cam_tests, 1)
+                    cam.cam_tests = np.roll(cam.cam_tests, 1)
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     laplacian = cv2.Laplacian(gray, cv2.CV_64F)
                     variance = laplacian.var()
-                    self.cam_dict[im].cam_tests[0] = variance
+                    cam.cam_tests[0] = variance
 
                     normalized_img = gray / 255.0
                     # Calculate RMS contrast (Standard Deviation)
                     rms = np.std(normalized_img)
-                    self.cam_dict[im].contrast_tests = np.roll(self.cam_dict[im].contrast_tests, 1)
-                    self.cam_dict[im].contrast_tests[0] = rms
+                    cam.contrast_tests = np.roll(cam.contrast_tests, 1)
+                    cam.contrast_tests[0] = rms
         if self.hardware_test:
             if self.focus_test.GetValue():
                 self.update_focus()
@@ -284,42 +281,40 @@ class Camera:
     def update_focus(self, plot=True):
         if plot:
             cam_list = []
-            for cam in self.cam_dict:
-                cam_list.append(self.cam_dict[cam].cam_tests)
+            for cam in self.cam_dict.values():
+                cam_list.append(cam.cam_tests)
             self.ctrl_panel.plot_hardware(cam_list, 300)
         else:
-            for cam in self.cam_dict:
-                self.cam_dict[cam].cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
+            for cam in self.cam_dict.values():
+                cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
     def update_contrast(self, plot=True):
         if plot:
             cam_list = []
-            for cam in self.cam_dict:
-                cam_list.append(self.cam_dict[cam].contrast_tests)
+            for cam in self.cam_dict.values():
+                cam_list.append(cam.contrast_tests)
             self.ctrl_panel.plot_hardware(cam_list, 1)
         else:
-            for cam in self.cam_dict:
-                self.cam_dict[cam].cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
+            for cam in self.cam_dict.values():
+                cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
     def start_recording(self, event, base_dir, sess_dir, path_base, count):
         totTime = 20  # int(self.secRec.GetValue())+int(self.minRec.GetValue())*60
         spaceneeded = 0
         freespace = shutil.disk_usage(base_dir)[2]
-        for ndx, w in enumerate(self.cam_dict):
-            recSize = (
-                self.aqW[ndx] * self.aqH[ndx] * 3 * self.cam_dict[w].actual_framerate * totTime
-            )
+        for ndx, cam in enumerate(self.cam_dict.values()):
+            recSize = self.aqW[ndx] * self.aqH[ndx] * 3 * cam.actual_framerate * totTime
             spaceneeded += recSize
         if spaceneeded > freespace:
             self.warning.update_error(WarnCat.SPACE).display()
 
         logger.info(f"Total estimated run time: {totTime}")
-        for ndx, cam_d in enumerate(self.cam_dict.values()):
-            cam_d.camq.put(CameraCommand.RECORD_PREP)
-            name_base = "%s_%s_trial%03d" % (path_base, cam_d.name, count)
+        for cam in self.cam_dict.values():
+            cam.camq.put(CameraCommand.RECORD_PREP)
+            name_base = "%s_%s_trial%03d" % (path_base, cam.name, count)
             new_base = os.path.join(sess_dir, name_base)
-            cam_d.camq.put(new_base)
-            cam_d.camq_p2read.get()
+            cam.camq.put(new_base)
+            cam.camq_p2read.get()
 
         self.camaq.value = 1
         self.startAq()
@@ -332,12 +327,11 @@ class Camera:
     def initThreads(self):
         self.camq = {}
         self.camq_p2read = {}
-        self.cam.clear()
-        for ndx, camID in enumerate(self.cam_dict):
-            cam_d = self.cam_dict[camID]
+        self.multi_cameras.clear()
+        for camID, cam_d in self.cam_dict.items():
             cam_d.camq = Queue()
             cam_d.camq_p2read = Queue()
-            cam = spin.multiCam_DLC_Cam(
+            multi_cam = spin.multiCam_DLC_Cam(
                 cam_d.camq,
                 cam_d.camq_p2read,
                 camID,
@@ -350,24 +344,24 @@ class Camera:
                 DOWNSAMPLE_VAL,
                 rcp_context=self._rcp_context,
             )
-            self.cam.append(cam)
-            cam.start()
+            self.multi_cameras.append(multi_cam)
+            multi_cam.start()
         time.sleep(1)
-        for cam_d in self.cam_dict.values():
-            initialization = CameraCommand.INIT_M if cam_d.is_primary else CameraCommand.INIT_S
-            cam_d.camq.put(initialization)
-            cam_d.camq_p2read.get()
+        for cam in self.cam_dict.values():
+            initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
+            cam.camq.put(initialization)
+            cam.camq_p2read.get()
 
     def deinitThreads(self):
-        for n, cam_d in enumerate(self.cam_dict.values()):
-            cam_d.camq.put(CameraCommand.RELEASE)
+        for n, cam in enumerate(self.cam_dict.values()):
+            cam.camq.put(CameraCommand.RELEASE)
             try:
-                cam_d.camq_p2read.get(timeout=5)
+                cam.camq_p2read.get(timeout=5)
             except queue.Empty:
                 logger.warning("timeout get from p2read")
-            cam_d.camq.close()
-            cam_d.camq_p2read.close()
-            self.cam[n].terminate()
+            cam.camq.close()
+            cam.camq_p2read.close()
+            self.multi_cameras[n].terminate()
 
     def startAq(self):
         if self.serial.serSuccess:
@@ -377,10 +371,10 @@ class Camera:
         if self.camaq.value < 2:
             self.camaq.value = 1
 
-        for cam_d in self.cam_dict.values():
-            cam_d.camq.put(CameraCommand.START)
-        for cam in self.primary_cams:
-            self.cam_dict[cam].camq.put(CameraCommand.TRIG_OFF)
+        for cam in self.cam_dict.values():
+            cam.camq.put(CameraCommand.START)
+        for prim_cam_name in self.primary_cams:
+            self.cam_dict[prim_cam_name].camq.put(CameraCommand.TRIG_OFF)
 
     def stopAq(self):
         if self.serial.serSuccess:
@@ -473,20 +467,19 @@ class Camera:
         else:
             self.cam_pointer += 2
 
-        self.im[0].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer]].frame)
+        cam1 = self.cam_dict[list(self.cam_dict)[self.cam_pointer]]
 
-        cam1 = self.cam_dict[list(self.cam_dict)[self.cam_pointer]].name
+        self.im[0].set_data(cam1.frame)
 
         if not (len(self.cam_dict) <= self.cam_pointer + 1):
-            cam2 = self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].name
-            self.im[1].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].frame)
+            cam2 = self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]]
+            self.im[1].set_data(cam2.frame)
+            cam2_name = cam2.name
         else:
-            cam2 = ""
-            self.im[1].set_data(
-                np.zeros(self.cam_dict[list(self.cam_dict)[self.cam_pointer]].shape, dtype="ubyte")
-            )
+            cam2_name = ""
+            self.im[1].set_data(np.zeros(cam1.shape, dtype="ubyte"))
 
-        self.image_panel.update_names([cam1, cam2])
+        self.image_panel.update_names([cam1.name, cam2_name])
 
     def reset_variables(self):
         self.labjack_scan_rate = None

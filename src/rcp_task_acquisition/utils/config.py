@@ -2,12 +2,17 @@ import dataclasses
 import enum
 import typing
 from pathlib import Path
+import yaml
+
+import ruamel.yaml.comments
+from ruamel.yaml.comments import CommentedMap
 
 import dacite
-import yaml
-from yaml import Node as Node
 
 from rcp_task_acquisition.utils import constants
+from rcp_task_acquisition.utils.logging import get_verbose_logger
+
+logger = get_verbose_logger(__name__)
 
 ItemConfigType = typing.TypeVar("ItemConfigType")
 ItemsEnumType = typing.TypeVar("ItemsEnumType")
@@ -20,17 +25,15 @@ class DictConfig(dict[str, ItemConfigType], typing.Generic[ItemConfigType, Items
     def __new__(cls, arg0=None, **kwargs):
         dct = {}
         if arg0 is not None:
-            if isinstance(arg0, typing.Mapping):
-                kwargs.update(arg0)
-            else:
-                kwargs.update((k, v) for k, v in arg0)
+            kwargs.update(arg0)
         _load_enum_to_dct_class_items(kwargs, dct, cls.item_cls, cls.enum_cls)
         self = super().__new__(cls)
         self.update(dct)
         return self
 
     def __init__(self, *args, **kwargs):
-        super().__init__()
+        del args, kwargs  # initialized in __new__
+        super().__init__()  # still call for good practice, but with none args/kwargs
 
     def fill_defaults(self):
         enum_cls = self.enum_cls
@@ -43,7 +46,12 @@ class DictConfig(dict[str, ItemConfigType], typing.Generic[ItemConfigType, Items
     @staticmethod
     def make_accessor(em):
         def wrapped(self) -> ItemConfigType:
-            return self[em]
+            try:
+                return self[em]
+            except KeyError:
+                logger.verbose("created item %s on attribute access")
+                item = self[em] = self.item_cls()
+                return item
 
         return property(wrapped)
 
@@ -125,7 +133,7 @@ class HardwareItem(str, enum.Enum):
     SLOW_BARCODE = "Slow Barcode"
     RETURN_FROM_DS7A = "Return From DS7A"
     TRIGGER_TO_DS7A = "Trigger to DS7A"
-    TTL_TO_EPHYS = "TTL to E-Phys"
+    TTL_TO_E_PHYS = "TTL to E-Phys"
     DIGITAL_ACCESSORY = "Digital Accessory"
 
 
@@ -135,7 +143,7 @@ class HardwareDictConfig(DictConfig[HardwareItemConfig, HardwareItem]):
 
     @staticmethod
     def _make_accessor(member) -> HardwareItemConfig:
-        return DictConfig.make_accessor(member)
+        return DictConfig.make_accessor(member)  # noqa
 
     photo_detector = _make_accessor(HardwareItem.PHOTO_DETECTOR)
     subject_mic = _make_accessor(HardwareItem.SUBJECT_MIC)
@@ -152,7 +160,7 @@ class HardwareDictConfig(DictConfig[HardwareItemConfig, HardwareItem]):
     slow_barcode = _make_accessor(HardwareItem.SLOW_BARCODE)
     return_from_ds7a = _make_accessor(HardwareItem.RETURN_FROM_DS7A)
     trigger_to_ds7a = _make_accessor(HardwareItem.TRIGGER_TO_DS7A)
-    ttl_to_ephys = _make_accessor(HardwareItem.TTL_TO_EPHYS)
+    ttl_to_e_phys = _make_accessor(HardwareItem.TTL_TO_E_PHYS)
     digital_accessory = _make_accessor(HardwareItem.DIGITAL_ACCESSORY)
     del _make_accessor  # only needed during class creation.
 
@@ -203,21 +211,24 @@ class RcpUserConfig(_RcpUserConfig):
     #     super().__init__(**kwargs)
 
 
-def load_rcp_user_config(file_path: Path | None = None) -> tuple[Path, RcpUserConfig]:
+def load_rcp_user_config(file_path: Path | None = None) -> tuple[Path, RcpUserConfig, CommentedMap]:
     if file_path is None:
         file_path = constants.DEFAULT_USER_CONFIG_PATH
     with file_path.open() as fh:
-        cfg = load_rcp_user_config_buffer(fh)
-    return file_path, cfg
+        cfg, commented_cfg = load_rcp_user_config_buffer(fh)
+    return file_path, cfg, commented_cfg
 
 
-def load_rcp_user_config_buffer(buffer) -> RcpUserConfig:
-    # loader = ruamel.yaml.YAML(pure=True)
-    # dct = loader.load(buffer)
+def load_rcp_user_config_buffer(buffer) -> tuple[RcpUserConfig, CommentedMap]:
+    loader = ruamel.yaml.YAML(typ="rt")
+    commented_config: CommentedMap = loader.load(buffer)
+    buffer.seek(0)
     # NB: ruamel.yaml allows to have the comments handled. but the returned "dict"(-kind) instance,
     # and basically all inner values, are "Commented" maps/sequences...
+    # and not succeeding to get raw values for now from that.
     # Preferring to have pure Python types (dict/list/tuples/etc..) instead.
     loader = yaml.SafeLoader
+
     dct = yaml.load(buffer, Loader=loader)
     cfg = dacite.from_dict(
         RcpUserConfig,
@@ -234,7 +245,8 @@ def load_rcp_user_config_buffer(buffer) -> RcpUserConfig:
             check_types=False,
         ),
     )
-    return cfg
+
+    return cfg, commented_config
 
 
 ###
@@ -255,15 +267,21 @@ class RcpTasksConfigWrapper:
     tasks: RcpTasksConfig = dataclasses.field(default_factory=RcpTasksConfig)
 
 
-def load_rcp_tasks_config(file_path: Path | None = None) -> tuple[Path, RcpTasksConfig]:
+def load_rcp_tasks_config(
+    file_path: Path | None = None,
+) -> tuple[Path, RcpTasksConfig, CommentedMap]:
     if file_path is None:
         file_path = Path(constants.CONFIG_FILE_PATH, "taskconfig.yaml")
     with file_path.open() as fh:
-        cfg = load_rcp_tasks_config_buffer(fh)
-    return file_path, cfg
+        cfg, commented_cfg = load_rcp_tasks_config_buffer(fh)
+    return file_path, cfg, commented_cfg
 
 
-def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> RcpTasksConfig:
+def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksConfig, CommentedMap]:
+    loader = ruamel.yaml.YAML(pure=True, typ="rt")
+    commented_config = loader.load(buffer)
+    buffer.seek(0)
+
     loader = yaml.SafeLoader
     dct = yaml.load(buffer, Loader=loader)
 
@@ -277,19 +295,20 @@ def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> RcpTasksConfig:
             type_hooks={
                 RcpTasksConfig: gen_tasks_config,
                 RcpTaskConfig: lambda v: RcpTaskConfig(**v),
+                CamerasDictConfig: lambda v: CamerasDictConfig(**v),
             },
             check_types=False,
         ),
     )
-    return cfg.tasks
+    return cfg.tasks, commented_config
 
 
 def load_rcp_config(config_dir: Path | None = None):
     if config_dir is None:
         config_dir = Path(constants.STIM_CONFIG_FILE_PATH)
-    user_cfg_path, user_cfg = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
-    task_cfg_path, tasks_cfg = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
-    return user_cfg_path, user_cfg, task_cfg_path, tasks_cfg
+    user_data = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
+    tasks_data = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
+    return user_data, tasks_data
 
 
 #
@@ -379,3 +398,9 @@ def save_rcp_tasks_config_buffer(config: RcpTasksConfig, buffer: typing.TextIO) 
 def save_rcp_tasks_config(config: RcpTasksConfig, file_path: Path) -> None:
     with file_path.open("w") as fh:
         save_rcp_tasks_config_buffer(config, fh)
+
+
+def update_commented_config(config: RcpUserConfig | RcpTasksConfig, commented: CommentedMap):
+    pass
+    # eventual todo: try use with save functions,
+    #  given it's not necessarily always easy and/or possible
