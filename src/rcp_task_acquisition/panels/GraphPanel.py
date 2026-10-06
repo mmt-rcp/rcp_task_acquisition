@@ -107,14 +107,14 @@ class GraphPanel(wx.Panel):
 
     def create_labjack_panel(self, panel: wx.Panel) -> wx.StaticBoxSizer:
         # panel = wx.Panel(panel, -1,style=wx.BORDER_NONE)
-        labjack_box = wx.StaticBox(panel, label="Labjack Graphing")
-        box_sizer = wx.StaticBoxSizer(labjack_box, wx.HORIZONTAL)
+        box = wx.StaticBox(panel, label="Labjack Graphing")
+        box_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         labjack_sizer = wx.GridBagSizer(3, 2)
         options = self.hardware
 
         options.insert(0, " ")
         self.labjack_stream_button = wx.ToggleButton(
-            panel, id=wx.ID_ANY, label="Stream Labjack", size=(self.button_width, -1)
+            box, id=wx.ID_ANY, label="Stream Labjack", size=(self.button_width, -1)
         )
         labjack_sizer.Add(
             self.labjack_stream_button,
@@ -124,25 +124,19 @@ class GraphPanel(wx.Panel):
             border=self.white_space,
         )
 
-        labjack_choice = wx.Choice(
-            panel, id=wx.ID_ANY, choices=options, size=(self.button_width, -1)
-        )
+        labjack_choice = wx.Choice(box, id=wx.ID_ANY, choices=options, size=(self.button_width, -1))
         self.labjack_choices.append(labjack_choice)
         labjack_sizer.Add(
             labjack_choice, pos=(1, 0), span=(0, 2), flag=wx.ALL, border=self.white_space
         )
 
-        labjack_choice = wx.Choice(
-            panel, id=wx.ID_ANY, choices=options, size=(self.button_width, -1)
-        )
+        labjack_choice = wx.Choice(box, id=wx.ID_ANY, choices=options, size=(self.button_width, -1))
         self.labjack_choices.append(labjack_choice)
         labjack_sizer.Add(
             labjack_choice, pos=(2, 0), span=(0, 2), flag=wx.ALL, border=self.white_space
         )
 
-        labjack_choice = wx.Choice(
-            panel, id=wx.ID_ANY, choices=options, size=(self.button_width, -1)
-        )
+        labjack_choice = wx.Choice(box, id=wx.ID_ANY, choices=options, size=(self.button_width, -1))
         self.labjack_choices.append(labjack_choice)
         labjack_sizer.Add(
             labjack_choice, pos=(3, 0), span=(0, 2), flag=wx.ALL, border=self.white_space
@@ -156,14 +150,14 @@ class GraphPanel(wx.Panel):
         panel = wx.Panel(parent, -1, style=wx.BORDER_NONE)
         button_width = 150
 
-        cam_box = wx.StaticBox(panel, label="Camera Tests")
+        box = wx.StaticBox(panel, label="Camera Tests")
         cam_sizer = wx.GridBagSizer(1, 2)
 
         self.contrast_test = wx.ToggleButton(
-            panel, id=wx.ID_ANY, label="Test Contrast", size=(button_width, -1)
+            box, id=wx.ID_ANY, label="Test Contrast", size=(button_width, -1)
         )
         self.focus_test = wx.ToggleButton(
-            panel, id=wx.ID_ANY, label="Test Focus", size=(button_width, -1)
+            box, id=wx.ID_ANY, label="Test Focus", size=(button_width, -1)
         )
 
         cam_sizer.Add(
@@ -173,7 +167,7 @@ class GraphPanel(wx.Panel):
             self.focus_test, pos=(1, 0), span=(0, 2), flag=wx.ALL, border=self.white_space
         )
 
-        box_sizer = wx.StaticBoxSizer(cam_box, wx.HORIZONTAL)
+        box_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         box_sizer.Add(cam_sizer, 1, wx.EXPAND | wx.ALL, 3)
         panel.SetSizer(box_sizer)
         panel.Fit()
