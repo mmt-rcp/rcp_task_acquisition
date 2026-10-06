@@ -48,28 +48,25 @@ class LaunchPanel:
         # organization and padding between sections
         self.participant_panel = ParticipantPanel(None, rcp_context=self._rcp_context)
         self.current_list = []
-        self.regular_size = wx.Size(650, 400)
-        self.hardware_size = wx.Size(650, 800)
         button_width = wx.Size(220, -1)
         self.update_list_bool = True
         self.ignore_pop_up = False
-        self.dialog = wx.Dialog(
-            parent, id=wx.ID_ANY, title="Select Protocol", size=self.regular_size, pos=(660, 275)
-        )
+        self.dialog = wx.Dialog(parent, id=wx.ID_ANY, title="Select Protocol", pos=(660, 275))
+        self.dialog.SetMaxSize(wx.Size(*wx.DisplaySize()))
 
         self.panel = scrolled.ScrolledPanel(self.dialog, -1, style=wx.SUNKEN_BORDER)
         self.panel.SetupScrolling(
-            scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False
+            scroll_x=True, scroll_y=True, scrollToTop=True, scrollIntoView=False
         )
         self.hardware_panel = HardwarePanel(tasks_config, self.panel, rcp_context=self._rcp_context)
         self.hardware_panel.Hide()
-        vertical_sizer = wx.BoxSizer(wx.VERTICAL)
+        vertical_sizer = self._vert_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_metadata(button_width), 0, wx.EXPAND | wx.ALL, 10)
         vertical_sizer.Add(
             self._setup_buttons(button_width), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30
         )
         vertical_sizer.Add(self.hardware_panel, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
-        self.panel.SetSizerAndFit(vertical_sizer)
+        self._resize_dialog()
 
     def get_participants(self, event):
         self.participant_list, self.participant_tuple = (
@@ -79,37 +76,32 @@ class LaunchPanel:
         self.participant_id.SetItems(self.participant_list)
 
     def _setup_metadata(self, button_width):
-        self.protocol_text = wx.StaticText(self.panel, label="Protocol:")
-        self.protocol_choice = wx.Choice(
-            self.panel, id=wx.ID_ANY, choices=self.task_list, size=(220, -1)
-        )
+        box = self.panel  # wx.StaticBox(self.panel)
+        self.protocol_text = wx.StaticText(box, label="Protocol:")
+        self.protocol_choice = wx.Choice(box, id=wx.ID_ANY, choices=self.task_list, size=(220, -1))
         self.protocol_choice.Bind(wx.EVT_CHOICE, self.task_event)
         self.protocol_choice.SetSelection(0)
-        self.protocol_button = wx.Button(self.panel, size=button_width, label="Select Protocol")
+        self.protocol_button = wx.Button(box, size=button_width, label="Select Protocol")
         self.task_event("")
 
-        self.administrator_text = wx.StaticText(self.panel, label="Administrator Id:")
-        self.administrator_id = wx.TextCtrl(
-            self.panel, size=wx.Size(450, -1), style=wx.TE_LEFT, value=""
-        )
+        self.administrator_text = wx.StaticText(box, label="Administrator Id:")
+        self.administrator_id = wx.TextCtrl(box, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
 
-        self.participant_id_text = wx.StaticText(self.panel, label="Participant:")
+        self.participant_id_text = wx.StaticText(box, label="Participant:")
         self.participant_id = wx.ComboBox(
-            self.panel, size=wx.Size(450, -1), style=wx.CB_DROPDOWN, choices=[]
+            box, size=wx.Size(450, -1), style=wx.CB_DROPDOWN, choices=[]
         )
         self.get_participants(None)
         self.participant_id.Bind(wx.EVT_TEXT, self.update_list)
         self.participant_id.Bind(wx.EVT_TEXT_ENTER, self.on_enter)
         # self.participant_id.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.on_dropdown)
-        self.participant_remove = wx.Button(
-            self.panel, size=button_width, label="Remove Participant"
-        )
-        self.participant_add = wx.Button(self.panel, size=button_width, label="Add New Participant")
+        self.participant_remove = wx.Button(box, size=button_width, label="Remove Participant")
+        self.participant_add = wx.Button(box, size=button_width, label="Add New Participant")
         self.participant_add.Bind(wx.EVT_BUTTON, self.add_participant)
         self.participant_remove.Bind(wx.EVT_BUTTON, self.remove_participants)
-        self.participant_detail_text = wx.StaticText(self.panel, label="Participant Details:")
+        self.participant_detail_text = wx.StaticText(box, label="Participant Details:")
         self.participant_detail = wx.TextCtrl(
-            self.panel, size=wx.Size(450, 70), style=wx.TE_MULTILINE | wx.TE_LEFT, value=""
+            box, size=wx.Size(450, 70), style=wx.TE_MULTILINE | wx.TE_LEFT, value=""
         )
 
         grid_sizer = wx.GridBagSizer(4, 3)
@@ -195,21 +187,26 @@ class LaunchPanel:
 
     def _setup_buttons(self, button_width):
         button_width = wx.Size(200, -1)
-        self.hardware_button = wx.ToggleButton(
-            self.panel, size=button_width, label="Update Hardware"
-        )
+        box = self.panel  # wx.StaticBox(self.panel)
+        self.hardware_button = wx.ToggleButton(box, size=button_width, label="Update Hardware")
         self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.hardware_event)
 
-        self.compress_button = wx.Button(self.panel, size=button_width, label="Compress Videos")
+        self.compress_button = wx.Button(box, size=button_width, label="Compress Videos")
         self.compress_button.Enable(False)
 
-        self.exit_button = wx.Button(self.panel, size=button_width, label="Exit")
+        self.exit_button = wx.Button(box, size=button_width, label="Exit")
 
         row_sizer = wx.BoxSizer(wx.HORIZONTAL)
         row_sizer.Add(self.hardware_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         row_sizer.Add(self.compress_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         row_sizer.Add(self.exit_button, 0, wx.ALIGN_CENTER_VERTICAL)
         return row_sizer
+
+    def _resize_dialog(self):
+        self.panel.SetSizerAndFit(self._vert_sizer)
+        self.hardware_panel.Fit()
+        self.panel.Fit()
+        self.dialog.Fit()
 
     def update_list(self, event):
         if self.ignore_pop_up:
@@ -316,20 +313,12 @@ class LaunchPanel:
         if is_pressed:
             self.hardware_button.SetLabel("Close Hardware Panel")
             self.hardware_panel.Show()
-            self.dialog.SetSize(self.hardware_size)
-            self.panel.SetupScrolling(
-                scroll_x=False, scroll_y=True, scrollToTop=False, scrollIntoView=False
-            )
             self.hardware_panel.reset_hardware()
 
         else:
             self.hardware_button.SetLabel("Update Hardware")
             self.hardware_panel.Hide()
-            self.dialog.SetSize(self.regular_size)
-            self.panel.SetupScrolling(
-                scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False
-            )
-        self.dialog.CenterOnScreen()
+        self._resize_dialog()
 
     def task_event(self, event):
         self.task = self.task_list[self.protocol_choice.GetCurrentSelection()]
@@ -344,16 +333,13 @@ class LaunchPanel:
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
         logger.info(f"participant panel: {self.participant_tuple}")
-        self.dialog.SetSize(self.regular_size)
-        self.panel.SetupScrolling(
-            scroll_x=False, scroll_y=False, scrollToTop=False, scrollIntoView=False
-        )
         self.hardware_button.Enable(False)
         self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue()
         self.metadata["participant_id"] = participant_id
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
+        self._resize_dialog()
 
     def Hide(self):
         self.dialog.Hide()
