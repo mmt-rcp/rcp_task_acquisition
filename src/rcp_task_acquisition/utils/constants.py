@@ -4,13 +4,14 @@ from pathlib import Path
 
 from psychopy import core
 
-BASEDIR = Path(__file__).resolve().parent.parent.parent.parent
 CODE_DIR = Path(__file__).resolve().parent.parent
+REPO_BASE_DIR = CODE_DIR.parent.parent
 
-STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(
-    CODE_DIR.resolve().parent.parent, "config_files"
-)
-DEFAULT_USER_CONFIG_PATH = Path(CONFIG_FILE_PATH, "userdata.yaml")
+CODE_CONFIG_DIR_PATH = Path(REPO_BASE_DIR, "config_files")
+DEFAULT_USER_CONFIG_PATH = Path(CODE_CONFIG_DIR_PATH, "userdata.yaml")
+DEFAULT_TASKS_CONFIG_PATH = Path(CODE_CONFIG_DIR_PATH, "taskconfig.yaml")
+
+DEFAULT_RAW_DATA_DIR = Path(r"D:\RawDataLocal")
 
 
 STIM_CONFIG_FILE_NAME = "visualStimulusConfig.yaml"

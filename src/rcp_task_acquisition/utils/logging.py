@@ -4,6 +4,7 @@ import functools
 import itertools
 import logging
 import logging.handlers
+import math
 import multiprocessing
 import operator
 import os
@@ -32,7 +33,7 @@ _base_logger: logging.Logger = logging.root
 _multiprocess_log_queue: Optional[multiprocessing.Queue] = None
 _queue_listener: logging.handlers.QueueListener | None = None
 _queue_handler: logging.Handler | None = None
-_console_handler: logging.StreamHandler | None = None
+_console_handler: "logging.StreamHandler | RelayHandler | None" = None
 _root_handler: logging.Logger | None = None
 
 
@@ -147,6 +148,9 @@ class LogQueueListenerProc(Process):
         self._listener: WithThreadIdQueueListener
         self._console_handler: logging.StreamHandler
         self._file_handler: logging.FileHandler | None = None
+        self._buffer_previous: list[logging.LogRecord] = []
+        self._buffer_file_handler_interval_seconds = 5
+        self._lock: threading.Lock = None  # noqa
 
     def _send_command(self, cmd, data):
         self._command_executed.clear()
@@ -171,7 +175,7 @@ class LogQueueListenerProc(Process):
     @listener_command
     def add_file_handler(self, path, *, formatter: logging.Formatter | None = None):
         """Add file handler to path"""
-        logger.verbose("Adding file handler to %s", path)
+        logger.info("Adding file handler to %s", path)
         file_handler = logging.FileHandler(path)
         file_handler.addFilter(thread_id_filter)
         if formatter is None:
@@ -184,6 +188,14 @@ class LogQueueListenerProc(Process):
         file_handler.setLevel(
             verboselogs.SPAM + 1
         )  # writes everything up to DEBUG which reaches it
+        # before adding to listener handlers:
+        with self._lock:
+            save_buffer = self._buffer_previous
+            self._buffer_previous = []
+        logger.verbose("prepending %s records to %s", len(save_buffer), file_handler)
+        if file_handler is not None:
+            for r in save_buffer:
+                file_handler.handle(r)
         self._listener.handlers += (file_handler,)
         self._file_handler = file_handler
         logger.debug(
@@ -212,26 +224,36 @@ class LogQueueListenerProc(Process):
         # os.kill(self.pid, signal.SIGINT)
         self.join()
 
+    def _add_to_buffer(self, rec):
+        with self._lock:
+            self._buffer_previous.append(rec)
+
     def run(self):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         cfg = self._log_config
         console_handler = self._console_handler = make_console_handler(cfg)
 
+        self._buffer_previous = []
+        self._lock = threading.Lock()
+
         # NB: start the listener as soon as possible
         listener = self._listener = WithThreadIdQueueListener(
             self._queue,
             console_handler,
             respect_handler_level=True,  # False,  # True,
+            add_to_buffer=self._add_to_buffer,
         )
         listener.start()
 
         base_logger = get_verbose_logger(cfg.base_logger_name)
         base_logger.addHandler(console_handler)
 
-        base_logger.setLevel(cfg.log_queue_proc_handler_level)
-        # base_logger.setLevel(logging.INFO)
-        base_logger.debug("Started log queue listener. config=%s", self._log_config)
+        proc_level = cfg.log_queue_proc_handler_level
+        if proc_level == logging.NOTSET:
+            proc_level = os.environ.get("RCP_LOG_PROCESS_LOG_LEVEL", logging.NOTSET)
+        base_logger.setLevel(proc_level)
+        base_logger.verbose("Started log queue listener. config=%s", self._log_config)
         # base_logger.setLevel(cfg.root_level)
 
         # NB: must be installed AFTER the listener is started
@@ -239,9 +261,22 @@ class LogQueueListenerProc(Process):
 
         command_q = self._command_queue
         command_executed = self._command_executed.set
+        p_next_check_buffer = -math.inf
+
         while True:
+            p_now = time.perf_counter()
+            if p_now > p_next_check_buffer:
+                t_now = time.time()
+                p_next_check_buffer += 2
+                idx = 0
+                with self._lock:
+                    for record in self._buffer_previous:
+                        if t_now - record.created < self._buffer_file_handler_interval_seconds:
+                            break
+                        idx += 1
+                    del self._buffer_previous[:idx]
             try:
-                data = command_q.get()
+                data = command_q.get(timeout=1)
             except Empty:
                 continue
             if data is None:
@@ -410,8 +445,9 @@ def repr_handler(obj: logging.Handler):
 
 
 class WithThreadIdQueueListener(logging.handlers.QueueListener):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, add_to_buffer, **kwargs):
         super().__init__(*args, **kwargs)
+        self._add_to_buffer = add_to_buffer
         self._2_sorter = []
         self._q_2_sorter_lock = threading.Lock()
         self._delay_buffer = (
@@ -455,9 +491,12 @@ class WithThreadIdQueueListener(logging.handlers.QueueListener):
                     idx += 1
                 del buffer[:idx]
             if want_quit:
+                for record in buffer:
+                    self._handle(record)
                 break
 
     def _handle(self, record):
+        self._add_to_buffer(record)
         for handler in self.handlers:
             if not self.respect_handler_level:
                 process = True

@@ -168,7 +168,7 @@ class Camera:
             self.updateSettings(event)
         except Exception as err:
             logger.exception("Error updating settings: %s", err)
-            logger.info("\nTrying to fix cameras. Please wait...\n")
+            logger.info("Trying to fix cameras. Please wait...")
             self.deinitThreads()
             self.camReset(event)
             self.initThreads()
@@ -325,6 +325,7 @@ class Camera:
         time.sleep(2)
 
     def initThreads(self):
+        logger.verbose("initThreads started")
         self.camq = {}
         self.camq_p2read = {}
         self.multi_cameras.clear()
@@ -353,10 +354,11 @@ class Camera:
             cam.camq_p2read.get()
 
     def deinitThreads(self):
+        logger.verbose("deinitThreads started")
         for n, cam in enumerate(self.cam_dict.values()):
             cam.camq.put(CameraCommand.RELEASE)
             try:
-                cam.camq_p2read.get(timeout=5)
+                cam.camq_p2read.get(timeout=3)
             except queue.Empty:
                 logger.warning("timeout get from p2read")
             cam.camq.close()
@@ -364,6 +366,7 @@ class Camera:
             self.multi_cameras[n].terminate()
 
     def startAq(self):
+        logger.verbose("startAq started")
         if self.serial.serSuccess:
             msg = f"S{self.session}x{self.trial}x"
             self.serial.write(msg)
@@ -377,6 +380,7 @@ class Camera:
             self.cam_dict[prim_cam_name].camq.put(CameraCommand.TRIG_OFF)
 
     def stopAq(self):
+        logger.verbose("stopAq started")
         if self.serial.serSuccess:
             msg = "Xx"
             self.serial.ser.write(msg.encode())

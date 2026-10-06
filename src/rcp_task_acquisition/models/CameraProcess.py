@@ -1,7 +1,5 @@
 import enum
-import linecache
 import multiprocessing
-import sys
 from collections.abc import Callable
 from math import floor
 from queue import Empty
@@ -174,17 +172,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
             try:
                 handle(ctx)
-            except PySpin.SpinnakerException:
-                _exc_type, exc_obj, tb = sys.exc_info()
-                f = tb.tb_frame
-                lineno = tb.tb_lineno
-                filename = f.f_code.co_filename
-                linecache.checkcache(filename)
-                line = linecache.getline(filename, lineno, f.f_globals)
-                logger.exception(
-                    f'EXCEPTION IN ({filename}, LINE {lineno} "{line.strip()}"): {exc_obj}'
-                )
-                logger.exception(self.camID + " : " + camStr)
+            except PySpin.SpinnakerException as err:
+                logger.exception("%s: failed executing %s: %s", camStr, msg, err)
                 if msg == CameraCommand.UPDATE_SETTINGS:
                     self.camq_p2read.put(-1)
                     self.camq_p2read.put(30)
@@ -667,7 +656,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         video_file = self.video_file
         self.video_writer = cv2.VideoWriter(
             video_file,
-            cv2.VideoWriter_fourcc("m", "p", "4", "v"),
+            cv2.VideoWriter_fourcc("m", "p", "4", "v"),  # noqa
             self.fps,
             (self.width, self.height),
         )

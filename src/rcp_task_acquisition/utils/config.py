@@ -211,15 +211,13 @@ class RcpUserConfig(_RcpUserConfig):
     #     super().__init__(**kwargs)
 
 
-def load_rcp_user_config(file_path: Path | None = None) -> tuple[Path, RcpUserConfig, CommentedMap]:
-    if file_path is None:
-        file_path = constants.DEFAULT_USER_CONFIG_PATH
+def load_rcp_user_config(file_path) -> tuple[RcpUserConfig, CommentedMap]:
     with file_path.open() as fh:
         cfg, commented_cfg = load_rcp_user_config_buffer(fh)
-    return file_path, cfg, commented_cfg
+    return cfg, commented_cfg
 
 
-def load_rcp_user_config_buffer(buffer) -> tuple[RcpUserConfig, CommentedMap]:
+def load_rcp_user_config_buffer(buffer, *, strict_only=True) -> tuple[RcpUserConfig, CommentedMap]:
     loader = ruamel.yaml.YAML(typ="rt")
     commented_config: CommentedMap = loader.load(buffer)
     buffer.seek(0)
@@ -230,21 +228,38 @@ def load_rcp_user_config_buffer(buffer) -> tuple[RcpUserConfig, CommentedMap]:
     loader = yaml.SafeLoader
 
     dct = yaml.load(buffer, Loader=loader)
-    cfg = dacite.from_dict(
-        RcpUserConfig,
-        dct,
-        config=dacite.Config(
-            type_hooks={
-                CamerasDictConfig: lambda v: CamerasDictConfig(**v),
-                HardwareDictConfig: lambda v: HardwareDictConfig(**v),
-                # RcpConfig: lambda v: RcpConfig(**v),
-                # CamerasConfig: lambda v: CamerasConfig(**dict(v)),
-                # HardwareConfig: lambda v: HardwareConfig(**dict(v)),
-                # ruamel.yaml.CommentedMap: lambda v: dict(v),
-            },
-            check_types=False,
-        ),
-    )
+
+    def _load(*, strict):
+        return dacite.from_dict(
+            RcpUserConfig,
+            dct,
+            config=dacite.Config(
+                type_hooks={
+                    CamerasDictConfig: lambda v: CamerasDictConfig(**v),
+                    HardwareDictConfig: lambda v: HardwareDictConfig(**v),
+                    # RcpConfig: lambda v: RcpConfig(**v),
+                    # CamerasConfig: lambda v: CamerasConfig(**dict(v)),
+                    # HardwareConfig: lambda v: HardwareConfig(**dict(v)),
+                    # ruamel.yaml.CommentedMap: lambda v: dict(v),
+                },
+                check_types=strict,
+                strict=strict,
+            ),
+        )
+
+    try:
+        cfg = _load(strict=True)
+    except Exception as err:
+        if strict_only:
+            cfg = None
+        else:
+            try:
+                cfg = _load(strict=False)
+            except Exception:  # noqa
+                cfg = None
+        if cfg is None:
+            raise err
+        logger.warning("failed load with strict mode but succeeded without. strict error: %s", err)
 
     return cfg, commented_config
 
@@ -257,27 +272,25 @@ class RcpTaskConfig:
     settings: list[str] = dataclasses.field(default_factory=list)
 
 
-class RcpTasksConfig(DictConfig[RcpTaskConfig, None]):
+class RcpTasksGroupConfig(DictConfig[RcpTaskConfig, None]):
     item_cls = RcpTaskConfig
     enum_cls = None
 
 
 @dataclasses.dataclass(kw_only=True)
 class RcpTasksConfigWrapper:
-    tasks: RcpTasksConfig = dataclasses.field(default_factory=RcpTasksConfig)
+    tasks: RcpTasksGroupConfig = dataclasses.field(default_factory=RcpTasksGroupConfig)
 
 
 def load_rcp_tasks_config(
-    file_path: Path | None = None,
-) -> tuple[Path, RcpTasksConfig, CommentedMap]:
-    if file_path is None:
-        file_path = Path(constants.CONFIG_FILE_PATH, "taskconfig.yaml")
+    file_path: Path,
+) -> tuple[RcpTasksGroupConfig, CommentedMap]:
     with file_path.open() as fh:
         cfg, commented_cfg = load_rcp_tasks_config_buffer(fh)
-    return file_path, cfg, commented_cfg
+    return cfg, commented_cfg
 
 
-def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksConfig, CommentedMap]:
+def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksGroupConfig, CommentedMap]:
     loader = ruamel.yaml.YAML(pure=True, typ="rt")
     commented_config = loader.load(buffer)
     buffer.seek(0)
@@ -286,14 +299,14 @@ def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksConfig,
     dct = yaml.load(buffer, Loader=loader)
 
     def gen_tasks_config(v):
-        return RcpTasksConfig(**v)
+        return RcpTasksGroupConfig(**v)
 
     cfg = dacite.from_dict(
         RcpTasksConfigWrapper,
         {"tasks": dct},
         config=dacite.Config(
             type_hooks={
-                RcpTasksConfig: gen_tasks_config,
+                RcpTasksGroupConfig: gen_tasks_config,
                 RcpTaskConfig: lambda v: RcpTaskConfig(**v),
                 CamerasDictConfig: lambda v: CamerasDictConfig(**v),
             },
@@ -303,9 +316,7 @@ def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksConfig,
     return cfg.tasks, commented_config
 
 
-def load_rcp_config(config_dir: Path | None = None):
-    if config_dir is None:
-        config_dir = Path(constants.STIM_CONFIG_FILE_PATH)
+def load_rcp_config(config_dir: Path):
     user_data = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
     tasks_data = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
     return user_data, tasks_data
@@ -386,7 +397,7 @@ def save_rcp_user_config(config: RcpUserConfig, file_path: Path) -> None:
         save_rcp_user_config_buffer(config, fh)
 
 
-def save_rcp_tasks_config_buffer(config: RcpTasksConfig, buffer: typing.TextIO) -> None:
+def save_rcp_tasks_config_buffer(config: RcpTasksGroupConfig, buffer: typing.TextIO) -> None:
     dct = to_raw_recursive(config)
     yaml.safe_dump(
         dct,
@@ -395,12 +406,12 @@ def save_rcp_tasks_config_buffer(config: RcpTasksConfig, buffer: typing.TextIO) 
     )
 
 
-def save_rcp_tasks_config(config: RcpTasksConfig, file_path: Path) -> None:
+def save_rcp_tasks_config(config: RcpTasksGroupConfig, file_path: Path) -> None:
     with file_path.open("w") as fh:
         save_rcp_tasks_config_buffer(config, fh)
 
 
-def update_commented_config(config: RcpUserConfig | RcpTasksConfig, commented: CommentedMap):
+def update_commented_config(config: RcpUserConfig | RcpTasksGroupConfig, commented: CommentedMap):
     pass
     # eventual todo: try use with save functions,
     #  given it's not necessarily always easy and/or possible

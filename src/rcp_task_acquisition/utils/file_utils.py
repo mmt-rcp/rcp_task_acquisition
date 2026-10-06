@@ -3,7 +3,7 @@ import os
 import ruamel.yaml
 
 from rcp_task_acquisition.utils.constants import (
-    CONFIG_FILE_PATH,
+    CODE_CONFIG_DIR_PATH,
     SCREEN_CONFIG_FILE_NAME,
 )
 from rcp_task_acquisition.utils.logger import get_logger
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 
 def get_screen_config():
-    userDataDir = os.path.realpath(CONFIG_FILE_PATH)
+    userDataDir = os.path.realpath(CODE_CONFIG_DIR_PATH)
     configPath = os.path.join(userDataDir, SCREEN_CONFIG_FILE_NAME)
     ruamelFile = ruamel.yaml.YAML()
 

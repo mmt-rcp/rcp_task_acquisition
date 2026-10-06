@@ -6,7 +6,7 @@ import wx
 
 from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
 from rcp_task_acquisition.utils import config
-from rcp_task_acquisition.utils.config import HardwareItem, RcpTasksConfig
+from rcp_task_acquisition.utils.config import HardwareItem, RcpTasksGroupConfig
 from rcp_task_acquisition.utils.constants import (
     ANALOG_RANGES,
     CAMERA_HEADERS,
@@ -87,7 +87,9 @@ class HardwarePanel(wx.Panel):
 
     """
 
-    def __init__(self, tasks_config: RcpTasksConfig, parent=None, *, rcp_context: RcpRunContext):
+    def __init__(
+        self, tasks_config: RcpTasksGroupConfig, parent=None, *, rcp_context: RcpRunContext
+    ):
         self._rcp_context: RcpRunContext = rcp_context
         self.args = None
         self.row_list = [member.value for member in HardwareItem]

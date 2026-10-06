@@ -12,24 +12,30 @@ from rcp_task_acquisition.utils.run_context import RcpRunContext
 @pytest.fixture
 def rcp_run_ctx():
     ctx = RcpRunContext(
-        config_file_path=constants.DEFAULT_USER_CONFIG_PATH,
+        config_dir=Path("/not_exists"),
         user_config=config.RcpUserConfig(),
-        tasks_config=config.RcpTasksConfig(),
+        tasks_config=config.RcpTasksGroupConfig(),
     )
     yield ctx
 
 
-def test_default_base_dir(rcp_run_ctx):
-    assert rcp_run_ctx.base_dir == constants.BASEDIR
-
-
-def test_load_default():
-    effective_path, cfg, _ = config.load_rcp_user_config()
-    assert isinstance(effective_path, Path)
+def test_load_default_user():
+    cfg, _ = config.load_rcp_user_config(constants.DEFAULT_USER_CONFIG_PATH)
     assert isinstance(cfg, RcpUserConfig)
     assert isinstance(cfg.hardware, config.HardwareDictConfig)
     assert isinstance(cfg.cameras, config.CamerasDictConfig)
     assert isinstance(cfg.cam_config, config.CamConfig)
+
+
+def test_load_default_tasks():
+    cfg, _ = config.load_rcp_tasks_config(constants.DEFAULT_TASKS_CONFIG_PATH)
+    assert isinstance(cfg, config.RcpTasksGroupConfig)
+    for key, value in cfg.items():
+        assert isinstance(key, str)
+        assert isinstance(value, config.RcpTaskConfig)
+        assert isinstance(value.settings, list)
+        for sub in value.settings:
+            assert isinstance(sub, str)
 
 
 def test_load_save_buffer():
