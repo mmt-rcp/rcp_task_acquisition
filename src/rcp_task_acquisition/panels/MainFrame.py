@@ -51,7 +51,7 @@ class MainFrame(wx.Frame):
     def __init__(self, parent=None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
         self.task: str = ""
-        self.cams_cfg: config.CamerasDictConfig | None = None
+        # self.cams_cfg: config.CamerasDictConfig = rcp_context.user_config.cameras
         self.trial_button = None
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
@@ -647,7 +647,7 @@ class MainFrame(wx.Frame):
 
         for ndx, s in enumerate(self.cams.cam_dict):
             cam_d = self.cams.cam_dict[s]
-            cfg = self.cams_cfg[cam_d.name]
+            cfg = user_cfg.cameras[cam_d.name]
             cameras[cam_d.name] = {
                 "serial": cfg.serial,
                 "ismaster": cfg.ismaster,
@@ -915,7 +915,9 @@ class MainFrame(wx.Frame):
 
     def onClick(self, event):
         if self.set_crop.GetValue():
-            self.cam_crop.adjust_crop(event, self.axes, self.camStrList, self.cams_cfg)
+            self.cam_crop.adjust_crop(
+                event, self.axes, self.camStrList, self._rcp_context.user_config.cameras
+            )
             self.cam_crop.drawROI(self.axes)
             self.figure.canvas.draw()
 
@@ -954,17 +956,14 @@ class MainFrame(wx.Frame):
         self.task_metadata = launch_args
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
+        cams_cfg = user_cfg.cameras
         if not self.task or self.task not in tasks_cfg:
             args = user_cfg.hardware
-            cams_cfg = self.cams_cfg = user_cfg.cameras
             self.widget_panel.show_cams()
             self.frames = user_cfg.cam_config.framerate
         else:
             args = {}
             self.frames = None
-            cams_cfg = self.cams_cfg
-            if cams_cfg is None:
-                cams_cfg = self.cams_cfg = config.CamerasDictConfig()
             task_cfg = tasks_cfg[self.task]
             hardware_list = task_cfg.settings
             self.widget_panel.hide_cams()
