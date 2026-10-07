@@ -45,7 +45,7 @@ class CameraRow:
     in_use_protocol: bool = False
 
 
-class CamProcess(ProcessWithLogging):
+class CamProcessListCameras(ProcessWithLogging):
     """
     For some reason the PySpin instance does not like being created on the main thread.
     (it works here and then will cause freezing when trying to run the main gui)
@@ -269,9 +269,13 @@ class HardwarePanel(wx.Panel):
         hardware_sizer.Add(labjack_sizer, 1, wx.EXPAND | wx.ALL, 15)
         return hardware_sizer
 
+    def _get_serial_numbers_from_config(self):
+        for name, cam in self._rcp_context.user_config.cameras.items():
+            self.cam_serial_numbers.append(cam.serial)
+
     def _get_serial_numbers(self):
         cam_queue = Queue()
-        camera = CamProcess(cam_queue)
+        camera = CamProcessListCameras(cam_queue)
         camera.start()
         while True:
             serial_number = cam_queue.get()
@@ -279,11 +283,13 @@ class HardwarePanel(wx.Panel):
                 break
             self.cam_serial_numbers.append(serial_number)
         camera.join()
+        if len(self.cam_serial_numbers) == 0:
+            logger.warning("No camera serial number found in listing cameras, using config data")
+            self._get_serial_numbers_from_config()
 
     def _setup_camera_panel(self):
         first_cam = True
         self._get_serial_numbers()
-        # cam_config = self.user_config["cameras"]
         box = wx.StaticBox(self, label="Camera Setup")
         grid_sizer = wx.GridBagSizer(len(CAMERA_HEADERS), len(self.cam_serial_numbers))
         vertical_pos = 0
@@ -304,7 +310,6 @@ class HardwarePanel(wx.Panel):
         for key, cfg in self._rcp_context.user_config.cameras.items():
             in_use = wx.CheckBox(box, id=wx.ID_ANY)
             in_use.Bind(wx.EVT_CHECKBOX, self.update_options)
-
             name = wx.StaticText(box, label=key)
             name.Enable(False)
 
