@@ -14,19 +14,26 @@ from rcp_task_acquisition.utils.logging import get_verbose_logger
 
 logger = get_verbose_logger(__name__)
 
-ItemConfigType = typing.TypeVar("ItemConfigType")
+DictKeyType = typing.TypeVar("DictKeyType")
+DictDataType = typing.TypeVar("DictDataType")
 ItemsEnumType = typing.TypeVar("ItemsEnumType")
 
 
-class DictConfig(dict[str, ItemConfigType], typing.Generic[ItemConfigType, ItemsEnumType]):
-    item_cls: type[ItemConfigType]
+class DictConfig(
+    dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, DictDataType, ItemsEnumType]
+):
+    item_cls: type[DictDataType]
     enum_cls: type[ItemsEnumType] | None
 
     def __new__(cls, arg0=None, **kwargs):
+        if arg0 is not None and len(kwargs) > 0:
+            raise TypeError("Do not support both arg and kwargs")
         dct = {}
         if arg0 is not None:
             kwargs.update(arg0)
-        _load_enum_to_dct_class_items(kwargs, dct, cls.item_cls, cls.enum_cls)
+        _load_enum_to_dct_class_items(kwargs, dct, cls.item_cls, cls.enum_cls)  # noqa
+        if len(kwargs) > 0:
+            raise ValueError(f"Unhandled key(s): {tuple(kwargs)}")
         self = super().__new__(cls)
         self.update(dct)
         return self
@@ -45,7 +52,7 @@ class DictConfig(dict[str, ItemConfigType], typing.Generic[ItemConfigType, Items
 
     @staticmethod
     def make_accessor(em):
-        def wrapped(self) -> ItemConfigType:
+        def wrapped(self) -> DictDataType:
             try:
                 return self[em]
             except KeyError:
@@ -67,18 +74,17 @@ def _load_enum_to_dct_class_items(
     empty: dict[str, typing.Any] = {}
     if enum_items is not None:
         for member in enum_items:
-            prev = target_items.get(member, None)
             sub = dct.pop(member.value, None)
-            if prev is not None and sub is not None:
-                raise ValueError(f"{member.value} provided via both items dict and kwargs")
             if sub is None and not fill_default:
                 continue
             target_items[member] = (
                 sub if isinstance(sub, target_cls) else target_cls(**(sub or empty))
             )
     else:
-        for k, v in dct.items():
-            target_items[k] = v if isinstance(v, target_cls) else target_cls(**(v or empty))
+        target_items.update(
+            (k, v if isinstance(v, target_cls) else target_cls(**(v or empty)))
+            for k, v in dct.items()
+        )
         dct.clear()
 
 
@@ -137,7 +143,7 @@ class HardwareItem(str, enum.Enum):
     DIGITAL_ACCESSORY = "Digital Accessory"
 
 
-class HardwareDictConfig(DictConfig[HardwareItemConfig, HardwareItem]):
+class HardwareDictConfig(DictConfig[HardwareItem, HardwareItemConfig, HardwareItem]):
     item_cls = HardwareItemConfig
     enum_cls = HardwareItem
 
@@ -174,7 +180,7 @@ class CameraItem(str, enum.Enum):
     RIGHT_CAM_TRIPOD = "rightCamTripod"
 
 
-class CamerasDictConfig(DictConfig[CameraConfig, CameraItem]):
+class CamerasDictConfig(DictConfig[CameraItem, CameraConfig, CameraItem]):
     """Dict subclass with some helper properties accessor, and automatic handling to CameraConfig"""
 
     item_cls = CameraConfig
@@ -182,7 +188,7 @@ class CamerasDictConfig(DictConfig[CameraConfig, CameraItem]):
 
     @staticmethod
     def _make_accessor(member) -> CameraConfig:
-        return DictConfig.make_accessor(member)
+        return DictConfig.make_accessor(member)  # noqa
 
     left_cam_top = _make_accessor(CameraItem.LEFT_CAM_TOP)
     right_cam_top = _make_accessor(CameraItem.RIGHT_CAM_TOP)
@@ -272,7 +278,7 @@ class RcpTaskConfig:
     settings: list[str] = dataclasses.field(default_factory=list)
 
 
-class RcpTasksGroupConfig(DictConfig[RcpTaskConfig, None]):
+class RcpTasksGroupConfig(DictConfig[str, RcpTaskConfig, None]):
     item_cls = RcpTaskConfig
     enum_cls = None
 
