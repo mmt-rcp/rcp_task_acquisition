@@ -107,8 +107,10 @@ class Camera:
         self.reset_variables()
         self.cam_dict.clear()
 
-        for name, cfg in cams_cfg.items():
+        for cam_item, cfg in cams_cfg.items():
+            name = cam_item.value
             if not cfg.in_use:
+                logger.debug("skipping %s not in_use", cam_item)
                 continue
 
             else:
