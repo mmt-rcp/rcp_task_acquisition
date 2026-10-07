@@ -16,7 +16,7 @@ class TrialPanel(wx.Panel):
         self.button_width = 76
         self.border = 5
         self.trial_is_active = False
-        self.instruction_paths = {}
+        self.instruction_paths: dict[str, str] = {}
 
         # so there is no error for tasks without videos
         self.start_video_button: wx.ToggleButton | None = None

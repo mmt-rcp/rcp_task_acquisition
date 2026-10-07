@@ -232,6 +232,6 @@ class StimulusThread(ProcessWithLogging):
     def setup_videos(self, video_filename_dict):
         pass
 
-    def play_video(self, trial):
+    def play_video(self, trial: str):
         if self.stimulus is not None:
             self.stimulus.play_instructional_video(trial)

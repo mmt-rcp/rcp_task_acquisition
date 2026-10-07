@@ -25,31 +25,32 @@ class LabjackFrontend:
         array_length: int,
         ctrl_panel: GraphPanel,
         timer: wx.Timer,
-        args: list[list],
         button_pressed: SharedBool,
         press_count: SharedInt,
         hardware_test: SharedBool,
     ):
 
-        self.constants = []
+        self.constants: list[str] = []
+        self.constant_index: list[int] = []
         self.button_pressed = button_pressed  # Value(ctypes.c_bool, False)
-        self.labjack_list = [
-            item for item in list(args[1]) if item not in self.constants
-        ]  # list(args[1])
-        self.hardware = [
-            item for item in list(args[0]) if item not in PLOT_CONSTANTS
-        ]  # list(args[0])
+        self.labjack_list: list[str] = []
+        #     item for item in list(args[1]) if item not in self.constants
+        # ]  # list(args[1])
+        self.hardware: list[str] = []
+        #     item for item in list(args[0]) if item not in PLOT_CONSTANTS
+        # ]  # list(args[0])
+        self.voltage_ranges: tuple[tuple[float, float], ...] = ()
         self.hardware_indices = (
             Value(ctypes.c_int, -1),
             Value(ctypes.c_int, -1),
             Value(ctypes.c_int, -1),
         )
         self.prev_graph_list = [-1, -1, -1]
-        self.digital_list = []
-        self.analog_list = []
-        self.button_list = []
-        self.extended_list = []
-        self.array_length = array_length
+        self.digital_list: list[int] = []
+        self.analog_list: list[str] = []
+        self.button_list: list[int] = []
+        self.extended_list: list[int] = []
+        self.array_length: int = array_length
         for index, item in enumerate(self.labjack_list):
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
@@ -91,39 +92,47 @@ class LabjackFrontend:
             labjack_button.SetLabel("Stream Labjack")
             labjack_button.SetValue(False)
 
-    def update_hardware(self, hardware_lists):
-        self.all_hardware = hardware_lists
+    def update_hardware(
+        self,
+        hardware_lists: tuple[
+            tuple[str, ...],  # hardware list
+            tuple[str, ...],  # labjack list
+            tuple[str, ...],  # min max
+            tuple[tuple[float, float], ...],  # voltage range
+        ],
+    ):
         self.graph_panel.update_graph(hardware_lists)
+        # self.hardware = [
+        #     item for item in list(hardware_lists[0]) if item not in PLOT_CONSTANTS
+        # ]
+        self.hardware = list(hardware_lists[0])
+        # self.labjack_list = [
+        #     item for item in list(hardware_lists[1]) if item not in self.constants
+        # ]
+        self.labjack_list = list(hardware_lists[1])
         self.constant_index = []
         self.constants = []
-        if list(hardware_lists[1]):
-            for index, constant in enumerate(PLOT_CONSTANTS):
-                hardware_index = list(hardware_lists[0]).index(constant)
-                self.constants.append(hardware_lists[1][hardware_index])
-                self.constant_index.append(hardware_index)
+        for index, constant in enumerate(PLOT_CONSTANTS):
+            hardware_index = self.hardware.index(constant)
+            self.constants.append(self.labjack_list[hardware_index])
+            self.constant_index.append(hardware_index)
 
-        self.labjack_list = [
-            item for item in list(hardware_lists[1]) if item not in self.constants
-        ]  # list(args[1])
-        self.hardware = [
-            item for item in list(hardware_lists[0]) if item not in PLOT_CONSTANTS
-        ]  # list(args[0])
-        self.labjack_list = self.all_hardware[1]
-        self.hardware = self.all_hardware[0]
+        self.voltage_ranges = hardware_lists[3]
         self.digital_list = []
         self.analog_list = []
         self.button_list = []
-        self.extended_list = []
-        for index, item in enumerate(list(self.all_hardware[1])):
+        self.extended_list = []  # nothing append to it, but it's fed in an output list,
+        # which is "consumed" downstream.
+        for index, item in enumerate(self.labjack_list):
             logger.info(f"self.all_hardware: {item}")
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
-                logger.debug(f"hardware: {self.all_hardware[1][index]}")
-                if "Accessory" in self.all_hardware[0][index]:
+                logger.debug(f"hardware: {self.labjack_list[index]}")
+                if "Accessory" in self.hardware[index]:
                     self.button_list.append((int(item[-1]), "f"))
             elif "E" in item:
                 self.digital_list.append(int(item[-1]) + 8)
-                if "Accessory" in self.all_hardware[0][index]:
+                if "Accessory" in self.hardware[index]:
                     self.button_list.append((int(item[-1]) + 8, "e"))
             # elif "E" in item:
             #     self.extended_list.append(int(item[-1]))
@@ -159,7 +168,7 @@ class LabjackFrontend:
             self.button_list,
             self.press_count,
             self.constant_index,
-            self.all_hardware[3],
+            self.voltage_ranges,
             self.stream_started,
             self.scan_rate,
             self.handshake,
@@ -280,7 +289,7 @@ class LabjackFrontend:
         selected_list = []
 
         for choice in self.labjack_choices:
-            if choice.GetSelection() != -1 and choice.GetSelection() != 0:
+            if choice.GetSelection() not in (0, 1):
                 selection = choice.GetSelection()
                 choices = choice.GetStrings()
                 selection = choices[selection]
@@ -288,7 +297,8 @@ class LabjackFrontend:
                 selected_list.append(original_selection)
         for index, choice in enumerate(self.labjack_choices):
             try:
-                selection = choice.GetSelection() if choice.GetSelection() != 0 else -1
+                choice_sel = choice.GetSelection()
+                selection = choice_sel if choice_sel != 0 else -1
                 if selection != -1:
                     choices = choice.GetStrings()
                     selection = choices[selection]
@@ -304,8 +314,9 @@ class LabjackFrontend:
                 choice.SetItems(new_options)
 
                 if selection != -1:
+                    assert isinstance(selection, str)
                     choice.SetSelection(new_options.index(selection))
                 self.hardware_indices[index].value = original_selection
                 self.graph_panel.update_label(index, selection)
-            except Exception as e:
-                logger.error(e)
+            except Exception as err:
+                logger.error("_update_graph_list: %s", err, stacklevel=2)

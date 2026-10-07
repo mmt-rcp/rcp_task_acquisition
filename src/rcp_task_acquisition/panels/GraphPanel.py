@@ -21,23 +21,24 @@ class GraphPanel(wx.Panel):
 
         # most of these are placeholders since we will not know which hardware
         # will be used until the task is selected
-        self.legend_lines = []
-        self.legend_labels = []
-        self.test_legend_lines = []
-        self.test_legend_labels = []
-        self.hardware = []
-        self.min_max = []
-        self.constants = []
-        self.lines = []
-        self.labjack_choices = []
-        self.input_checkboxes = []
-        self.constant_labels = []
-        self.test_lines = []
+        self.legend_lines: list[Line2D] = []
+        self.legend_labels: list[str] = []
+        self.test_legend_lines: list[Line2D] = []
+        self.test_legend_labels: list[str] = []
+        self.hardware: list[str] = []
+        self.constants: list[
+            Line2D
+        ] = []  # looks to be this, result of (plot,) = self.axes.plot(..)
+        self.lines: list[Line2D] = []  # same
+        self.labjack_choices: list[wx.Choice] = []
+        # self.input_checkboxes = []  # unused
+        self.constant_labels: list[str] = []
+        self.test_lines: list[Line2D] = []
         self.default_index: list[int] = []
-        self.voltage = []
-        self.test_focus = None
+        self.voltage: list[tuple[float, float]] = []
+        self.test_focus: Line2D | None = None
         self.color_index = 0
-        self.hardware_indices = [-1] * 3
+        self.hardware_indices: list[int] = [-1] * 3
         self.white_space = 5
         self.button_width = 150
         self.constants_step = 2
@@ -80,13 +81,21 @@ class GraphPanel(wx.Panel):
         ctrlsizer.Fit(self)
         self.Layout()
 
-    def update_graph(self, hardware) -> None:
+    def update_graph(
+        self,
+        hardware: tuple[
+            tuple[str, ...],  # hardware list
+            tuple[str, ...],  # labjack list
+            tuple[str, ...],  # min max
+            tuple[tuple[float, float], ...],  # voltage range
+        ],
+    ) -> None:
         """
         where the actual set up is occurring
 
         """
         self.hardware = list(hardware[0])
-        self.min_max = list(hardware[2])
+        # self.min_max = list(hardware[2])  # unused
         self.voltage = list(hardware[3])
         options = self.hardware
         options.insert(0, " ")
@@ -308,8 +317,9 @@ class GraphPanel(wx.Panel):
         self.color_index -= len(self.test_lines)
         for line in list(self.test_lines):
             line.remove()
-        if self.test_focus:
-            self.test_focus.remove()
+        plot = self.test_focus
+        if plot is not None:
+            plot.remove()
         self.test_lines = []
         for cam in range(cam_num):
             x_coords = np.linspace(0, self.x_size, num=arr_size)
@@ -328,10 +338,12 @@ class GraphPanel(wx.Panel):
         self.test_legend_lines.append(Line2D([], [], lw=1, color="white"))
         self.test_legend_labels.append("Goal Setting")
         self.test_focus = plot
-        self.test_focus.set_visible(False)
+        plot.set_visible(False)
 
     def plot_hardware(self, cam_vals, max_old: int, threshold: float = 0.5) -> None:
-        self.test_focus.set_visible(True)
+        plot = self.test_focus
+        if plot is not None:
+            plot.set_visible(True)
         for index, line in enumerate(self.test_lines):
             min_old = 0
             max_old = max_old
@@ -356,21 +368,24 @@ class GraphPanel(wx.Panel):
             facecolor=(0.9, 0.9, 0.9),
             bbox_to_anchor=(-0.01, -0.01, 1.09, 1.09),
         )
-        self.test_focus.set_visible(False)
+        plot = self.test_focus
+        plot.set_visible(False) if plot is not None else None
+
         for index, line in enumerate(self.test_lines):
             line.set_ydata(np.full(60, np.nan))
         self.draw()
 
-    def set_constants(self, constants) -> None:
+    def set_constants(self, constants: list[str]) -> None:
         self.constant_labels = constants
 
     def reset(self):
         self.color_index = 0
 
-    def update_label(self, index: int, new_label: str) -> None:
+    def update_label(self, index: int, new_label: str | int) -> None:
         if new_label == -1:
             self.legend_labels[index + len(self.constants)] = ""
         else:
+            assert isinstance(new_label, str)
             self.legend_labels[index + len(self.constants)] = new_label
             # self.lines[index].set_label(new_label)
 

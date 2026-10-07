@@ -17,7 +17,7 @@ class WxObject:
 class MetadataPanel:
     def __init__(self, parent=None):
         wx_size = wx.Size(650, 275)
-        self.metadata = {}
+        self.metadata: dict[str, WxObject] = {}
         self.dialog = wx.Dialog(
             parent, id=wx.ID_ANY, title="Metadata Collection", size=wx_size, pos=wx.DefaultPosition
         )

@@ -164,7 +164,7 @@ class StimulusBase:
         # placeholder
         pass
 
-    def play_instructional_video(self, trial_name):
+    def play_instructional_video(self, trial_name: str):
         user_cfg = self._rcp_context.user_config
         logger.debug(f"Trial name: {trial_name}")
         if trial_name == "":

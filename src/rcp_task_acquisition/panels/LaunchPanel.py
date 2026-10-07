@@ -294,7 +294,7 @@ class LaunchPanel:
         self.ignore_pop_up = True
         self.participant_panel.show()
 
-        participant_id = self.participant_panel.data
+        participant_id = self.participant_panel.participant_id
         # self.update_list_bool = False
         new_index = -1
         self.get_participants(None)

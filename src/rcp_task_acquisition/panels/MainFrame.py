@@ -13,6 +13,7 @@ import shutil
 import time
 from multiprocessing import Event, Queue, Value
 from pathlib import Path
+from typing import Any
 
 import wx
 import wx.lib.dialogs
@@ -58,7 +59,6 @@ class MainFrame(wx.Frame):
         self.press_count = Value(ctypes.c_int, 0)
         self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
-        self.hardware_list = [[], [], []]
         self.count = 0
         self.results_list = []
         self.serial_device = SerialDevice()
@@ -188,7 +188,6 @@ class MainFrame(wx.Frame):
             PLOT_LENGTH,
             self.ctrl_panel,
             self.labjack_timer,
-            self.hardware_list,
             self.button_pressed,
             self.press_count,
             self.cam_test,
@@ -457,9 +456,11 @@ class MainFrame(wx.Frame):
 
     def play_instructions(self, event):
         if event.GetEventObject().GetValue():
-            if type(self.trial_panel.get_instructions()) is str:
+            instructs = self.trial_panel.get_instructions()
+            if isinstance(instructs, str):
                 result = ""
             else:
+                # NB: get_instruction***s*** (above) vs get_instruction here:
                 result = self.trial_panel.get_instruction(self.count)
             self.msgq.put(Msg.PLAY_INSTRUCTIONS)
             self.msgq.put(result)
@@ -943,17 +944,16 @@ class MainFrame(wx.Frame):
         else:
             event.Skip()
 
-    def show(self, launch_args, event):
+    def show(self, launch_args: dict[str, Any], event):
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
         self.cam_test.value = False
-        self.task = launch_args["task"].strip()
+        task = self.task = launch_args["task"].strip()
         self.msgq.put(Msg.UPDATE_TASK)
-        self.msgq.put(launch_args["task"].strip())
+        self.msgq.put(task)
         self.launch_args = launch_args
         self.video_status.value = VideoStatus.NOT_PLAYING.value
-        self.task_metadata = launch_args
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
         cams_cfg = user_cfg.cameras
@@ -965,22 +965,24 @@ class MainFrame(wx.Frame):
             args = {}
             self.frames = None
             task_cfg = tasks_cfg[self.task]
-            hardware_list = task_cfg.settings
             self.widget_panel.hide_cams()
-            for hardware in hardware_list:
-                if hardware in user_cfg.hardware:
-                    args[hardware] = user_cfg.hardware[hardware]
-                elif hardware in user_cfg.cameras:
-                    cams_cfg[hardware] = user_cfg.cameras[hardware]
-        logger.debug(f"args: {args}")
-        hardware_tuple = [(arg, v.labjack_input, "", v.voltage_range) for arg, v in args.items()]
-        sorted_hardware = sorted(hardware_tuple, key=lambda item: item[1])
-        hardware_lists = list(zip(*sorted_hardware))
-        self.hardware_list = hardware_lists
-        logger.debug(hardware_lists)
+            for hard_name in task_cfg.settings:
+                if hard_name in user_cfg.hardware:
+                    args[hard_name] = user_cfg.hardware[hard_name]
+                elif hard_name in user_cfg.cameras:
+                    cams_cfg[hard_name] = user_cfg.cameras[hard_name]
+                else:
+                    logger.warning(
+                        "Task %s: unknown hardware name in task settings: %s", task, hard_name
+                    )
+        # logger.debug(f"args: {args}")
+        hard_gen = ((arg, v.labjack_input, "", v.voltage_range) for arg, v in args.items())
+        sorted_hardware = tuple(sorted(hard_gen, key=lambda item: item[1]))
+        hardware_lists = tuple(zip(*sorted_hardware))
+        # logger.debug(hardware_lists)
         self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.frames)
         self.init.SetValue(True)
-        self.widget_panel.update_task(self.task)
+        self.widget_panel.update_task(task)
         self.trial_panel = self.widget_panel.get_trial_panel()
         self.trial_button = self.trial_panel.continue_button
         try:

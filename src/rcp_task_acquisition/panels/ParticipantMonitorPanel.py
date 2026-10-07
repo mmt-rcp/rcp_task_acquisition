@@ -16,7 +16,7 @@ def get_proportions(original_size, scaled_width):
 
 
 class MonitorPanel(wx.Panel):
-    def __init__(self, parent, psychopy_monitor, display_size):
+    def __init__(self, parent: wx.Panel, psychopy_monitor: int, display_size: wx.Size):
         super().__init__(parent)
         self.parent = parent
         self.psychopy_monitor = psychopy_monitor + 1

@@ -91,15 +91,15 @@ class HardwarePanel(wx.Panel):
         self, tasks_config: RcpTasksGroupConfig, parent=None, *, rcp_context: RcpRunContext
     ):
         self._rcp_context: RcpRunContext = rcp_context
-        self.args = None
-        self.row_list = [member.value for member in HardwareItem]
+        self.args: list[str] = []
+        self.row_list: list[str] = [member.value for member in HardwareItem]
         self.hardware_list: list[HardwareRow] = []
         self.camera_list: list[CameraRow] = []
         self.cam_serial_numbers: list[str] = []
         self.labjack_selection = LABJACK_PIN_LIST
         self.select_protocol = False
         self.tasks_config = tasks_config
-        self.task = None
+        self.task: str = ""
         self.border = 10
         self.task_list = list(self.tasks_config.keys())
 

@@ -46,9 +46,9 @@ class LabJackDataStream(ProcessWithLogging):
         self.attemptedscanRate = 40000
         self.button_pressed = button_pressed
         self.press_counter = press_counter
-        self.analog_inputs = inputs[0]
-        self.digital_inputs = inputs[1]
-        self.extended_inputs = inputs[2]
+        self.analog_inputs: list[str] = inputs[0]
+        self.digital_inputs: list[int] = inputs[1]
+        self.extended_inputs: list[int] = inputs[2]
         self.stream_started = stream_started
         self.actualscanRate = scan_rate
         self.handshake = handshake

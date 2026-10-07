@@ -96,7 +96,12 @@ class Camera:
         self.cam_dict: dict[str, CamSettings] = {}
         self.multi_cameras: list[spin.multiCam_DLC_Cam] = []
 
-    def setup(self, cams_cfg: config.CamerasDictConfig, is_unconnected: bool, requested_framerate):
+    def setup(
+        self,
+        cams_cfg: config.CamerasDictConfig,
+        is_unconnected: bool,
+        requested_framerate: float | None,
+    ):
         self.cam_crop = Crop()
         self.framerate = requested_framerate
         self.reset_variables()

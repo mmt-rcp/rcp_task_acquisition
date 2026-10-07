@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 
 class ParticipantPanel:
-    def __init__(self, parent=None, *, rcp_context: RcpRunContext):
+    def __init__(self, parent: wx.Panel | None = None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
         wx_size = wx.Size(525, 250)
         self.metadata = {}
@@ -27,7 +27,7 @@ class ParticipantPanel:
         vertical_sizer.Add(self._setup_data(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 15)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 15)
         self.panel.SetSizerAndFit(vertical_sizer)
-        self.data = None
+        self.participant_id: str | None = None
 
     @property
     def database_path(self) -> Path:
@@ -135,7 +135,7 @@ class ParticipantPanel:
             error.Destroy()
 
         else:
-            self.data = participant_id
+            self.participant_id = participant_id
             self.dialog.Close()
             self.first_name_box.SetValue("")
             self.last_name_box.SetValue("")
