@@ -1,7 +1,9 @@
 import os
+from typing import Any
 
 import ruamel.yaml
 
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.constants import (
     CODE_CONFIG_DIR_PATH,
     SCREEN_CONFIG_FILE_NAME,
@@ -25,7 +27,8 @@ def get_screen_config():
     return screen_config
 
 
-def write_metadata(data, file_path):
+def write_metadata(data: dict[str, Any], file_path):
+    data = config.to_raw_recursive(data)
     with open(file_path, "w") as metadata_file:
         ruamelFile = ruamel.yaml.YAML()
         ruamelFile.dump(data, metadata_file)
