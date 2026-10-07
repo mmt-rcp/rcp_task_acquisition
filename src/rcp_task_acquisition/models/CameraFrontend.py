@@ -95,6 +95,21 @@ class Camera:
         self.crop = False
         self.cam_dict: dict[str, CamSettings] = {}
         self.multi_cameras: list[spin.multiCam_DLC_Cam] = []
+        #
+        self.labjack_scan_rate = None
+        self.camStrList = []
+        self.secondary_cams = []
+        self.primary_cams = []
+        self.cam_pointer = 0
+        self.im = []
+        self.exposure = []
+        self.x1 = 0
+        self.y1 = 0
+        self.shared.value = 0
+        self.camaq.value = 0
+        self.frmaq.value = 0
+        self.crop = True
+        self.hardware_test = True
 
     def setup(
         self,
@@ -113,36 +128,35 @@ class Camera:
                 logger.debug("skipping %s not in_use", cam_item)
                 continue
 
-            else:
-                cam_bin = int(cfg.bin)
-                cam_dims = [
-                    0,
-                    int(CAM_MAX_HEIGHT / DOWNSAMPLE_VAL / cam_bin),
-                    0,
-                    int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
-                ]
-                is_primary = bool(cfg.ismaster or is_unconnected)
-                new_cam = CamSettings(
-                    name=name,
-                    serial=cfg.serial,
-                    is_primary=is_primary,
-                    size=cam_dims[1] * cam_dims[3] * 3,
-                    shape=[cam_dims[1], cam_dims[3], 3],
-                    bin_val=cam_bin,
-                    frame_dims=cam_dims,
-                    decrease_val=int(cfg.framerate_decrease_factor),
-                    actual_framerate=None,
-                    exposure=None,
-                    cam_tests=np.full(shape=30 * 2, fill_value=np.nan),
-                    contrast_tests=np.full(shape=30 * 2, fill_value=np.nan),
-                    frame=np.zeros([cam_dims[1], cam_dims[3], 3], dtype="ubyte"),
-                    frameBuff=np.zeros(cam_dims[1] * cam_dims[3] * 3, dtype="ubyte"),
-                    array4feed=Array(ctypes.c_ubyte, cam_dims[1] * cam_dims[3] * 3),
-                    frmGrab=Value(ctypes.c_byte, 0),
-                    camq=None,
-                    camq_p2read=None,
-                    frame_size=None,
-                )
+            cam_bin = int(cfg.bin)
+            cam_dims = [
+                0,
+                int(CAM_MAX_HEIGHT / DOWNSAMPLE_VAL / cam_bin),
+                0,
+                int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
+            ]
+            is_primary = bool(cfg.ismaster or is_unconnected)
+            new_cam = CamSettings(
+                name=name,
+                serial=cfg.serial,
+                is_primary=is_primary,
+                size=cam_dims[1] * cam_dims[3] * 3,
+                shape=[cam_dims[1], cam_dims[3], 3],
+                bin_val=cam_bin,
+                frame_dims=cam_dims,
+                decrease_val=int(cfg.framerate_decrease_factor),
+                actual_framerate=None,
+                exposure=None,
+                cam_tests=np.full(shape=30 * 2, fill_value=np.nan),
+                contrast_tests=np.full(shape=30 * 2, fill_value=np.nan),
+                frame=np.zeros([cam_dims[1], cam_dims[3], 3], dtype="ubyte"),
+                frameBuff=np.zeros(cam_dims[1] * cam_dims[3] * 3, dtype="ubyte"),
+                array4feed=Array(ctypes.c_ubyte, cam_dims[1] * cam_dims[3] * 3),
+                frmGrab=Value(ctypes.c_byte, 0),
+                camq=None,
+                camq_p2read=None,
+                frame_size=None,
+            )
             self.cam_dict[new_cam.serial] = new_cam
 
             self.cam_crop.add_crop(cfg.crop)
