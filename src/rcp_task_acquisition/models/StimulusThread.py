@@ -5,6 +5,7 @@ import multiprocessing
 import time
 from enum import Enum
 from queue import Empty
+from typing import Callable
 
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
@@ -78,95 +79,130 @@ class StimulusThread(ProcessWithLogging):
         self.alive = True
         self.task = task
         self.video_lock = event_lock
+        self._msg_handlers: dict[Msg, Callable] = {
+            Msg.INITIALIZE: self._handle_initialize,
+            Msg.SEND_METADATA: self._handle_send_metadata,
+            Msg.UPDATE_TASK: self._handle_update_task,
+            Msg.UPDATE_DATA: self._handle_update_data,
+            Msg.RUN_TASK: self._handle_run_task,
+            Msg.RESET_TASK: self._handle_reset_task,
+            Msg.END_TASK: self._handle_end_task,
+            Msg.VOWEL_SPACE: self._handle_vowel_space,
+            Msg.CLOSE_WINDOW: self._handle_close_window,
+            Msg.PLAY_INSTRUCTIONS: self._handle_play_instructions,
+            Msg.ADD_INSTRUCTIONS: self._handle_add_instructions,
+            Msg.HARDWARE_TEST: self._handle_hardware_test,
+        }
+
+    def _handle_initialize(self):
+        self.params = {}
+        self.init_stimuli()
+
+    def _handle_send_metadata(self):
+        self.send_metadata()
+
+    def _handle_update_task(self):
+        msg = self.msgq.get()
+        self.task = msg
+
+    def _handle_update_data(self):
+        msgq_data = self.msgq.get()
+        logger.debug(f"stim: {msgq_data}")
+        try:
+            logger.debug(f"stimthread datadata: {msgq_data[0]}")
+            if msgq_data[0] == "(":
+                trial_data = ast.literal_eval(msgq_data)
+            else:
+                trial_data = msgq_data
+        except Exception as err:
+            logger.exception("Cannot evaluate stim thread data: %s", err)
+            trial_data = msgq_data
+        # trial_data = trial_data.replace("(", "")
+        self.stimulus.update_data(trial_data)
+
+    def _handle_run_task(self):
+        self.shared.value = 0
+        # Main loop for presenting stimuli
+        tStart = time.time()
+        logger.info(f"Presenting {self.task}")
+        if self.shared.value == -1:
+            self.alive = False
+            return
+        self.stimulus.set_first_frame(self.frame.value)
+        self.window.reset_stimulus_frame()
+        self.stimulus.present()
+        self.window.idle(time_list=[])
+        self.window.flip()
+        self.totalStimFrames += self.window.stimulus_frame
+        self.window.reset_stimulus_frame()
+
+        tEnd = time.time()
+        tElapsed = tEnd - tStart
+        minutes = math.floor(tElapsed / 60)
+        seconds = tElapsed % 60
+        min_string = f"{math.floor(tElapsed / 60)} minutes, " if minutes > 0 else ""
+        logger.info(f"Stimulus protocol completed in {min_string}{seconds:.2f} seconds")
+        if self.finish.value != 2:
+            self.finish.value = 1
+        else:
+            self.finish.value = 0
+
+    def _handle_reset_task(self):
+        self.stimulus.reset_task()
+
+    def _handle_end_task(self):
+        self.end_stimulus()
+
+    def _handle_vowel_space(self):
+        results = self.stimulus.get_trial()
+        logger.debug(results)
+        self.resultsq.put(results)
+
+    def _handle_play_instructions(self):
+        msg = self.msgq.get()
+        logger.debug(msg)
+        self.play_video(msg)
+
+    def _handle_add_instructions(self):
+        msg = self.msgq.get()
+        self.setup_videos(msg)
+        # self.setup_videos(video_filename_dict)
+
+    def _handle_hardware_test(self):
+        base_vars = {
+            "display": self.window,
+            "frame": self.frame,
+            "timer": self.timer,
+            "video_lock": self.video_lock,
+            "video_status": self.video_status,
+            "finish": self.finish,
+            "rcp_context": self._rcp_context,
+        }
+        HardwareTest(base_vars).present()
+
+    def _handle_close_window(self):
+        self.close_window()
 
     def run(self):
-        self.window = Window(screen=self.screenConfig, fullScreen=True)
+        try:
+            self.window = Window(screen=self.screenConfig, fullScreen=True)
+        except Exception as err:
+            logger.exception("Could not create window: %s", err)
+            self.window = None
 
+        logger.info("entering main loop")
         while self.alive:
             try:
                 msg = self.msgq.get(timeout=0.05)
                 logger.debug(f"msg: {msg}")
             except Empty:
                 continue
+            handler = self._msg_handlers.get(msg, None)
+            if handler is None:
+                logger.warning("Unhandled msg: %s", msg)
+                continue
             try:
-                if msg == Msg.INITIALIZE:
-                    self.params = {}
-                    self.init_stimuli()
-                elif msg == Msg.SEND_METADATA:
-                    self.send_metadata()
-                elif msg == Msg.UPDATE_TASK:
-                    msg = self.msgq.get()
-                    self.task = msg
-                elif msg == Msg.RUN_TASK:
-                    self.shared.value = 0
-                    # Main loop for presenting stimuli
-                    tStart = time.time()
-                    logger.info(f"Presenting {self.task}")
-                    if self.shared.value == -1:
-                        break
-                    self.stimulus.set_first_frame(self.frame.value)
-                    self.window.reset_stimulus_frame()
-                    self.stimulus.present()
-                    self.window.idle(time_list=[])
-                    self.window.flip()
-                    self.totalStimFrames += self.window.stimulus_frame
-                    self.window.reset_stimulus_frame()
-
-                    tEnd = time.time()
-                    tElapsed = tEnd - tStart
-                    minutes = math.floor(tElapsed / 60)
-                    seconds = tElapsed % 60
-                    min_string = f"{math.floor(tElapsed / 60)} minutes, " if minutes > 0 else ""
-                    logger.info(f"Stimulus protocol completed in {min_string}{seconds:.2f} seconds")
-                    if self.finish.value != 2:
-                        self.finish.value = 1
-                    else:
-                        self.finish.value = 0
-                elif msg == Msg.END_TASK:
-                    self.end_stimulus()
-                elif msg == Msg.PLAY_INSTRUCTIONS:
-                    msg = self.msgq.get()
-                    logger.debug(msg)
-                    self.play_video(msg)
-                elif msg == Msg.ADD_INSTRUCTIONS:
-                    msg = self.msgq.get()
-                    self.setup_videos(msg)
-                    # self.setup_videos(video_filename_dict)
-                elif msg == Msg.HARDWARE_TEST:
-                    base_vars = {
-                        "display": self.window,
-                        "frame": self.frame,
-                        "timer": self.timer,
-                        "video_lock": self.video_lock,
-                        "video_status": self.video_status,
-                        "finish": self.finish,
-                        "rcp_context": self._rcp_context,
-                    }
-                    HardwareTest(base_vars).present()
-                elif msg == Msg.UPDATE_DATA:
-                    msgq_data = self.msgq.get()
-                    logger.debug(f"stim: {msgq_data}")
-                    try:
-                        logger.debug(f"stimthread datadata: {msgq_data[0]}")
-                        if msgq_data[0] == "(":
-                            trial_data = ast.literal_eval(msgq_data)
-                        else:
-                            trial_data = msgq_data
-                    except Exception as err:
-                        logger.exception("Cannot evaluate stim thread data: %s", err)
-                        trial_data = msgq_data
-                    # trial_data = trial_data.replace("(", "")
-                    self.stimulus.update_data(trial_data)
-                elif msg == Msg.RESET_TASK:
-                    self.stimulus.reset_task()
-                elif msg == Msg.VOWEL_SPACE:
-                    results = self.stimulus.get_trial()
-                    logger.debug(results)
-                    self.resultsq.put(results)
-                elif msg == Msg.CLOSE_WINDOW:
-                    self.close_window()
-                else:
-                    logger.warning("Unhandled message: %s", msg)
+                handler()
             except SystemExit:
                 logger.debug("interrupted stimulus")
                 self.end_stimulus()
