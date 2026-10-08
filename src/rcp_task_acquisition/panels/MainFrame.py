@@ -16,6 +16,7 @@ from multiprocessing import Event, Queue, Value
 from pathlib import Path
 from typing import Any
 
+import typing_extensions
 import wx
 import wx.lib.dialogs
 from ruamel.yaml import YAML
@@ -823,7 +824,6 @@ class MainFrame(wx.Frame):
         self.statusbar.SetStatusText("")
         self.Destroy()
 
-    @typing.override
     def Hide(self, event):
         self.is_hidden = True
         self.lj.stop_labjack()
