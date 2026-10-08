@@ -2,6 +2,9 @@ import dataclasses
 import enum
 import typing
 from pathlib import Path
+from types import GenericAlias
+from typing import Any
+
 import yaml
 
 import ruamel.yaml.comments
@@ -41,6 +44,8 @@ class DictConfig(
     def __init__(self, *args, **kwargs):
         del args, kwargs  # initialized in __new__
         super().__init__()  # still call for good practice, but with none args/kwargs
+
+    __getitem__: typing.Callable[["DictConfig", str | DictKeyType], DictDataType]
 
     def fill_defaults(self):
         enum_cls = self.enum_cls
