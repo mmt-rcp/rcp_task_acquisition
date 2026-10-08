@@ -16,6 +16,11 @@ class GraphPanel(wx.Panel):
 
     """
 
+    hardware_panel: wx.Panel
+    labjack_stream_button: wx.ToggleButton
+    contrast_test: wx.ToggleButton
+    focus_test: wx.ToggleButton
+
     def __init__(self, parent, gui_size) -> None:
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
 
@@ -256,7 +261,7 @@ class GraphPanel(wx.Panel):
     def get_graph_button(self) -> wx.ToggleButton:
         return self.labjack_stream_button
 
-    def get_graph_choices(self):
+    def get_graph_choices(self) -> list[wx.Choice]:
         return self.labjack_choices
 
     def set_visible(self, index: int, is_visible: bool = True) -> None:

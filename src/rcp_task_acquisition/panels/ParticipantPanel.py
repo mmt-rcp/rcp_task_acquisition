@@ -14,7 +14,6 @@ class ParticipantPanel:
     def __init__(self, parent: wx.Panel | None = None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
         wx_size = wx.Size(525, 250)
-        self.metadata = {}
         self.dialog = wx.Dialog(
             parent, id=wx.ID_ANY, title="Add Participant", size=wx_size, pos=wx.DefaultPosition
         )

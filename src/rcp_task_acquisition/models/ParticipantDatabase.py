@@ -49,6 +49,7 @@ class ParticipantDatabase:
         self.connection.commit()
 
     def get_participant(self, column, condition):
+        # unused
         select = f"SELECT * FROM Participants WHERE {column} = {condition};"
         participant = self.cursor.execute(select).fetchall()
         return participant

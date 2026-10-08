@@ -1,3 +1,4 @@
+import matplotlib.axes, matplotlib.text
 import wx
 import wx.lib.dialogs
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
@@ -10,7 +11,8 @@ logger = get_logger(__name__)
 
 class ImagePanel(wx.Panel):
     def __init__(self, parent, **kwargs):
-
+        self.axes: list[matplotlib.axes.Axes] = []
+        self.texts: list[matplotlib.text.Text] = []
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
         self.figure = Figure()
         self.canvas = FigureCanvas(self, -1, self.figure)

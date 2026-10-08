@@ -37,7 +37,7 @@ class LaunchPanel:
         tasks_config = rcp_context.tasks_config
         self.task_list = list(tasks_config.keys())
         self.task_list.append("all_hardware")
-        self.protocol_choice = None
+        self.protocol_choice: wx.Choice
         self.metadata = {
             "task": "",
             "administrator_id": None,
@@ -47,7 +47,15 @@ class LaunchPanel:
         # Basic panel set up. 3 different steps (Protocol, metadata and buttons) to help with
         # organization and padding between sections
         self.participant_panel = ParticipantPanel(None, rcp_context=self._rcp_context)
-        self.current_list = []
+        self.participant_list: list[str] = []
+        self.participant_tuple: list[
+            tuple[
+                str,  # id
+                str,  # first name
+                str,  # last name
+            ]
+        ] = []
+        self.current_list: list[str] = []
         button_width = wx.Size(220, -1)
         self.update_list_bool = True
         self.ignore_pop_up = False

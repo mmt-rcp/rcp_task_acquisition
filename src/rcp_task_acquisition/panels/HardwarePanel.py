@@ -544,7 +544,7 @@ class HardwarePanel(wx.Panel):
                     return None
                 labjack_list = hardware.labjack.GetStrings()
                 labjack_value = labjack_list[labjack_pin]
-                voltage_range = (0, 1)
+                voltage_range: tuple[float, float] = (0, 1)
                 if "A" in labjack_value:
                     voltage = float(
                         hardware.voltage_range.GetStrings()[

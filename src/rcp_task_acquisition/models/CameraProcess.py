@@ -39,7 +39,7 @@ class CamCtx:
     ismaster = False
     isunconnected = False
     is_decreased = False
-    record_frame_rate = None  # 30
+    record_frame_rate: int | None = None  # 30
     cam_list: PySpin.CameraList
     cam: PySpin.Camera
     system: PySpin.SystemPtr

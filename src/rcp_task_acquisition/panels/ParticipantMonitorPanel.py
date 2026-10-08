@@ -16,13 +16,15 @@ def get_proportions(original_size, scaled_width):
 
 
 class MonitorPanel(wx.Panel):
+    monitor_bitmap: wx.StaticBitmap
+
     def __init__(self, parent: wx.Panel, psychopy_monitor: int, display_size: wx.Size):
         super().__init__(parent)
         self.parent = parent
         self.psychopy_monitor = psychopy_monitor + 1
         max_gui_image_size = (346, 216)
         self.display_size = get_proportions(display_size, max_gui_image_size[0])
-        self.prev_arr = None
+        self.prev_arr: np.ndarray | None = None
 
     def create_panel(self):
         title = wx.StaticText(self.parent, label="Participant Monitor:")

@@ -718,7 +718,7 @@ class MainFrame(wx.Frame):
             logger.error(f"update task metadata error: {e}")
         with self.metapath.open("r", encoding="utf-8") as file:
             metadata = yaml.load(file)
-
+        logger.debug("%s yaml loaded: %r", self.metapath, metadata)
         metadata["trial_data"] = params
         if self.task == "verbal_fluency":
             metadata["trial_data"]["categories"] = self.trial_panel.add_metadata()
