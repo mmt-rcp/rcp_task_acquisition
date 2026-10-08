@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import time
+import typing
 from multiprocessing import Event, Queue, Value
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,9 @@ class MainFrame(wx.Frame):
     session: int
     path_base: str
     date_string: str
+    start_time: str = ""
+    start_time_utc: str = ""
+    is_hidden: bool = False
 
     def __init__(self, parent=None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
@@ -60,7 +64,7 @@ class MainFrame(wx.Frame):
         self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
         self.count = 0
-        self.results_list = []
+        self.results_list: list[Any] = []
         self.serial_device = SerialDevice()
         self.cam_crop = Crop()
         # setting up screen for stimulus thread
@@ -264,7 +268,6 @@ class MainFrame(wx.Frame):
         self.Enable()
         if self.task_button.GetValue():
             self.task_active = True
-            self.trial_dict = {}
             self.start_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
             self.start_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.count = 0
@@ -525,7 +528,9 @@ class MainFrame(wx.Frame):
                 self.Enable()
                 self.hardware_test = True
                 self.hardware_test_panel.Show()
-                if not self.task_active:
+                if self.task_active:
+                    is_success = True
+                else:
                     is_success = self.lj.start_labjack()
                 self.msgq.put(Msg.HARDWARE_TEST)
                 if not is_success:
@@ -818,6 +823,7 @@ class MainFrame(wx.Frame):
         self.statusbar.SetStatusText("")
         self.Destroy()
 
+    @typing.override
     def Hide(self, event):
         self.is_hidden = True
         self.lj.stop_labjack()
@@ -936,7 +942,15 @@ class MainFrame(wx.Frame):
             # self.widget_panel.Enable(True)
             # self.play.SetFocus()
         # Modify existing ROI parameters
-        elif self.set_crop.GetValue() == True and keyCode in (314, 316, 315, 317, 65, 83, 127):
+        elif self.set_crop.GetValue() == True and keyCode in (
+            wx.WXK_UP,
+            wx.WXK_DOWN,
+            wx.WXK_LEFT,
+            wx.WXK_RIGHT,
+            ord("A"),
+            ord("S"),
+            wx.WXK_DELETE,
+        ):
             self.cam_crop.set_key_crop(self.axes, keyCode)
             self.cam_crop.drawROI(self.axes)
             self.figure.canvas.draw()

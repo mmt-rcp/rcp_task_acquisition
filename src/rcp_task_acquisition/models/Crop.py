@@ -1,4 +1,5 @@
 import numpy as np
+import wx
 from matplotlib import patches
 
 from rcp_task_acquisition.utils import config
@@ -14,30 +15,33 @@ class Crop:
         self.set_crop = None
 
     def set_key_crop(self, axes, keyCode):
-        if self.cropAxes == None:
+        if self.cropAxes is None:
             return
-        if keyCode == 314:  # LEFT
+        if keyCode == wx.WXK_LEFT:
             x = -1
             y = w = h = 0
-        elif keyCode == 316:  # RIGHT
+        elif keyCode == wx.WXK_RIGHT:
             x = 1
             y = w = h = 0
-        elif keyCode == 315:  # UP
+        elif keyCode == wx.WXK_UP:
             x = w = h = 0
             y = -1
-        elif keyCode == 317:  # DOWN
+        elif keyCode == wx.WXK_DOWN:
             x = w = h = 0
             y = 1
         # Increase size
-        elif keyCode == 65:  # a
+        elif keyCode == ord("A"):
             x = -2
             y = +2
             w = h = +4
         # Decrease size
-        elif keyCode == 83:  # s
+        elif keyCode == ord("S"):
             x = +2
             y = -2
             w = h = -4
+        else:
+            logger.warning("set_key_crop: unhandled keycode: %s", keyCode)
+            return
 
         ndx = axes.index(self.cropAxes)
         self.croproi[ndx][0] += x
