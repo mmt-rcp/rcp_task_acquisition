@@ -33,12 +33,17 @@ class SwitchPanel:
         self.launch_panel.protocol_button.Bind(wx.EVT_BUTTON, self.disable_panel)
         self.launch_panel.exit_button.Bind(wx.EVT_BUTTON, self.exit_event)
         self.launch_panel.dialog.Bind(wx.EVT_CLOSE, self.exit_event)
-        self.launch_panel.panel.Bind(wx.EVT_TIMER, self.switch_panel, self.disable_timer)
-        self.task_frame.Bind(wx.EVT_TIMER, self.switch_panel, self.disable_timer)
+        self.launch_panel.panel.Bind(
+            wx.EVT_TIMER, lambda e: self.switch_panel(e, source="launch_panel"), self.disable_timer
+        )
+        self.task_frame.Bind(
+            wx.EVT_TIMER, lambda e: self.switch_panel(e, source="task_frame"), self.disable_timer
+        )
         self.launch_panel.panel.SetFocus()
 
-    def switch_panel(self, event: wx.Event) -> None:
+    def switch_panel(self, event: wx.Event, *, source: str = "NA") -> None:
         # if launch panel showing, switching to show task panel & vice versa
+        logger.verbose("switch_panel: event: %s ; source=%s", event, source)
         if self.active_panel == ActivePanel.LAUNCH.value:
             self.task_frame.Enable()
             self.task_frame.quit.SetLabel("Exit to Launch Menu")
