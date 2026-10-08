@@ -37,6 +37,7 @@ from rcp_task_acquisition.utils.deidentify_dates import DateDeidentification
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 from rcp_task_acquisition.utils.task_acquisistion_version import __version__
+from rcp_task_acquisition.utils.typing import HardwareListsType
 
 logger = get_logger(__name__)
 
@@ -53,6 +54,8 @@ class MainFrame(wx.Frame):
     start_time: str = ""
     start_time_utc: str = ""
     is_hidden: bool = False
+
+    # trial_panel: TrialPanel
 
     def __init__(self, parent=None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
@@ -215,7 +218,6 @@ class MainFrame(wx.Frame):
         self.dtype = "uint8"
         self.size = self.frmDims[1] * self.frmDims[3] * 3
         self.shape = [self.frmDims[1], self.frmDims[3], 3]
-        self.array4feed = []
 
         self.canvas.mpl_connect("button_press_event", self.onClick)
         self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPressed)
@@ -232,7 +234,6 @@ class MainFrame(wx.Frame):
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
-        self.threads = []
         self.msgq = Queue()
         self.finish = Value(ctypes.c_byte, 0)
         self.resultsq = Queue()
@@ -973,13 +974,14 @@ class MainFrame(wx.Frame):
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
         cams_cfg = user_cfg.cameras
+        args: config.HardwareDictConfig
         if not self.task or self.task not in tasks_cfg:
             args = user_cfg.hardware
             self.widget_panel.show_cams()
             self.frames = user_cfg.cam_config.framerate
         else:
             cams_cfg = config.CamerasDictConfig()
-            args = {}
+            args = config.HardwareDictConfig()
             self.frames = 0
             task_cfg = tasks_cfg[self.task]
             self.widget_panel.hide_cams()
@@ -987,15 +989,19 @@ class MainFrame(wx.Frame):
                 if hard_name in user_cfg.hardware:
                     args[hard_name] = user_cfg.hardware[hard_name]
                 elif hard_name in user_cfg.cameras:
-                    cams_cfg[config.CameraItem(hard_name)] = user_cfg.cameras[hard_name]
+                    cams_cfg[hard_name] = user_cfg.cameras[hard_name]
                 else:
                     logger.warning(
                         "Task %s: unknown hardware name in task settings: %s", task, hard_name
                     )
         # logger.debug(f"args: {args}")
-        hard_gen = ((arg, v.labjack_input, "", v.voltage_range) for arg, v in args.items())
-        sorted_hardware = tuple(sorted(hard_gen, key=lambda item: item[1]))
-        hardware_lists = tuple(zip(*sorted_hardware))
+        hard_gen = ((arg.value, v.labjack_input, "", v.voltage_range) for arg, v in args.items())
+        sorted_hardware: tuple[tuple[str, str, str, tuple[float, float]], ...] = tuple(
+            sorted(hard_gen, key=lambda item: item[1])
+        )
+        hardware_lists: HardwareListsType = typing.cast(
+            HardwareListsType, tuple(zip(*sorted_hardware))
+        )
         # logger.debug(hardware_lists)
         self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.frames)
         self.init.SetValue(True)

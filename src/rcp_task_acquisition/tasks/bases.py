@@ -1,6 +1,7 @@
 import os
 import pathlib as pl
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -165,8 +166,10 @@ class StimulusBase:
         pass
 
     def play_instructional_video(self, trial_name: str):
+        assert self.video_status is not None
         user_cfg = self._rcp_context.user_config
         logger.debug(f"Trial name: {trial_name}")
+        file: Any
         if trial_name == "":
             file = self.instructions_dict
         else:
@@ -179,7 +182,7 @@ class StimulusBase:
         logger.debug(path)
         video = VlcMovieStim(
             self.display,
-            path,
+            path.as_posix(),
             size=self.display.size,
             pos=[0, 0],
             flipVert=False,

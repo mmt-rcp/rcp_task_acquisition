@@ -45,7 +45,14 @@ class DictConfig(
         del args, kwargs  # initialized in __new__
         super().__init__()  # still call for good practice, but with none args/kwargs
 
-    __getitem__: typing.Callable[["DictConfig", str | DictKeyType], DictDataType]
+    def __getitem__(self, item: str | DictKeyType) -> DictDataType:
+        return super().__getitem__(item)
+
+    def __setitem__(self, item: str | DictKeyType, value: DictDataType):
+        if self.enum_cls is not None:
+            if not isinstance(item, self.enum_cls):
+                item = self.enum_cls(item)
+        super().__setitem__(item, value)
 
     def fill_defaults(self):
         enum_cls = self.enum_cls

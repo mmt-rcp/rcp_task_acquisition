@@ -16,7 +16,7 @@ class WxObject:
 
 
 class MetadataPanel:
-    def __init__(self, parent=None):
+    def __init__(self, parent: wx.Panel | None = None):
         wx_size = wx.Size(650, 275)
         self.metadata: dict[str, Any] = {}
         self._metadata_wx_objects: dict[str, WxObject] = {}

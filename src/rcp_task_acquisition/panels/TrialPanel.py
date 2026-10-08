@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 
 
 class TrialPanel(wx.Panel):
-    def __init__(self, parent=None):
+    def __init__(self, parent: wx.Panel):
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0
@@ -16,7 +16,8 @@ class TrialPanel(wx.Panel):
         self.button_width = 76
         self.border = 5
         self.trial_is_active = False
-        self.instruction_paths: dict[str, str] = {}
+        self.instruction_paths: str | dict[str, str] = {}
+        # str for ToneTaps and FingerTap
 
         # so there is no error for tasks without videos
         self.start_video_button: wx.ToggleButton | None = None

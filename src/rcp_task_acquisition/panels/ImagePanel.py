@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 
 class ImagePanel(wx.Panel):
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent: wx.Window, **kwargs):
         self.axes: list[matplotlib.axes.Axes] = []
         self.texts: list[matplotlib.text.Text] = []
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)

@@ -10,7 +10,7 @@ from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
-from rcp_task_acquisition.utils.typing import SharedBool, SharedInt
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, SharedFloat
 
 logger = get_logger(__name__)
 
@@ -26,14 +26,14 @@ class LabJackDataStream(ProcessWithLogging):
         labjack_list: list,
         graph_indices: tuple[SharedInt, SharedInt, SharedInt],
         button_pressed: SharedBool,
-        inputs,
-        button_list,
-        press_counter,
-        constants,
-        voltage_ranges,
-        stream_started,
-        scan_rate,
-        handshake,
+        inputs: tuple[list[str], list[int], list[int]],
+        button_list: list[int | tuple[int, str]],
+        press_counter: SharedInt,
+        constants: list[int],
+        voltage_ranges: tuple[tuple[float, float], ...],
+        stream_started: SharedBool,
+        scan_rate: SharedFloat,
+        handshake: SharedInt,
     ):
         self.is_success = True
         self.voltage_range = {}
@@ -84,15 +84,15 @@ class LabJackDataStream(ProcessWithLogging):
         if self.digital_inputs or self.extended_inputs:
             aScanList.append(2580)
 
-        input_names = []
-        voltage_ranges = []
+        input_names: list[str] = []
+        work_voltage_ranges: list[float] = []
         for key in self.voltage_range:
             input_names.append(f"{key}_RANGE")
-            voltage_ranges.append(float(self.voltage_range[key][1]))
+            work_voltage_ranges.append(float(self.voltage_range[key][1]))
         input_names.append("STREAM_CLOCK_SOURCE")
-        voltage_ranges.append(0)
+        work_voltage_ranges.append(0)
         self.input_names = input_names
-        self.voltage_ranges = voltage_ranges
+        self.voltage_ranges = work_voltage_ranges
         self.handle: Any | None = None  # ljm handle
 
     def _set_high_prio(

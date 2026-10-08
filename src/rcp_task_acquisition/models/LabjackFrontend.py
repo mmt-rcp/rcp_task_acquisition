@@ -14,7 +14,7 @@ from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import SharedBool, SharedInt
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, HardwareListsType
 
 logger = get_logger(__name__)
 
@@ -48,7 +48,7 @@ class LabjackFrontend:
         self.prev_graph_list = [-1, -1, -1]
         self.digital_list: list[int] = []
         self.analog_list: list[str] = []
-        self.button_list: list[int] = []
+        self.button_list: list[int | tuple[int, str]] = []
         self.extended_list: list[int] = []
         self.array_length: int = array_length
         for index, item in enumerate(self.labjack_list):
@@ -59,7 +59,11 @@ class LabjackFrontend:
                     self.button_list.append(int(item[-1]))
             else:
                 self.analog_list.append(item)
-        self.inputs_list = [self.analog_list, self.digital_list]
+        self.inputs_list: tuple[list[str], list[int], list[int]] = (
+            self.analog_list,
+            self.digital_list,
+            self.extended_list,
+        )
         self.labjack_arr = Array("d", array_length * (len(self.hardware_indices) + 3))
         self.labjack_queue = Queue()
         self.labjack_is_csv = Value(ctypes.c_bool, False)
@@ -94,21 +98,10 @@ class LabjackFrontend:
 
     def update_hardware(
         self,
-        hardware_lists: tuple[
-            tuple[str, ...],  # hardware list
-            tuple[str, ...],  # labjack list
-            tuple[str, ...],  # min max
-            tuple[tuple[float, float], ...],  # voltage range
-        ],
+        hardware_lists: HardwareListsType,
     ):
         self.graph_panel.update_graph(hardware_lists)
-        # self.hardware = [
-        #     item for item in list(hardware_lists[0]) if item not in PLOT_CONSTANTS
-        # ]
         self.hardware = list(hardware_lists[0])
-        # self.labjack_list = [
-        #     item for item in list(hardware_lists[1]) if item not in self.constants
-        # ]
         self.labjack_list = list(hardware_lists[1])
         self.constant_index = []
         self.constants = []
@@ -143,7 +136,7 @@ class LabjackFrontend:
         logger.info(
             f"digital: {self.digital_list}, extended: {self.extended_list}, Analog: {self.analog_list}, button: {self.button_list}"
         )
-        self.inputs_list = [self.analog_list, self.digital_list, self.extended_list]
+        self.inputs_list = (self.analog_list, self.digital_list, self.extended_list)
         logger.debug(self.button_list)
         self._update_graph_list("")
 

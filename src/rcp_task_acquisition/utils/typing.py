@@ -5,6 +5,7 @@ from multiprocessing.synchronize import Event
 SharedEvent: typing.TypeAlias = Event
 
 SharedInt: typing.TypeAlias = sharedctypes.Synchronized  # [int]
+SharedFloat: typing.TypeAlias = sharedctypes.Synchronized  # [float]
 SharedBool: typing.TypeAlias = sharedctypes.Synchronized  # [bool]
 
 SharedArray: typing.TypeAlias = sharedctypes.SynchronizedArray
@@ -13,3 +14,11 @@ SharedArray: typing.TypeAlias = sharedctypes.SynchronizedArray
 # >   SharedInt = sharedctypes.Synchronized[int]
 # E   TypeError: 'type' object is not subscriptable
 #
+
+
+HardwareListsType: typing.TypeAlias = tuple[
+    tuple[str, ...],  # hardware list
+    tuple[str, ...],  # labjack list
+    tuple[str, ...],  # min max
+    tuple[tuple[float, float], ...],  # voltage range
+]
