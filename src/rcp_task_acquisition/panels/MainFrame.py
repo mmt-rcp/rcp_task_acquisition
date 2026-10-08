@@ -682,17 +682,17 @@ class MainFrame(wx.Frame):
         file_utils.write_metadata(meta, self.metapath)
 
     def finalize_metadata(self):
-        metadata_notes = MetadataPanel()
+        metadata_panel = MetadataPanel()
         user_cfg = self._rcp_context.user_config
-        if metadata_notes.show() == wx.ID_OK:
+        if metadata_panel.show() == wx.ID_OK:
             yaml = YAML()
             with self.metapath.open("r", encoding="utf-8") as file:
                 metadata = yaml.load(file)
 
             metadata["actual_scan_rate"] = self.labjack_scan_rate
 
-            for data in metadata_notes.data:
-                metadata[data] = metadata_notes.data[data]
+            for data in metadata_panel.metadata:
+                metadata[data] = metadata_panel.metadata[data]
                 logger.debug(data)
             metadata["EndTime_Local"] = self.end_time
             metadata["EndTime_UTC"] = self.end_time_utc

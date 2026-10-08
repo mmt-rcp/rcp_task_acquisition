@@ -106,17 +106,16 @@ class StimulusThread(ProcessWithLogging):
         self.task = msg
 
     def _handle_update_data(self):
-        msgq_data = self.msgq.get()
-        logger.debug(f"stim: {msgq_data}")
+        data = self.msgq.get()
+        logger.debug("stim: update_data: %s", data)
         try:
-            logger.debug(f"stimthread datadata: {msgq_data[0]}")
-            if msgq_data[0] == "(":
-                trial_data = ast.literal_eval(msgq_data)
+            if data[0] == "(":
+                trial_data = ast.literal_eval(data)
             else:
-                trial_data = msgq_data
+                trial_data = data
         except Exception as err:
-            logger.exception("Cannot evaluate stim thread data: %s", err)
-            trial_data = msgq_data
+            logger.exception("Cannot evaluate stim thread data (%s): %s", data, err)
+            trial_data = data
         # trial_data = trial_data.replace("(", "")
         self.stimulus.update_data(trial_data)
 
