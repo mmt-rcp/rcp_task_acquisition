@@ -59,12 +59,14 @@ class MainFrame(wx.Frame):
         self.task: str = ""
         # self.cams_cfg: config.CamerasDictConfig = rcp_context.user_config.cameras
         self.trial_button = None
+        self.launch_args: dict[str, Any] = {}
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
         self.press_count = Value(ctypes.c_int, 0)
         self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
         self.count = 0
+        self.frames: float = 0  # ~framerate
         self.results_list: list[Any] = []
         self.serial_device = SerialDevice()
         self.cam_crop = Crop()
@@ -976,15 +978,16 @@ class MainFrame(wx.Frame):
             self.widget_panel.show_cams()
             self.frames = user_cfg.cam_config.framerate
         else:
+            cams_cfg = config.CamerasDictConfig()
             args = {}
-            self.frames = None
+            self.frames = 0
             task_cfg = tasks_cfg[self.task]
             self.widget_panel.hide_cams()
             for hard_name in task_cfg.settings:
                 if hard_name in user_cfg.hardware:
                     args[hard_name] = user_cfg.hardware[hard_name]
                 elif hard_name in user_cfg.cameras:
-                    cams_cfg[hard_name] = user_cfg.cameras[hard_name]
+                    cams_cfg[config.CameraItem(hard_name)] = user_cfg.cameras[hard_name]
                 else:
                     logger.warning(
                         "Task %s: unknown hardware name in task settings: %s", task, hard_name

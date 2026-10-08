@@ -117,6 +117,7 @@ class Camera:
         is_unconnected: bool,
         requested_framerate: float | None,
     ):
+        logger.info("Camera.setup: cams_cfg: %s", cams_cfg)
         self.cam_crop = Crop()
         self.framerate = requested_framerate
         self.reset_variables()
@@ -164,6 +165,7 @@ class Camera:
                 self.primary_cams.append(new_cam.serial)
             else:
                 self.secondary_cams.append(new_cam.serial)
+
         camCt = len(self.cam_dict)
         cam_names = [cam.name for cam in self.cam_dict.values()]
         self.ctrl_panel.hardware_test(30 * 2, camCt, cam_names)

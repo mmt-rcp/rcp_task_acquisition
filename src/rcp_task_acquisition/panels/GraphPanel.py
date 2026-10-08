@@ -313,7 +313,7 @@ class GraphPanel(wx.Panel):
     def draw(self) -> None:
         self.figure.canvas.draw()
 
-    def hardware_test(self, arr_size: int, cam_num, cam_names) -> None:
+    def hardware_test(self, arr_size: int, cam_num: int, cam_names: list[str]) -> None:
         for plot in self.lines:
             plot.set_visible(False)
 
