@@ -18,7 +18,7 @@ from logging import LogRecord
 from multiprocessing import Process
 from pathlib import Path
 from queue import Empty
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 import coloredlogs
 import verboselogs
@@ -31,10 +31,10 @@ _orig_logger_set_level = logging.Logger.setLevel
 _already_setup = False
 _base_logger: logging.Logger = logging.root
 _multiprocess_log_queue: Optional[multiprocessing.Queue] = None
-_queue_listener: logging.handlers.QueueListener | None = None
+_queue_listener: "LogQueueListenerProc | None" = None
 _queue_handler: logging.Handler | None = None
 _console_handler: "logging.StreamHandler | RelayHandler | None" = None
-_root_handler: logging.Logger | None = None
+_root_handler: "logging.Logger | WithThreadIdQueueHandler | None" = None
 
 
 DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
@@ -60,7 +60,7 @@ class DateTimeFormats:
     year_precise = f"%Y/%m/%d {hour_time_precise}"
 
 
-DEFAULT_FIELD_STYLES = dict(
+DEFAULT_FIELD_STYLES: Dict[str, Dict[str, Any]] = dict(
     asctime=dict(color="white", bold=False),
     hostname=dict(color="magenta"),
     levelname=dict(color="blue", bold=True),
@@ -70,7 +70,7 @@ DEFAULT_FIELD_STYLES = dict(
 )
 
 
-DEFAULT_LEVEL_STYLES = dict(
+DEFAULT_LEVEL_STYLES: Dict[str, Dict[str, Any]] = dict(
     spam=dict(color="white", faint=True),
     debug=dict(color="white", bold=False, faint=False),
     verbose=dict(color="white", bold=True),
@@ -150,7 +150,7 @@ class LogQueueListenerProc(Process):
         self._file_handler: logging.FileHandler | None = None
         self._buffer_previous: list[logging.LogRecord] = []
         self._buffer_file_handler_interval_seconds = 5
-        self._lock: threading.Lock = None  # noqa
+        self._lock: threading.Lock = None  # type: ignore  # mypy: disable-error-code=assignment
 
     def _send_command(self, cmd, data):
         self._command_executed.clear()
@@ -288,7 +288,7 @@ class LogQueueListenerProc(Process):
                 logger.warning("unknown command: %s", cmd)
                 command_executed()
                 continue
-            meth: Callable
+            meth: Callable  # type: ignore
             try:
                 meth(*args, **kwargs)
             except Exception as err:
@@ -323,7 +323,7 @@ def get_root_handler():
     return _root_handler
 
 
-def get_console_handler() -> None | logging.StreamHandler:
+def get_console_handler() -> "None | logging.StreamHandler | RelayHandler":
     return _console_handler
 
 
@@ -353,7 +353,7 @@ thread_id_filter = ThreadIdFilter()
 class PreciseTimeFormatter(logging.Formatter):
     """A logger formatter with time precision handling"""
 
-    converter = datetime.fromtimestamp
+    converter = datetime.fromtimestamp  # type: ignore
 
     def __init__(self, *args, time_precision: int = 3, **kwargs):
         self._time_precision = time_precision
@@ -617,7 +617,8 @@ def setup_logging(
         _console_handler.name = (
             "console_handler"  # "fake" it so that it will relay to the correct handler
         )
-        logging.Logger.setLevel = lambda self, lvl: listener.set_logger_level(self.name, lvl)
+        relay_to_listener = lambda self, level: listener.set_logger_level(self.name, level)
+        logging.Logger.setLevel = relay_to_listener  # type: ignore
     else:
         _console_handler = console_handler = make_console_handler(cfg)
         root_handler = _root_handler = console_handler
@@ -695,7 +696,7 @@ def get_verbose_logger(name: str | None = None) -> VerboseLoggerWithThreadId:
     return obj
 
 
-def get_log_file_location(*, log_base_dir: str = "", full_format: str):
+def get_log_file_location(*, log_base_dir: str | Path = "", full_format: str):
     if not log_base_dir:
         log_base_dir = Path.home().joinpath("Documents/RawDataLocal")
     else:
