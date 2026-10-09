@@ -94,18 +94,17 @@ class StimulusThread(ProcessWithLogging):
             Msg.HARDWARE_TEST: self._handle_hardware_test,
         }
 
-    def _handle_initialize(self):
-        self.params = {}
+    def _handle_initialize(self) -> None:
         self.init_stimuli()
 
-    def _handle_send_metadata(self):
+    def _handle_send_metadata(self) -> None:
         self.send_metadata()
 
-    def _handle_update_task(self):
+    def _handle_update_task(self) -> None:
         msg = self.msgq.get()
         self.task = msg
 
-    def _handle_update_data(self):
+    def _handle_update_data(self) -> None:
         data = self.msgq.get()
         logger.debug("stim: update_data: %s", data)
         try:
@@ -119,7 +118,7 @@ class StimulusThread(ProcessWithLogging):
         # trial_data = trial_data.replace("(", "")
         self.stimulus.update_data(trial_data)
 
-    def _handle_run_task(self):
+    def _handle_run_task(self) -> None:
         self.shared.value = 0
         # Main loop for presenting stimuli
         tStart = time.time()
@@ -146,28 +145,28 @@ class StimulusThread(ProcessWithLogging):
         else:
             self.finish.value = 0
 
-    def _handle_reset_task(self):
+    def _handle_reset_task(self) -> None:
         self.stimulus.reset_task()
 
-    def _handle_end_task(self):
+    def _handle_end_task(self) -> None:
         self.end_stimulus()
 
-    def _handle_vowel_space(self):
+    def _handle_vowel_space(self) -> None:
         results = self.stimulus.get_trial()
         logger.debug(results)
         self.resultsq.put(results)
 
-    def _handle_play_instructions(self):
+    def _handle_play_instructions(self) -> None:
         msg = self.msgq.get()
         logger.debug(msg)
         self.play_video(msg)
 
-    def _handle_add_instructions(self):
+    def _handle_add_instructions(self) -> None:
         msg = self.msgq.get()
         self.setup_videos(msg)
         # self.setup_videos(video_filename_dict)
 
-    def _handle_hardware_test(self):
+    def _handle_hardware_test(self) -> None:
         base_vars = {
             "display": self.window,
             "frame": self.frame,
@@ -179,10 +178,10 @@ class StimulusThread(ProcessWithLogging):
         }
         HardwareTest(base_vars).present()
 
-    def _handle_close_window(self):
+    def _handle_close_window(self) -> None:
         self.close_window()
 
-    def run(self):
+    def run(self) -> None:
         try:
             self.window = Window(screen=self.screenConfig, fullScreen=True)
         except Exception as err:
@@ -212,7 +211,7 @@ class StimulusThread(ProcessWithLogging):
                 self.end_stimulus()
                 break
 
-    def init_stimuli(self):
+    def init_stimuli(self) -> None:
         base_vars = {
             "display": self.window,
             "frame": self.frame,
@@ -236,37 +235,38 @@ class StimulusThread(ProcessWithLogging):
             verb_generation=VerbGeneration,
         ).get(self.task, StimulusBase)
         extra_args = []
-        if self.task == "n_back":
+        if issubclass(base_cls, N_back):
             extra_args.append(self.button)
-        elif self.task == "tone_taps_closed":
+        elif issubclass(base_cls, ToneTapsClosed):
             extra_args.append(self.press_count)
         self.stimulus = base_cls(base_vars, *extra_args)
-        logger.info(f"stimuli: {self.stimulus}")
+        logger.info("stimuli: %s", self.stimulus)
 
-    def end_stimulus(self):
+    def end_stimulus(self) -> None:
         self.window.idle(time_list=[])
         # self.send_metadata()
 
-    def send_metadata(self):
+    def send_metadata(self) -> None:
         # logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
+        stimuli = self.stimulus
+        if stimuli is None:
+            logger.warning("No stimuli received")
+            return
         ctx = self._rcp_context
         task_cfg = ctx.tasks_config[self.task]
-        results = self.stimulus.saveMetadata(task_cfg, None)  # TODO: not sure what's going on
+        results = stimuli.saveMetadata(task_cfg, None)  # TODO: not sure what's going on
         json_str = json.dumps(results)
         logger.debug(f"jsonstr: {json_str}")
         self.resultsq.put(json_str)
 
-    def close_window(self):
+    def close_window(self) -> None:
         self.alive = False
         self.window.close()
         # self.p.join()
 
-    def get_params(self):
-        return self.params
-
-    def setup_videos(self, video_filename_dict):
+    def setup_videos(self, video_filename_dict) -> None:
         pass
 
-    def play_video(self, trial: str):
+    def play_video(self, trial: str) -> None:
         if self.stimulus is not None:
             self.stimulus.play_instructional_video(trial)

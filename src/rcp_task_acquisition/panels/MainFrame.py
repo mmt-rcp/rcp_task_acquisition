@@ -869,7 +869,7 @@ class MainFrame(wx.Frame):
         value = bool(self.crop.GetValue())
         self.cams.update_crop(value)
 
-    def recordCam(self, event):
+    def recordCam(self, event: wx.Event) -> None:
         ctx = self._rcp_context
         user_cfg = ctx.user_config
         if self.rec.GetValue() or self.task_button.GetValue():

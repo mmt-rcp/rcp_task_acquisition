@@ -14,6 +14,7 @@ import dacite
 
 from rcp_task_acquisition.utils import constants
 from rcp_task_acquisition.utils.logging import get_verbose_logger
+from rcp_task_acquisition.utils.typing import CropTupleType
 
 logger = get_verbose_logger(__name__)
 
@@ -112,7 +113,7 @@ class CamConfig:
 class CameraConfig:
     serial: str = ""
     ismaster: bool = False
-    crop: tuple[int, int, int, int] = (0, 0, 0, 0)
+    crop: CropTupleType = (0, 0, 0, 0)
     exposure: float | None = None
     bin: int = 1
     gain: float | None = None

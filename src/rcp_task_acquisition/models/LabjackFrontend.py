@@ -5,17 +5,19 @@ frontend.
 
 import ctypes
 import time
+import typing
 from multiprocessing import Array, Queue, Value
 from typing import Any
 
 import numpy as np
 import wx
 
+from rcp_task_acquisition.models.SerialDevice import SerialDevice
 from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, HardwareListsType
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, HardwareListsType, SharedArray
 
 logger = get_logger(__name__)
 
@@ -65,7 +67,9 @@ class LabjackFrontend:
             self.digital_list,
             self.extended_list,
         )
-        self.labjack_arr = Array("d", array_length * (len(self.hardware_indices) + 3))
+        self.labjack_arr: SharedArray[int] = Array(
+            "d", array_length * (len(self.hardware_indices) + 3)
+        )
         self.labjack_queue: Queue[Any] = Queue()
         self.labjack_is_csv = Value(ctypes.c_bool, False)
         self.stream_started = Value(ctypes.c_bool, False)
@@ -85,8 +89,9 @@ class LabjackFrontend:
         self.serial_bool = False
         self.ser_success = False
         self.labjack_process: LabJackDataStream
+        self.msg = ""
 
-    def labjack_stream(self, event):
+    def labjack_stream(self, even: wx.Event) -> None:
         labjack_button = self.graph_panel.get_graph_button()
         if labjack_button.GetValue():
             labjack_button.SetLabel("Stop Labjack")
@@ -100,7 +105,7 @@ class LabjackFrontend:
     def update_hardware(
         self,
         hardware_lists: HardwareListsType,
-    ):
+    ) -> None:
         self.graph_panel.update_graph(hardware_lists)
         self.hardware = list(hardware_lists[0])
         self.labjack_list = list(hardware_lists[1])
@@ -141,7 +146,7 @@ class LabjackFrontend:
         logger.debug(self.button_list)
         self._update_graph_list("")
 
-    def start_labjack(self):
+    def start_labjack(self) -> bool:
         if not self.labjack_is_finished.value:
             logger.info("labjack is currently runninng")
             return True
@@ -194,7 +199,9 @@ class LabjackFrontend:
 
         new_arr.fill(np.nan)
 
-        np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(
+        labjack_arr = self.labjack_arr.get_obj()
+        np.frombuffer(labjack_arr, dtype=ctypes.c_double).reshape(  # type: ignore
+            # eventual todo: cannot get type hint right yet with shared array and np.frombuffer(...)
             len(new_arr.flatten())
         )[:] = new_arr.flatten()
         self.graph_panel.draw()
@@ -205,11 +212,11 @@ class LabjackFrontend:
         logger.info("labjack_stopped")
         return self.scan_rate.value
 
-    def labjack_event(self, event):
+    def labjack_event(self, event: wx.Event) -> None:
         if not self.labjack_is_finished.value and self.stream_started.value:
             arr_step = 0
             # if self.handshake.value == 1:
-            y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), "d", len(self.labjack_arr))
+            y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), "d", len(self.labjack_arr))  # type: ignore
             # else:
             #     return
             if not np.isnan(y_plot_points[-1]) and self.serial_bool:
@@ -259,13 +266,13 @@ class LabjackFrontend:
                 self.graph_panel.set_visible_const(index)
                 arr_step += self.array_length
             # if self.handshake.value == 1:
-            np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(
+            np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(  # type: ignore
                 len(y_plot_points.flatten())
             )[:] = y_plot_points.flatten()
             # self.handshake.value = 0
             self.graph_panel.draw()
 
-    def add_csv(self, labjack_file, serial, msg):
+    def add_csv(self, labjack_file: str, serial: SerialDevice, msg: str) -> None:
         self.labjack_csv = labjack_file
         self.labjack_queue.put(labjack_file)
         self.labjack_is_csv.value = True
@@ -276,15 +283,15 @@ class LabjackFrontend:
         self.ser = serial.ser
         self.msg = msg
 
-    def is_active(self):
+    def is_active(self) -> bool:
         return not self.labjack_is_finished.value
 
-    def _update_graph_list(self, event):
+    def _update_graph_list(self, event: wx.Event) -> None:
         selected_list = []
 
         for choice in self.labjack_choices:
-            if choice.GetSelection() not in (0, 1):
-                selection = choice.GetSelection()
+            selection = choice.GetSelection()
+            if selection not in (0, 1):
                 choices = choice.GetStrings()
                 selection = choices[selection]
                 original_selection = self.hardware.index(selection)

@@ -602,18 +602,20 @@ class HardwarePanel(wx.Panel):
                 cam_cfg.ismaster = False
         return cameras
 
-    def _get_name(self, hardware):
+    def _get_name(self, hardware) -> str:
         return (
             hardware.name.GetLabel() if hardware.name.GetLabel() != "" else hardware.name.GetValue()
         )
 
-    def _on_choice_labjack(self, event):
+    def _on_choice_labjack(self, event: wx.Event) -> None:
         self._update_lists(self.hardware_list)
 
-    def _on_choice_cameras(self, event):
+    def _on_choice_cameras(self, event: wx.Event) -> None:
         self._update_lists(self.camera_list, is_labjack=False)
 
-    def _update_lists(self, item_list: list[CameraRow] | list[HardwareRow], is_labjack=True):
+    def _update_lists(
+        self, item_list: list[CameraRow] | list[HardwareRow], is_labjack=True
+    ) -> None:
         selected_list = []
         primary_list = LABJACK_PIN_LIST if is_labjack else self.cam_serial_numbers
         # self._rcp_context
@@ -653,7 +655,7 @@ class HardwarePanel(wx.Panel):
             except Exception as err:
                 logger.exception("Error update lists: %s", err)
 
-    def update_task(self):
+    def update_task(self) -> None:
         if self.task == None:
             for hardware in self.hardware_list:
                 hardware.in_use.Enable(False)
@@ -681,7 +683,7 @@ class HardwarePanel(wx.Panel):
                 else:
                     camera.in_use.SetValue(False)
 
-    def set_task(self, task: str):
+    def set_task(self, task: str) -> None:
         self.task = task
         # update to show available hardware for task
         if self.IsShown() and self.protocol_radio.GetValue():
@@ -713,7 +715,7 @@ class HardwarePanel(wx.Panel):
             self._update_lists(self.hardware_list)
             self._update_lists(self.camera_list, is_labjack=False)
 
-    def reset_hardware(self):
+    def reset_hardware(self) -> None:
         if not self.hardware_radio.GetValue():
             self.hardware_radio.SetValue(True)
             self.select_protocol = False
@@ -727,5 +729,5 @@ class HardwarePanel(wx.Panel):
                 camera.in_use.Enable(True)
             self.update_options(None)
 
-    def get_task(self):
+    def get_task(self) -> str:
         return self.task

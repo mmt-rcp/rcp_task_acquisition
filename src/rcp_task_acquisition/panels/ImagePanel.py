@@ -3,6 +3,7 @@ import wx
 import wx.lib.dialogs
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+from pyarrow.lib import Sequence
 
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -21,7 +22,7 @@ class ImagePanel(wx.Panel):
         self.SetSizer(self.sizer)
         self.Fit()
 
-    def updateImage(self, gui_size, **kwargs):
+    def updateImage(self, gui_size, **kwargs) -> None:
         """
         Switching to a toggle method so there will always be only 2 cameras at a time
         """
@@ -62,13 +63,13 @@ class ImagePanel(wx.Panel):
         self.Refresh()
         self.Update()
 
-    def getfigure(self):
+    def getfigure(self) -> tuple[Figure, list[matplotlib.axes.Axes], FigureCanvas]:
         """
         Returns the figure, axes and canvas
         """
-        return (self.figure, self.axes, self.canvas)
+        return self.figure, self.axes, self.canvas
 
-    def update_names(self, cam_name_list):
+    def update_names(self, cam_name_list: list[str]) -> None:
         for index, axis in enumerate(self.axes):
             self.texts[index].remove()
             props = {

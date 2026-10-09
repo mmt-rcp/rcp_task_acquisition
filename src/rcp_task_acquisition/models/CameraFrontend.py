@@ -6,6 +6,7 @@ import shutil
 import time
 from dataclasses import dataclass
 from multiprocessing import Array, Queue, Value
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -116,13 +117,13 @@ class Camera:
         cams_cfg: config.CamerasDictConfig,
         is_unconnected: bool,
         requested_framerate: float,
-    ):
+    ) -> None:
         logger.info("Camera.setup: cams_cfg: %s", cams_cfg)
         self._cams_cfg = cams_cfg
         self._is_unconnected = is_unconnected
         self.framerate = requested_framerate
 
-    def _prepare_cams(self):
+    def _prepare_cams(self) -> None:
         self.cam_crop = Crop()
         self.reset_variables()
         self.cam_dict.clear()
@@ -188,7 +189,7 @@ class Camera:
         )
         self.image_panel.draw()
 
-    def initialize(self, event):
+    def initialize(self, event: wx.Event) -> bool:
         self.serial.init_serial()
         self.initThreads()
         try:
@@ -239,7 +240,7 @@ class Camera:
         self.im[1].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].frame)
         return True
 
-    def deinitialize(self):
+    def deinitialize(self) -> None:
         self.serial.close()
 
         for ndx, im in enumerate(self.im):
@@ -249,7 +250,7 @@ class Camera:
 
         self.deinitThreads()
 
-    def camReset(self, event):
+    def camReset(self, event: wx.Event) -> None:
         self.initThreads()
         self.camaq.value = 2
         self.startAq()
@@ -258,15 +259,15 @@ class Camera:
         self.deinitThreads()
         logger.info("\n*** CAMERAS RESET ***\n")
 
-    def live_start(self):
+    def live_start(self) -> None:
         self.camaq.value = 1
         self.startAq()
 
-    def live_stop(self):
+    def live_stop(self) -> None:
         self.stopAq()
         time.sleep(2)
 
-    def vidPlayer(self, event):
+    def vidPlayer(self, event: wx.Event) -> None:
         if self.camaq.value == 2:
             return
         self.participant_monitor.update_screen()
@@ -305,7 +306,7 @@ class Camera:
                 self.update_contrast()
         self.figure.canvas.draw()
 
-    def update_focus(self, plot=True):
+    def update_focus(self, plot: bool = True) -> None:
         if plot:
             cam_list = []
             for cam in self.cam_dict.values():
@@ -315,7 +316,7 @@ class Camera:
             for cam in self.cam_dict.values():
                 cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
-    def update_contrast(self, plot=True):
+    def update_contrast(self, plot: bool = True) -> None:
         if plot:
             cam_list = []
             for cam in self.cam_dict.values():
@@ -325,7 +326,9 @@ class Camera:
             for cam in self.cam_dict.values():
                 cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
-    def start_recording(self, event, base_dir, sess_dir, path_base, count):
+    def start_recording(
+        self, event: wx.Event, base_dir: Path, sess_dir: Path, path_base: str, count: int
+    ) -> None:
         totTime = 20  # int(self.secRec.GetValue())+int(self.minRec.GetValue())*60
         spaceneeded = 0
         freespace = shutil.disk_usage(base_dir)[2]
@@ -346,12 +349,12 @@ class Camera:
         self.camaq.value = 1
         self.startAq()
 
-    def stop_recording(self, event):
+    def stop_recording(self, event: wx.Event) -> None:
         self.shared.value = -1
         self.stopAq()
         time.sleep(2)
 
-    def initThreads(self):
+    def initThreads(self) -> None:
         logger.verbose("initThreads started")
         self._prepare_cams()
         self.multi_cameras.clear()
@@ -377,7 +380,7 @@ class Camera:
             cam.camq.put(initialization)
             cam.camq_p2read.get()
 
-    def deinitThreads(self):
+    def deinitThreads(self) -> None:
         logger.verbose("deinitThreads started")
         for n, cam in enumerate(self.cam_dict.values()):
             cam.camq.put(CameraCommand.RELEASE)
@@ -393,7 +396,7 @@ class Camera:
         self.cam_dict.clear()
         self.multi_cameras.clear()
 
-    def startAq(self):
+    def startAq(self) -> None:
         logger.verbose("startAq started")
         if self.serial.serSuccess:
             msg = f"S{self.session}x{self.trial}x"
@@ -407,7 +410,7 @@ class Camera:
         for prim_cam_name in self.primary_cams:
             self.cam_dict[prim_cam_name].camq.put(CameraCommand.TRIG_OFF)
 
-    def stopAq(self):
+    def stopAq(self) -> None:
         logger.verbose("stopAq started")
         if self.serial.serSuccess:
             msg = "Xx"
@@ -443,7 +446,7 @@ class Camera:
         if error != "":
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
-    def updateSettings(self, event):
+    def updateSettings(self, event: wx.Event) -> None:
         self.aqW = []
         self.aqH = []
         self.recSet = []
@@ -460,7 +463,7 @@ class Camera:
             self.aqW.append(cam_d.camq_p2read.get())
             self.aqH.append(cam_d.camq_p2read.get())
 
-    def get_exposure(self, event):
+    def get_exposure(self, event: wx.Event) -> None:
         for n, cam_d in enumerate(self.cam_dict.values()):
             cam_d.camq.put(CameraCommand.SET_EXPOSURE)
         self.startAq()
@@ -489,10 +492,10 @@ class Camera:
                 cam_d.actual_framerate = primary_rate / int(cam_d.decrease_val)
                 cam_d.camq.put(CameraCommand.GET_BALANCE)
 
-    def update_crop(self, value):
+    def update_crop(self, value) -> None:
         self.crop = value
 
-    def update_cameras_viewed(self, event):
+    def update_cameras_viewed(self, event: wx.Event) -> None:
         # switching which 2 cameras are seen
         if self.cam_pointer + 2 >= len(self.cam_dict):
             self.cam_pointer = 0
@@ -513,7 +516,7 @@ class Camera:
 
         self.image_panel.update_names([cam1.name, cam2_name])
 
-    def reset_variables(self):
+    def reset_variables(self) -> None:
         self.labjack_scan_rate = None
         self.secondary_cams = []
         self.primary_cams = []

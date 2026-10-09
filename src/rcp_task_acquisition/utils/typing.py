@@ -7,14 +7,15 @@ SharedEvent: typing.TypeAlias = Event
 SharedInt: typing.TypeAlias = sharedctypes.Synchronized  # [int]
 SharedFloat: typing.TypeAlias = sharedctypes.Synchronized  # [float]
 SharedBool: typing.TypeAlias = sharedctypes.Synchronized  # [bool]
-
-SharedArray: typing.TypeAlias = sharedctypes.SynchronizedArray
+SharedArray = sharedctypes.SynchronizedArray
 
 # getting:
 # >   SharedInt = sharedctypes.Synchronized[int]
 # E   TypeError: 'type' object is not subscriptable
 #
 
+
+CropTupleType: typing.TypeAlias = tuple[int, int, int, int]
 
 HardwareListsType: typing.TypeAlias = tuple[
     tuple[str, ...],  # hardware list

@@ -7,6 +7,7 @@ from threading import Event, Thread
 from typing import Any
 
 import cv2
+import numpy as np
 
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -139,7 +140,7 @@ class AsyncFFmpegGPUWriter:
         if self.error is not None:
             raise self.error
 
-    def write(self, frame_bgr, frame_id, timestamp_delta):
+    def write(self, frame_bgr: bytes, frame_id: int, timestamp_delta: float) -> bool:
         try:
             # Must enqueue an owned frame copy unless the producer already copied.
             self.q.put_nowait((frame_bgr, frame_id, timestamp_delta))

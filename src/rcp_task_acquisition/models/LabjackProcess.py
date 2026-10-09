@@ -113,7 +113,7 @@ class LabJackDataStream(ProcessWithLogging):
                     "Could not set current process to high prio: %s", win32api.GetLastError()
                 )
 
-    def run(self):
+    def run(self) -> None:
         self._set_high_prio()
         first_write = True
         logger.debug("Start labjack stream.")
@@ -189,8 +189,7 @@ class LabJackDataStream(ProcessWithLogging):
 
         self.stop()
 
-    def graph(self, results, digital):  # , extended):
-        new_list = []
+    def graph(self, results: np.ndarray, digital: np.ndarray) -> None:  # , extended):
         new_list = [digital[item] for item in self.digital_inputs]
 
         new_results = np.vstack((results[:-1], new_list))
@@ -224,7 +223,7 @@ class LabJackDataStream(ProcessWithLogging):
             len(self.numpy_arr.flatten())
         )[:] = self.numpy_arr.flatten()
 
-    def write_csv(self, results, write_headers=False):
+    def write_csv(self, results: np.ndarray, write_headers: bool = False) -> None:
         if not self.labjack_csv:
             self.labjack_csv = self.session_file  # os.path.join(self.sessionFolder, filename)
         with open(self.labjack_csv, "ab") as file:
@@ -237,10 +236,10 @@ class LabJackDataStream(ProcessWithLogging):
                 )
             np.savetxt(file, results.T, fmt="%f", delimiter=",")
 
-    def set_folder(self, session_dir):
+    def set_folder(self, session_dir) -> None:
         self.session_file = session_dir
 
-    def stop(self):
+    def stop(self) -> None:
         try:
             ljm.eStreamStop(self.handle)
         except Exception as err:
@@ -251,5 +250,5 @@ class LabJackDataStream(ProcessWithLogging):
         self.numpy_arr[:] = np.nan
         ljm.closeAll()
 
-    def is_successful(self):
+    def is_successful(self) -> bool:
         return self.is_success

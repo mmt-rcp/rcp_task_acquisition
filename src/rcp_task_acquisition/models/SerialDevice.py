@@ -11,7 +11,7 @@ class SerialDevice:
         self.serSuccess = False
         self.ser = None
 
-    def init_serial(self):
+    def init_serial(self) -> None:
         for i in range(2, 10):
             port = f"COM{i}"
             try:
@@ -29,11 +29,11 @@ class SerialDevice:
         if not self.serSuccess:
             logger.info("Serial connection failed")
 
-    def write(self, serial_str):
+    def write(self, serial_str: str) -> None:
         if self.serSuccess:
             self.ser.write(serial_str.encode())
 
-    def close(self):
+    def close(self) -> None:
         if self.serSuccess:
             self.ser.close()
             self.serSuccess = False

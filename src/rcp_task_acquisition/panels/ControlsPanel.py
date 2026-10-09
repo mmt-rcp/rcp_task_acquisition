@@ -183,7 +183,7 @@ class ControlsPanel(wx.Panel):
             self.tens_button,
         )
 
-    def update_task(self, task):
+    def update_task(self, task: str) -> None:
         task_title = task.replace("_", " ").title()
         self.task_text.SetLabel(f"{task_title}")
         self.task_panel.Destroy()
@@ -231,7 +231,7 @@ class ControlsPanel(wx.Panel):
             basic_panel.continue_button.Show()
             return basic_panel
 
-    def close_task_panel(self):
+    def close_task_panel(self) -> None:
         self.task_panel.Destroy()
 
 

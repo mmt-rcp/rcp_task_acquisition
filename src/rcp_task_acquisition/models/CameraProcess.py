@@ -109,7 +109,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             CameraCommand.RECORD_PREP: self._cmd_recordPrep,
         }
 
-    def run(self):
+    def run(self) -> None:
         ctx = CamCtx()
         # exposure_max = 4000
         user_config = self._rcp_context.user_config
@@ -181,7 +181,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 else:
                     self.camq_p2read.put("done")
 
-    def _cmd_InitM(self, ctx: CamCtx):
+    def _cmd_InitM(self, ctx: CamCtx) -> None:
         ctx.ismaster = True
         cam = ctx.cam
         cam.Init()
@@ -191,7 +191,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             _image = cam.GetNextImage(100)
             _image.Release()
 
-    def _cmd_InitS(self, ctx: CamCtx):
+    def _cmd_InitS(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         cam.Init()
         self.create_secondary(cam, ctx.is_decreased)
@@ -200,7 +200,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             _image = cam.GetNextImage(100)
             _image.Release()
 
-    def _cmd_InitC(self, ctx: CamCtx):
+    def _cmd_InitC(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         cam.Init()
         cam.LineSelector.SetValue(PySpin.LineSelector_Line2)
@@ -227,7 +227,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.system.ReleaseInstance()  # Release instance
         self.camq_p2read.put("done")
 
-    def _cmd_recordPrep(self, ctx: CamCtx):
+    def _cmd_recordPrep(self, ctx: CamCtx) -> None:
         path_base = self.camq.get()
         write_frame_rate = ctx.record_frame_rate
         s_node_map = ctx.cam.GetTLStreamNodeMap()
@@ -260,7 +260,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.record = True
         self.camq_p2read.put("done")
 
-    def _cmd_Start(self, ctx: CamCtx):
+    def _cmd_Start(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         cam.BeginAcquisition()
         if ctx.ismaster or ctx.isunconnected:
@@ -365,13 +365,13 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
         self.camq_p2read.put("done")
 
-    def _cmd_Stop(self, ctx: CamCtx):
+    def _cmd_Stop(self, ctx: CamCtx) -> None:
         pass  # TODO
 
-    def _cmd_TrigOff(self, ctx: CamCtx):
+    def _cmd_TrigOff(self, ctx: CamCtx) -> None:
         pass  # TODO
 
-    def _cmd_updateSettings(self, ctx: CamCtx):
+    def _cmd_updateSettings(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         cam_cfg = self._rcp_context.user_config.cameras[ctx.camStr]
         nodemap = cam.GetNodeMap()
@@ -594,10 +594,10 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self.camq_p2read.put(node_width.GetValue())
         self.camq_p2read.put(node_height.GetValue())
 
-    def _cmd_setExposure(self, ctx: CamCtx):
+    def _cmd_setExposure(self, ctx: CamCtx) -> None:
         ctx.cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
 
-    def _cmd_getExposure(self, ctx: CamCtx):
+    def _cmd_getExposure(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         logger.info(f"Current exposure: {ctx.current_exposure_time}")
         ctx.current_exposure_time = cam.ExposureTime.GetValue() * 0.99
@@ -608,10 +608,10 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         logger.debug(f"exposure: {cam.ExposureTime.GetValue()}")
         self.camq_p2read.put(cam.ExposureTime.GetValue())
 
-    def _cmd_setBalance(self, ctx: CamCtx):
+    def _cmd_setBalance(self, ctx: CamCtx) -> None:
         ctx.cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Continuous)
 
-    def _cmd_getBalance(self, ctx: CamCtx):
+    def _cmd_getBalance(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         cam_cfg = self._rcp_context.user_config.cameras[ctx.camStr]
         cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
@@ -626,7 +626,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             self.camq_p2read.put(ctx.record_frame_rate)
         logger.info(f"Frame rate {ctx.camStr}: {self.framerate}")
 
-    def create_primary(self, cam):
+    def create_primary(self, cam: PySpin.Camera) -> None:
         cam.CounterSelector.SetValue(PySpin.CounterSelector_Counter0)
         cam.CounterEventSource.SetValue(PySpin.CounterEventSource_ExposureStart)
         cam.CounterEventActivation.SetValue(PySpin.CounterEventActivation_RisingEdge)
@@ -642,7 +642,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam.TriggerOverlap.SetValue(PySpin.TriggerOverlap_Off)
         cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
 
-    def create_secondary(self, cam, is_decreased):
+    def create_secondary(self, cam: PySpin.Camera, is_decreased: bool) -> None:
         cam.AcquisitionFrameRateEnable.SetValue(False)
         cam.TriggerSource.SetValue(PySpin.TriggerSource_Line3)
         cam.TriggerOverlap.SetValue(PySpin.TriggerOverlap_ReadOut)
@@ -652,7 +652,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.TriggerActivation.SetValue(PySpin.TriggerActivation_AnyEdge)
         cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
 
-    def prepare_writers(self):
+    def prepare_writers(self) -> None:
         video_file = self.video_file
         self.video_writer = cv2.VideoWriter(
             video_file,
