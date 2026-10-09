@@ -17,16 +17,14 @@ from rcp_task_acquisition.utils.logging import get_verbose_logger
 
 logger = get_verbose_logger(__name__)
 
-DictKeyType = typing.TypeVar("DictKeyType")
+DictKeyType = typing.TypeVar("DictKeyType", bound=str)
 DictDataType = typing.TypeVar("DictDataType")
 ItemsEnumType = typing.TypeVar("ItemsEnumType")
 
 
-class DictConfig(
-    dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, DictDataType, ItemsEnumType]
-):
+class DictConfig(dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, DictDataType]):
+    enum_cls: type[DictKeyType]
     item_cls: type[DictDataType]
-    enum_cls: type[ItemsEnumType] | None
 
     def __new__(cls, arg0=None, **kwargs):
         if arg0 is not None and len(kwargs) > 0:
@@ -46,12 +44,15 @@ class DictConfig(
         super().__init__()  # still call for good practice, but with none args/kwargs
 
     def __getitem__(self, item: str | DictKeyType) -> DictDataType:
+        e_cls = self.enum_cls
+        if not isinstance(item, e_cls):
+            item = e_cls(item)
         return super().__getitem__(item)
 
     def __setitem__(self, item: str | DictKeyType, value: DictDataType):
-        if self.enum_cls is not None:
-            if not isinstance(item, self.enum_cls):
-                item = self.enum_cls(item)
+        e_cls = self.enum_cls
+        if not isinstance(item, e_cls):
+            item = e_cls(item)
         super().__setitem__(item, value)
 
     def fill_defaults(self):
@@ -155,7 +156,7 @@ class HardwareItem(str, enum.Enum):
     DIGITAL_ACCESSORY = "Digital Accessory"
 
 
-class HardwareDictConfig(DictConfig[HardwareItem, HardwareItemConfig, HardwareItem]):
+class HardwareDictConfig(DictConfig[HardwareItem, HardwareItemConfig]):
     item_cls = HardwareItemConfig
     enum_cls = HardwareItem
 
@@ -192,7 +193,7 @@ class CameraItem(str, enum.Enum):
     RIGHT_CAM_TRIPOD = "rightCamTripod"
 
 
-class CamerasDictConfig(DictConfig[CameraItem, CameraConfig, CameraItem]):
+class CamerasDictConfig(DictConfig[CameraItem, CameraConfig]):
     """Dict subclass with some helper properties accessor, and automatic handling to CameraConfig"""
 
     item_cls = CameraConfig
@@ -290,9 +291,9 @@ class RcpTaskConfig:
     settings: list[str] = dataclasses.field(default_factory=list)
 
 
-class RcpTasksGroupConfig(DictConfig[str, RcpTaskConfig, None]):
+class RcpTasksGroupConfig(DictConfig[str, RcpTaskConfig]):
     item_cls = RcpTaskConfig
-    enum_cls = None
+    enum_cls = str
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -384,7 +385,7 @@ def to_raw_recursive(obj: typing.Any):
         return obj.value
     if isinstance(obj, str):
         return obj
-    if isinstance(obj, (list, typing.Sequence)):
+    if isinstance(obj, (list, tuple)):
         return obj.__class__(to_raw_recursive(v) for v in obj)
     if isinstance(obj, (dict, typing.Mapping)):
         return {to_raw_recursive(k): to_raw_recursive(v) for k, v in obj.items()}
