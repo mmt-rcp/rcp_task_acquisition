@@ -60,8 +60,6 @@ class MainFrame(wx.Frame):
     def __init__(self, parent=None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
         self.task: str = ""
-        # self.cams_cfg: config.CamerasDictConfig = rcp_context.user_config.cameras
-        self.trial_button: wx.ToggleButton | None = None
         self.launch_args: dict[str, Any] = {}
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
@@ -262,6 +260,10 @@ class MainFrame(wx.Frame):
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
 
         self.Bind(wx.EVT_SIZE, self.on_resize)
+
+    @property
+    def trial_button(self) -> wx.ToggleButton:
+        return self.trial_panel.continue_button
 
     def on_resize(self, event):
         wx.CallAfter(self.image_panel.reset_sizing)
@@ -1005,14 +1007,8 @@ class MainFrame(wx.Frame):
         self.init.SetValue(True)
         self.widget_panel.update_task(task)
         self.trial_panel = self.widget_panel.get_trial_panel()
-        self.trial_button = self.trial_panel.continue_button
-        try:
-            self.repeat_button = self.trial_panel.repeat_trial
-            self.repeat_button.Bind(wx.EVT_TOGGLEBUTTON, self.repeat_event)
-        except Exception as err:
-            logger.debug("Error binding toggle button: %s", err, exc_info=True)
-        if self.trial_button is not None:
-            self.trial_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
+        self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
+        self.trial_panel.repeat_trial.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
         self.initCams(event)
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
