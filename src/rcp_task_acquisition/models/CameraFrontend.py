@@ -108,6 +108,8 @@ class Camera:
         self.frmaq.value = 0
         self.crop = True
         self.hardware_test = True
+        self._cams_cfg = config.CamerasDictConfig()
+        self._is_unconnected = True
 
     def setup(
         self,
@@ -116,12 +118,16 @@ class Camera:
         requested_framerate: float,
     ):
         logger.info("Camera.setup: cams_cfg: %s", cams_cfg)
-        self.cam_crop = Crop()
+        self._cams_cfg = cams_cfg
+        self._is_unconnected = is_unconnected
         self.framerate = requested_framerate
+
+    def _prepare_cams(self):
+        self.cam_crop = Crop()
         self.reset_variables()
         self.cam_dict.clear()
 
-        for cam_item, cfg in cams_cfg.items():
+        for cam_item, cfg in self._cams_cfg.items():
             name = cam_item.value
             if not cfg.in_use:
                 logger.debug("skipping %s not in_use", cam_item)
@@ -134,7 +140,7 @@ class Camera:
                 0,
                 int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
             ]
-            is_primary = bool(cfg.ismaster or is_unconnected)
+            is_primary = bool(cfg.ismaster or self._is_unconnected)
             new_cam = CamSettings(
                 name=name,
                 serial=cfg.serial,
@@ -159,7 +165,7 @@ class Camera:
             self.cam_dict[new_cam.serial] = new_cam
 
             self.cam_crop.add_crop(cfg.crop)
-            if cfg.ismaster or is_unconnected:
+            if cfg.ismaster or self._is_unconnected:
                 self.primary_cams.append(new_cam.serial)
             else:
                 self.secondary_cams.append(new_cam.serial)
@@ -347,6 +353,7 @@ class Camera:
 
     def initThreads(self):
         logger.verbose("initThreads started")
+        self._prepare_cams()
         self.multi_cameras.clear()
         for camID, cam_d in self.cam_dict.items():
             multi_cam = spin.multiCam_DLC_Cam(
@@ -380,7 +387,11 @@ class Camera:
                 logger.warning("timeout get from p2read")
             cam.camq.close()
             cam.camq_p2read.close()
-            self.multi_cameras[n].terminate()
+            multi_cam = self.multi_cameras[n]
+            multi_cam.terminate()
+            # multi_cam.join()  # todo, should
+        self.cam_dict.clear()
+        self.multi_cameras.clear()
 
     def startAq(self):
         logger.verbose("startAq started")
