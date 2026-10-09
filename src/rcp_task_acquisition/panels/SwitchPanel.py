@@ -55,7 +55,7 @@ class SwitchPanel:
             self.launch_panel.protocol_button.SetLabel("Select Protocol")
             self.launch_panel.enable_gui(True)
 
-            self.task_frame.Hide(event)
+            self.task_frame.HideWithEvent(event)
             self.launch_panel.Show()
 
         self.active_panel = not self.active_panel
@@ -76,5 +76,5 @@ class SwitchPanel:
 
     def exit_event(self, event: wx.Event) -> None:
         self.launch_panel.exit_event()
-        self.task_frame.Hide(event)
+        self.task_frame.HideWithEvent(event)
         self.task_frame.quitButton(event)

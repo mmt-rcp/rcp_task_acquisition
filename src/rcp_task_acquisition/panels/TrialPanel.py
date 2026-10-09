@@ -1,3 +1,5 @@
+import warnings
+from logging import warning
 from multiprocessing import sharedctypes
 
 import wx
@@ -36,12 +38,18 @@ class TrialPanel(wx.Panel):
     def populate_metadata(self, metadata: dict):
         """For task metadata. NB: The full global metadata dict is passed."""
 
+    def get_instruction(self, count: int):
+        """Get instruction for play trial. count is trial number"""
+        warnings.warn(
+            f"get_instruction() unexpectedly called on {self.__class__}", UserWarning, stacklevel=3
+        )
+
     def _setup_buttons(self):
         self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
-        self.repeat_trial = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))
-        grid_sizer = wx.GridBagSizer(0, 0)
         self.continue_button.Hide()
+        self.repeat_trial = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))
         self.repeat_trial.Hide()
+        grid_sizer = wx.GridBagSizer(0, 0)
         grid_sizer.Add(
             self.continue_button,
             pos=(0, 0),

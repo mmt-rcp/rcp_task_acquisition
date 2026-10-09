@@ -178,7 +178,7 @@ class LabjackFrontend:
             labjack_button.SetValue(False)
             return False
 
-    def stop_labjack(self):
+    def stop_labjack(self) -> float:
 
         self.labjack_is_finished.value = True
         self.labjack_is_csv.value = False

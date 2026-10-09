@@ -199,7 +199,7 @@ class ControlsPanel(wx.Panel):
         self.task_panel.Hide()
         self.Layout()
 
-    def get_task_panel(self, task) -> TrialPanel:
+    def get_task_panel(self, task: str) -> TrialPanel:
         if task == "motor_task_finger_taps":
             return FingerTapPanel(self)
         elif task == "tone_taps":
