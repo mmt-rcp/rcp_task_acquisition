@@ -33,6 +33,9 @@ class TrialPanel(wx.Panel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
+    def populate_metadata(self, metadata: dict):
+        """For task metadata. NB: The full global metadata dict is passed."""
+
     def _setup_buttons(self):
         self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
         self.repeat_trial = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))

@@ -22,6 +22,9 @@ class SaraPanel(TrialPanel):
         self.SetSizer(vertical_sizer)
         self.edit_num = None
 
+    def populate_metadata(self, metadata: dict):
+        metadata["trial_data"] = self.add_metadata()
+
     def _setup_panel(self):
         self.assesment_task = wx.StaticText(self, label="Choose Assesment:")
         self.assesment_choice = wx.Choice(

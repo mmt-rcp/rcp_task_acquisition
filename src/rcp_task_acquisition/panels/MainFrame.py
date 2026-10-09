@@ -729,10 +729,7 @@ class MainFrame(wx.Frame):
             metadata = yaml.load(file)
         logger.debug("%s yaml loaded: %r", self.metapath, metadata)
         metadata["trial_data"] = params
-        if self.task == "verbal_fluency":
-            metadata["trial_data"]["categories"] = self.trial_panel.add_metadata()
-        if self.task == "sara":
-            metadata["trial_data"] = self.trial_panel.add_metadata()
+        self.trial_panel.populate_metadata(metadata)
 
         with self.metapath.open("w", encoding="utf-8") as f:
             yaml.dump(metadata, f)

@@ -36,6 +36,9 @@ class VerbalFluencyPanel(TrialPanel):
         )
         self.SetSizer(vertical_sizer)
 
+    def populate_metadata(self, metadata: dict):
+        metadata["trial_data"]["categories"] = self.add_metadata()
+
     def _setup_panel(self):
         self.phonemic_task = wx.StaticText(self, label="Choose Phonemic Category:")
         self.initial_list = PHONEMIC_LIST
