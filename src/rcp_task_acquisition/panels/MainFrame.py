@@ -922,8 +922,9 @@ class MainFrame(wx.Frame):
 
     def onClick(self, event):
         if self.set_crop.GetValue():
+            cameras = self._rcp_context.user_config.cameras
             self.cam_crop.adjust_crop(
-                event, self.axes, self.camStrList, self._rcp_context.user_config.cameras
+                event, self.axes, [cam_item.value for cam_item in cameras], cameras
             )
             self.cam_crop.drawROI(self.axes)
             self.figure.canvas.draw()
