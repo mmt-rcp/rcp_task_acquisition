@@ -10,6 +10,7 @@ from multiprocessing import Array, Queue, Value
 import cv2
 import numpy as np
 import wx
+from matplotlib.image import AxesImage
 
 import rcp_task_acquisition.models.CameraProcess as spin
 from rcp_task_acquisition.models.CameraProcess import CameraCommand
@@ -87,22 +88,19 @@ class Camera:
         self.contrast_test = contrast_test
         self.focus_test = focus_test
         self.warning = WarningHandler()
-        self.camStrList: list[str] = []
         self.trial = 0
         self.session = 0
         self.participant_monitor = monitor
-        self.framerate = None
+        self.framerate: float = 0
         self.crop = False
         self.cam_dict: dict[str, CamSettings] = {}
         self.multi_cameras: list[spin.multiCam_DLC_Cam] = []
         #
         self.labjack_scan_rate = None
-        self.camStrList = []
-        self.secondary_cams = []
-        self.primary_cams = []
+        self.primary_cams: list[str] = []
+        self.secondary_cams: list[str] = []
         self.cam_pointer = 0
-        self.im = []
-        self.exposure = []
+        self.im: list[AxesImage] = []
         self.x1 = 0
         self.y1 = 0
         self.shared.value = 0
@@ -115,7 +113,7 @@ class Camera:
         self,
         cams_cfg: config.CamerasDictConfig,
         is_unconnected: bool,
-        requested_framerate: float | None,
+        requested_framerate: float,
     ):
         logger.info("Camera.setup: cams_cfg: %s", cams_cfg)
         self.cam_crop = Crop()
@@ -349,8 +347,6 @@ class Camera:
 
     def initThreads(self):
         logger.verbose("initThreads started")
-        self.camq = {}
-        self.camq_p2read = {}
         self.multi_cameras.clear()
         for camID, cam_d in self.cam_dict.items():
             cam_d.camq = Queue()
@@ -510,12 +506,10 @@ class Camera:
 
     def reset_variables(self):
         self.labjack_scan_rate = None
-        self.camStrList = []
         self.secondary_cams = []
         self.primary_cams = []
         self.cam_pointer = 0
         self.im = []
-        self.exposure = []
         self.x1 = 0
         self.y1 = 0
         self.shared.value = 0
