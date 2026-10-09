@@ -213,10 +213,10 @@ def _create_practice_sequence(
             continue  # Regenerate if too many consecutive repeats
 
         # Step 5: Valid sequence found - convert to paths and generate answers
-        stimulus_paths: list[str] = [
+        stimulus_paths = [
             all_paths[num - 1] for num in sequence_numbers
         ]  # Convert 1-based to 0-based indexing
-        answers: list[Answer] = []
+        answers = []
 
         for pos in range(len(sequence_numbers)):
             if pos < n_back_level:
@@ -295,7 +295,6 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
 
 class N_back(bases.StimulusBase):
     def __init__(self, base_vars: dict[str, Any], button: SharedBool):
-        self.parameters = {}
         super().__init__(**base_vars)
         self.button = button
         self.trial = 0
