@@ -336,6 +336,7 @@ def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksGroupCo
 
 
 def load_rcp_config(config_dir: Path):
+    logger.notice("loading configs from directory %s", config_dir)
     user_data = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
     tasks_data = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
     return user_data, tasks_data
@@ -412,6 +413,7 @@ def save_rcp_user_config_buffer(config: RcpUserConfig, buffer: typing.TextIO) ->
 
 
 def save_rcp_user_config(config: RcpUserConfig, file_path: Path) -> None:
+    logger.info("saving user config to %s", file_path)
     with file_path.open("w") as fh:
         save_rcp_user_config_buffer(config, fh)
 
@@ -426,6 +428,7 @@ def save_rcp_tasks_config_buffer(config: RcpTasksGroupConfig, buffer: typing.Tex
 
 
 def save_rcp_tasks_config(config: RcpTasksGroupConfig, file_path: Path) -> None:
+    logger.info("saving tasks config to %s", file_path)
     with file_path.open("w") as fh:
         save_rcp_tasks_config_buffer(config, fh)
 
