@@ -85,7 +85,7 @@ def _load_enum_to_dct_class_items(
     fill_default: bool = False,
 ):
     empty: dict[str, typing.Any] = {}
-    if enum_items is not None:
+    if issubclass(enum_items, enum.Enum):
         for member in enum_items:
             sub = dct.pop(member.value, None)
             if sub is None and not fill_default:
