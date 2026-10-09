@@ -618,15 +618,15 @@ class HardwarePanel(wx.Panel):
         primary_list = LABJACK_PIN_LIST if is_labjack else self.cam_serial_numbers
         # self._rcp_context
         for hardware in item_list:
-            choice_list = hardware.labjack if is_labjack else hardware.serial
-            if type(choice_list) == wx.Choice and choice_list.GetSelection() != -1:
+            choice_list = hardware.labjack if isinstance(hardware, HardwareRow) else hardware.serial
+            if isinstance(choice_list, wx.Choice) and choice_list.GetSelection() != -1:
                 selection = choice_list.GetSelection()
                 choices = choice_list.GetStrings()
                 selection = choices[selection]
                 original_selection = primary_list.index(selection)
                 selected_list.append(original_selection)
         for hardware in item_list:
-            choice_list = hardware.labjack if is_labjack else hardware.serial
+            choice_list = hardware.labjack if isinstance(hardware, HardwareRow) else hardware.serial
             try:
                 selection = choice_list.GetSelection()
                 if selection != -1:
