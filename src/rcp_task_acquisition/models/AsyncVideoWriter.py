@@ -4,6 +4,7 @@ import threading
 from pathlib import Path
 from queue import Empty, Full, Queue
 from threading import Event, Thread
+from typing import Any
 
 import cv2
 
@@ -127,7 +128,7 @@ class AsyncFFmpegGPUWriter:
         self.max_queue = max_queue
         self.qp = qp
 
-        self.q = Queue(maxsize=max_queue)
+        self.q = Queue[Any](maxsize=max_queue)
         self.dropped_by_writer = 0
         self.error = None
         self.ready = threading.Event()

@@ -6,6 +6,7 @@ frontend.
 import ctypes
 import time
 from multiprocessing import Array, Queue, Value
+from typing import Any
 
 import numpy as np
 import wx
@@ -65,7 +66,7 @@ class LabjackFrontend:
             self.extended_list,
         )
         self.labjack_arr = Array("d", array_length * (len(self.hardware_indices) + 3))
-        self.labjack_queue = Queue()
+        self.labjack_queue = Queue[Any]()
         self.labjack_is_csv = Value(ctypes.c_bool, False)
         self.stream_started = Value(ctypes.c_bool, False)
         self.labjack_is_finished = Value(ctypes.c_bool, True)

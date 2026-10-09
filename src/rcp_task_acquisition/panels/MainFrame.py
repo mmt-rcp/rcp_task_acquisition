@@ -234,9 +234,9 @@ class MainFrame(wx.Frame):
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
-        self.msgq = Queue()
+        self.msgq = Queue[Any]()
         self.finish = Value(ctypes.c_byte, 0)
-        self.resultsq = Queue()
+        self.resultsq = Queue[Any]()
         self.video_lock = Event()
         self.thread = StimulusThread(
             self.msgq,
@@ -1013,7 +1013,8 @@ class MainFrame(wx.Frame):
             self.repeat_button.Bind(wx.EVT_TOGGLEBUTTON, self.repeat_event)
         except Exception as err:
             logger.debug("Error binding toggle button: %s", err, exc_info=True)
-        self.trial_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
+        if self.trial_button is not None:
+            self.trial_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
         self.initCams(event)
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
