@@ -130,7 +130,7 @@ class AsyncFFmpegGPUWriter:
 
         self.q = Queue[Any](maxsize=max_queue)
         self.dropped_by_writer = 0
-        self.error = None
+        self.error: BaseException | None = None
         self.ready = threading.Event()
         self.thread = threading.Thread(target=self._worker, daemon=False)
         self.thread.start()
@@ -148,8 +148,7 @@ class AsyncFFmpegGPUWriter:
             self.dropped_by_writer += 1
             return False
 
-    def _worker(self):
-        proc = None
+    def _worker(self) -> None:
         f = None
         ffmpeg_dir: str = (
             f"{(Path(__file__).parent.parent.parent.parent / 'library' / 'ffmpeg' / 'bin')};"
@@ -189,6 +188,7 @@ class AsyncFFmpegGPUWriter:
             self.video_file,
         ]
 
+        proc: subprocess.Popen | None = None
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -199,6 +199,7 @@ class AsyncFFmpegGPUWriter:
                 env=custom_env,
                 shell=True,
             )
+            assert proc is not None
 
             f = open(self.timestamp_file, "w")
             f.write("frame_id,timestamp\n")
@@ -216,7 +217,7 @@ class AsyncFFmpegGPUWriter:
                     # ffmpeg expects exactly width*height*3 bytes per frame.
                     # proc.stdin.write(frame_bgr.tobytes())
                     # proc.stdin.write(memoryview(frame_bgr))
-                    proc.stdin.write(frame_bgr)
+                    proc.stdin.write(frame_bgr)  # type: ignore
                     f.write(f"{frame_id},{round(timestamp_delta)}\n")
 
                 finally:

@@ -463,7 +463,7 @@ class WithThreadIdQueueListener(logging.handlers.QueueListener):
             self._2_sorter = []
         return buff
 
-    def _sorter(self):
+    def _sorter(self) -> None:
         buffer: list[LogRecord] = []
         recheck_delay = self._recheck_delay
         p_next_sort = time.perf_counter() + recheck_delay
