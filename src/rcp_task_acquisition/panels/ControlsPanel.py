@@ -17,6 +17,8 @@ from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
 
 
 class ControlsPanel(wx.Panel):
+    task_panel: TrialPanel
+
     def __init__(
         self,
         parent: wx.Window,
@@ -31,7 +33,7 @@ class ControlsPanel(wx.Panel):
         vertical_position = 0
         button_width = 76
         self.cam_panel = CameraControlPanel(self, button_width)
-        self.task_panel = self.get_task_panel(task)
+        self.task_panel: TrialPanel = self.get_task_panel(task)
         self.task_panel.Enable(False)
         vertical_spacer.Add(
             self._set_up_tasks(task, button_width),
@@ -63,7 +65,7 @@ class ControlsPanel(wx.Panel):
         self.cam_panel.Hide()
         self.Layout()
 
-    def get_trial_panel(self):
+    def get_trial_panel(self) -> TrialPanel:
         return self.task_panel
 
     def show_cams(self):
@@ -197,7 +199,7 @@ class ControlsPanel(wx.Panel):
         self.task_panel.Hide()
         self.Layout()
 
-    def get_task_panel(self, task):
+    def get_task_panel(self, task) -> TrialPanel:
         if task == "motor_task_finger_taps":
             return FingerTapPanel(self)
         elif task == "tone_taps":

@@ -66,7 +66,7 @@ class LabjackFrontend:
             self.extended_list,
         )
         self.labjack_arr = Array("d", array_length * (len(self.hardware_indices) + 3))
-        self.labjack_queue = Queue[Any]()
+        self.labjack_queue: Queue[Any] = Queue()
         self.labjack_is_csv = Value(ctypes.c_bool, False)
         self.stream_started = Value(ctypes.c_bool, False)
         self.labjack_is_finished = Value(ctypes.c_bool, True)

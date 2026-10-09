@@ -16,7 +16,6 @@ from multiprocessing import Event, Queue, Value
 from pathlib import Path
 from typing import Any
 
-import typing_extensions
 import wx
 import wx.lib.dialogs
 from ruamel.yaml import YAML
@@ -31,6 +30,7 @@ from rcp_task_acquisition.panels.ControlsPanel import ControlsPanel
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.utils import config, file_utils
 from rcp_task_acquisition.utils.constants import PLOT_LENGTH, VideoStatus
 from rcp_task_acquisition.utils.deidentify_dates import DateDeidentification
@@ -55,13 +55,13 @@ class MainFrame(wx.Frame):
     start_time_utc: str = ""
     is_hidden: bool = False
 
-    # trial_panel: TrialPanel
+    trial_panel: TrialPanel
 
     def __init__(self, parent=None, *, rcp_context: RcpRunContext):
         self._rcp_context = rcp_context
         self.task: str = ""
         # self.cams_cfg: config.CamerasDictConfig = rcp_context.user_config.cameras
-        self.trial_button = None
+        self.trial_button: wx.ToggleButton | None = None
         self.launch_args: dict[str, Any] = {}
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
@@ -234,9 +234,9 @@ class MainFrame(wx.Frame):
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
-        self.msgq = Queue[Any]()
+        self.msgq: Queue[Any] = Queue()
         self.finish = Value(ctypes.c_byte, 0)
-        self.resultsq = Queue[Any]()
+        self.resultsq: Queue[Any] = Queue()
         self.video_lock = Event()
         self.thread = StimulusThread(
             self.msgq,

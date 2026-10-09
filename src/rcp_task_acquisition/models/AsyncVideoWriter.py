@@ -128,7 +128,7 @@ class AsyncFFmpegGPUWriter:
         self.max_queue = max_queue
         self.qp = qp
 
-        self.q = Queue[Any](maxsize=max_queue)
+        self.q: Queue[Any] = Queue(maxsize=max_queue)
         self.dropped_by_writer = 0
         self.error: BaseException | None = None
         self.ready = threading.Event()
