@@ -152,8 +152,8 @@ class Camera:
                 frameBuff=np.zeros(cam_dims[1] * cam_dims[3] * 3, dtype="ubyte"),
                 array4feed=Array(ctypes.c_ubyte, cam_dims[1] * cam_dims[3] * 3),
                 frmGrab=Value(ctypes.c_byte, 0),
-                camq=None,
-                camq_p2read=None,
+                camq=Queue(),
+                camq_p2read=Queue(),
                 frame_size=None,
             )
             self.cam_dict[new_cam.serial] = new_cam
@@ -349,8 +349,6 @@ class Camera:
         logger.verbose("initThreads started")
         self.multi_cameras.clear()
         for camID, cam_d in self.cam_dict.items():
-            cam_d.camq = Queue()
-            cam_d.camq_p2read = Queue()
             multi_cam = spin.multiCam_DLC_Cam(
                 cam_d.camq,
                 cam_d.camq_p2read,

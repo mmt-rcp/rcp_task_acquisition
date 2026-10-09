@@ -113,7 +113,7 @@ class AsyncFFmpegGPUWriter:
         self,
         video_file: str,
         timestamp_file: str,
-        fps: int,
+        fps: float,
         width: int,
         height: int,
         max_queue: int = 512,

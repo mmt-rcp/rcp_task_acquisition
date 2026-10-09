@@ -39,7 +39,7 @@ class CamCtx:
     ismaster = False
     isunconnected = False
     is_decreased = False
-    record_frame_rate: int | None = None  # 30
+    record_frame_rate: float = 0
     cam_list: PySpin.CameraList
     cam: PySpin.Camera
     system: PySpin.SystemPtr
@@ -84,11 +84,11 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self.frm = frm
         self.array4feed = array4feed
         self.frmGrab = frmGrab
-        self.framerate: int = 0
+        self.framerate: float = 0
         # self.actual_exposure = None
         # self.actual_frame_rate = None
         # self.video_thread = None
-        self.fps: int = 0
+        self.fps: float = 0
         self.width: int = 0
         self.height: int = 0
         self.dwnsmplfac = dwnsmplfac

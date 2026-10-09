@@ -75,7 +75,7 @@ class GraphPanel(wx.Panel):
         setup_axes.text(40000, -4, "1", ha="center", color=white_color)
         setup_axes.text(80000, -4, "2", ha="center", color=white_color)
         setup_axes.text(40000, -6, "Seconds", ha="center", color=white_color)
-        setup_axes.set_ylim([-10, 15])
+        setup_axes.set_ylim(-10, 15)
         setup_axes.set_frame_on(False)
         setup_axes.invert_xaxis()
 
@@ -322,9 +322,9 @@ class GraphPanel(wx.Panel):
         self.color_index -= len(self.test_lines)
         for line in list(self.test_lines):
             line.remove()
-        plot = self.test_focus
-        if plot is not None:
-            plot.remove()
+        test_focus_plot = self.test_focus
+        if test_focus_plot is not None:
+            test_focus_plot.remove()
         self.test_lines = []
         for cam in range(cam_num):
             x_coords = np.linspace(0, self.x_size, num=arr_size)
@@ -337,9 +337,13 @@ class GraphPanel(wx.Panel):
             self.test_legend_labels.append(cam_names[cam])
             self.test_lines.append(plot)
             self.color_index += 1
-        y_coords = list(np.full(self.x_size, 0.5))
-        x_coords = list(np.arange(0, self.x_size))
-        (plot,) = self.axes.plot(x_coords, y_coords, color="white", lw=1, label="_Goal Focus")
+        (plot,) = self.axes.plot(
+            list(np.arange(0, self.x_size)),
+            list(np.full(self.x_size, 0.5)),
+            color="white",
+            lw=1,
+            label="_Goal Focus",
+        )
         self.test_legend_lines.append(Line2D([], [], lw=1, color="white"))
         self.test_legend_labels.append("Goal Setting")
         self.test_focus = plot
