@@ -1,4 +1,8 @@
+import functools
 import logging.config
+import multiprocessing.queues as mp_queues
+import os
+import queue
 from multiprocessing import Process
 from typing import Callable
 
@@ -16,6 +20,51 @@ def void_run_no_target(self):
     logger.warning("%s did not declared a target or custom run", self.__class__)
 
 
+def relay_to_proc(func: Callable):
+    """With ProcessWithRemoteFunction, this allows to call `proc.meth(...)` on the parent process,
+    or eventually on any other process, and have the call relayed to the actual related process (`proc`) itself"""
+
+    @functools.wraps(func)
+    def wrapped(self: "ProcessWithRemoteFunction", *args, **kwargs):
+        if os.getpid() == self.pid:
+            func(*args, **kwargs)
+        else:
+            self._queue.put((func.__name__, args, kwargs))
+
+    return wrapped
+
+
+class ProcessWithRemoteFunction(Process):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._queue: mp_queues.Queue[None | tuple[str, tuple, dict]] = mp_queues.Queue(maxsize=64)
+
+    def stop(self, *, join: bool = True):
+        self._queue.put(None)
+        if join:
+            self.join()
+
+    def run(self) -> None:
+        cmd_q = self._queue
+        while True:
+            try:
+                raw = cmd_q.get(timeout=1)
+            except queue.Empty:
+                continue
+            if raw is None:
+                logger.verbose("received None, exiting")
+                break
+            cmd, args, kwargs = raw
+            func: Callable | None = getattr(self, cmd, None)
+            if func is None:
+                logger.error("unknown command: %s", cmd)
+                continue
+            try:
+                func(*args, **kwargs)  # type: ignore
+            except Exception as err:
+                logger.exception("%s failed: %s", cmd, err)
+
+
 class ProcessWithLogging(Process):
     _orig_run: Callable
 
@@ -29,7 +78,7 @@ class ProcessWithLogging(Process):
         else:
             del cls.run
 
-    def __init__(self, *args, target=None, **kwargs) -> None:
+    def __init__(self, *args, target: Callable | None = None, **kwargs) -> None:
         self._orig_target = target
         kwargs["target"] = self.pre_run
         super().__init__(*args, **kwargs)

@@ -165,7 +165,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 continue
 
             logger.debug(f"{camStr} msg: {msg}")
-            handle = self._command_handlers.get(msg, None)
+            handle = self._command_handlers.get(msg, None)  # type: ignore
             if handle is None:
                 logger.warning("Unhandled command: %s", msg)
                 continue
