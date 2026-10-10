@@ -32,7 +32,7 @@ class LabjackFrontend:
         press_count: SharedInt,
         hardware_test: SharedBool,
     ):
-
+        self._serial_dev: SerialDevice | None = None
         self.constants: list[str] = []
         self.constant_index: list[int] = []
         self.button_pressed = button_pressed  # Value(ctypes.c_bool, False)
@@ -86,8 +86,6 @@ class LabjackFrontend:
             choice.Bind(wx.EVT_CHOICE, self._update_graph_list)
         self.handshake = Value(ctypes.c_int, False)
         self.serial_state = 0
-        self.serial_bool = False
-        self.ser_success = False
         self.labjack_process: LabJackDataStream
         self.msg = ""
 
@@ -219,15 +217,14 @@ class LabjackFrontend:
             y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), "d", len(self.labjack_arr))  # type: ignore
             # else:
             #     return
-            if not np.isnan(y_plot_points[-1]) and self.serial_bool:
+            ser_dev = self._serial_dev
+            if not np.isnan(y_plot_points[-1]) and ser_dev is not None:
                 self.serial_state += 1
-                if self.ser_success and self.serial_state > 0:
-                    self.ser.write(self.msg.encode())
-
+                if self.serial_state > 0:
+                    self._serial_dev = None
+                    ser_dev.write(self.msg)
                     time.sleep(2)
-                    self.ser_success = False
-                    self.serial_bool = False
-                    self.ser.write(b"A")
+                    ser_dev.write("A")
 
             if not self.hardware_test.value:
                 for index, lj_input in enumerate(self.hardware_indices):
@@ -278,9 +275,7 @@ class LabjackFrontend:
         self.labjack_is_csv.value = True
 
         self.serial_state = 0
-        self.serial_bool = True
-        self.ser_success = serial.serSuccess
-        self.ser = serial.ser
+        self._serial_dev = serial
         self.msg = msg
 
     def is_active(self) -> bool:
