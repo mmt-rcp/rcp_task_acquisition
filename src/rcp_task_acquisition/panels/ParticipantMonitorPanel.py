@@ -59,9 +59,10 @@ class MonitorPanel(wx.Panel):
             wx_image = wx.Image(w, h)
             wx_image.SetData(rgb.tobytes())
             wx_image = wx_image.Scale(self.display_size[0], self.display_size[1])
-            wx_image.ConvertToBitmap()
+            bitmap = wx_image.ConvertToBitmap()
             self.prev_arr = img
-            self.monitor_bitmap.SetBitmap(wx_image)
+            logger.verbose("MonitorPanel: bitmap: %s", bitmap)
+            self.monitor_bitmap.SetBitmap(bitmap)
         self.parent.Layout()
 
     def update_screen_event(self, event):
