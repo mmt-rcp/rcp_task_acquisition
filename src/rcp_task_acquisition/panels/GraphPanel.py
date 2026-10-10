@@ -349,7 +349,9 @@ class GraphPanel(wx.Panel):
         self.test_focus = plot
         plot.set_visible(False)
 
-    def plot_hardware(self, cam_vals, max_old: int, threshold: float = 0.5) -> None:
+    def plot_hardware(
+        self, cam_vals: list[np.ndarray], max_old: int, threshold: float = 0.5
+    ) -> None:
         plot = self.test_focus
         if plot is not None:
             plot.set_visible(True)
@@ -358,7 +360,7 @@ class GraphPanel(wx.Panel):
             max_old = max_old
             min_new = -1
             max_new = 7
-            y_points = np.array(cam_vals[index])
+            y_points = np.array(cam_vals[index])  # todo: not sure we need to copy new array
             y_points = (
                 ((y_points - min_old) * (max_new - min_new)) / (max_old - min_old)
             ) + min_new
