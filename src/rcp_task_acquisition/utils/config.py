@@ -2,8 +2,6 @@ import dataclasses
 import enum
 import typing
 from pathlib import Path
-from types import GenericAlias
-from typing import Any
 
 import yaml
 
@@ -12,7 +10,6 @@ from ruamel.yaml.comments import CommentedMap
 
 import dacite
 
-from rcp_task_acquisition.utils import constants
 from rcp_task_acquisition.utils.logging import get_verbose_logger
 from rcp_task_acquisition.utils.typing import CropTupleType
 
@@ -45,10 +42,12 @@ class DictConfig(dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, Di
         super().__init__()  # still call for good practice, but with none args/kwargs
 
     def __getitem__(self, item: str | DictKeyType) -> DictDataType:
-        e_cls = self.enum_cls
-        if not isinstance(item, e_cls):
-            item = e_cls(item)
+        item = typing.cast(DictKeyType, item)
         return super().__getitem__(item)
+
+    def get(self, key: str | DictKeyType, default: None = None, /) -> DictDataType | None:  # type: ignore
+        key = typing.cast(DictKeyType, key)
+        return super().get(key, default)
 
     def __setitem__(self, item: str | DictKeyType, value: DictDataType):
         e_cls = self.enum_cls
@@ -58,7 +57,7 @@ class DictConfig(dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, Di
 
     def fill_defaults(self):
         enum_cls = self.enum_cls
-        if enum_cls is None:
+        if not issubclass(enum_cls, enum.Enum):
             return
         for member in enum_cls:
             if member not in self:
