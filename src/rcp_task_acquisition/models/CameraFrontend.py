@@ -32,13 +32,13 @@ logger = get_logger(__name__)
 
 @dataclass
 class FrameDims:
-    x1: int
-    x2: int
-    y1: int
-    y2: int
-    h: int
-    w: int
-    dispSize: int
+    x1: int = 0
+    x2: int = 0
+    y1: int = 0
+    y2: int = 0
+    h: int = 0
+    w: int = 0
+    dispSize: int = 0
 
 
 @dataclass
@@ -62,7 +62,7 @@ class CamSettings:
     frmGrab: SharedInt
     camq: multiprocessing.Queue
     camq_p2read: multiprocessing.Queue
-    frame_size: None | FrameDims
+    frame_size: FrameDims
 
 
 class Camera:
@@ -168,7 +168,7 @@ class Camera:
                 frmGrab=Value(ctypes.c_byte, 0),
                 camq=Queue(),
                 camq_p2read=Queue(),
-                frame_size=None,
+                frame_size=FrameDims(),
             )
             self.cam_dict[new_cam.serial] = new_cam
             self._cam_by_idx.append(new_cam)
@@ -425,9 +425,8 @@ class Camera:
         logger.verbose("stopAq started")
         if self.serial.serSuccess:
             msg = "Xx"
-            self.serial.ser.write(msg.encode())
-        error_message = []
-        video_errors = []
+            self.serial.write(msg)
+        error_message: list[str] = []
         self.camaq.value = 0
         threshold = 1
         for camID in self.secondary_cams:
@@ -448,8 +447,6 @@ class Camera:
                 cam_d.camq_p2read.get()
         logger.warning(error_message)
         error = ""
-        if video_errors:
-            error = "\n" + "\n".join(video_errors)
         if error_message:
             if error == "":
                 error += "\n"
@@ -460,7 +457,7 @@ class Camera:
     def updateSettings(self, event: wx.Event) -> None:
         self.aqW = []
         self.aqH = []
-        self.recSet = []
+        # self.recSet = []
         for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.UPDATE_SETTINGS)
             suc_test = cam_d.camq_p2read.get()
