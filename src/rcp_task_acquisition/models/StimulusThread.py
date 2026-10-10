@@ -2,6 +2,8 @@ import ast
 import json
 import math
 import multiprocessing
+import queue
+import threading
 import time
 from enum import Enum
 from queue import Empty
@@ -43,12 +45,12 @@ class Msg(str, Enum):
     SEND_METADATA = "send_metadata"
 
 
-class StimulusThread(ProcessWithLogging):
+class StimulusThread(threading.Thread):
     window: Window
 
     def __init__(
         self,
-        msgq: multiprocessing.Queue,
+        msgq: queue.Queue,
         finish: SharedInt,
         shared: SharedInt,
         frame: SharedInt,

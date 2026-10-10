@@ -146,9 +146,6 @@ class ParticipantPanel:
     def show(self):
         self.dialog.ShowModal()
 
-    def exit_event(self):
-        self.dialog.Destroy()
-
     def get_all_participants(self):
         participantDB = ParticipantDatabase()
         participantDB.connect(self.database_path, "participants.db")

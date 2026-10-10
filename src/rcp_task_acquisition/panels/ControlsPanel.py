@@ -14,6 +14,9 @@ from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VerbGeneration.panel import VerbGenerationPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
+from rcp_task_acquisition.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ControlsPanel(wx.Panel):
@@ -94,6 +97,7 @@ class ControlsPanel(wx.Panel):
         )
         vertical_position += 1
 
+        self._task_panel_sizer_index = vertical_position
         self.task_sizer.Add(
             self.task_panel,
             pos=(vertical_position, 0),
@@ -184,11 +188,15 @@ class ControlsPanel(wx.Panel):
         )
 
     def update_task(self, task: str) -> None:
+        logger.verbose("update_task: %s", task)
         task_title = task.replace("_", " ").title()
         self.task_text.SetLabel(f"{task_title}")
-        self.task_panel.Destroy()
-        self.task_panel = self.get_task_panel(task)
 
+        # self.task_sizer.Remove(self._task_panel_sizer_index)
+        self.task_panel.Destroy()  # Close() is making following sizer.Add to error
+        # self.task_panel.Close(force=True)
+
+        self.task_panel = self.get_task_panel(task)
         self.task_sizer.Add(
             self.task_panel,
             pos=(1, 0),
@@ -230,9 +238,6 @@ class ControlsPanel(wx.Panel):
             basic_panel = TrialPanel(self)
             basic_panel.continue_button.Show()
             return basic_panel
-
-    def close_task_panel(self) -> None:
-        self.task_panel.Destroy()
 
 
 class CameraControlPanel(wx.Panel):

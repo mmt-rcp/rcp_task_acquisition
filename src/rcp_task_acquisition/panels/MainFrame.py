@@ -10,6 +10,7 @@ import datetime
 import json
 import os
 import shutil
+import queue
 import time
 import typing
 from multiprocessing import Event, Queue, Value
@@ -237,7 +238,7 @@ class MainFrame(wx.Frame):
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
-        self.msgq: Queue[Any] = Queue()
+        self.msgq: queue.Queue[Any] = queue.Queue()
         self.finish = Value(ctypes.c_byte, 0)
         self.resultsq: Queue[Any] = Queue()
         self.video_lock = Event()
@@ -799,7 +800,8 @@ class MainFrame(wx.Frame):
                 self.recordCam(event)
             if self.play.GetValue():
                 self.play.SetValue(False)
-                self.cams.liveFeed(event)
+                # self.cams.liveFeed(event)
+                self.liveFeed(event)
             if self.set_crop.GetValue():
                 self.set_crop.SetValue(False)
 
@@ -823,6 +825,7 @@ class MainFrame(wx.Frame):
         Quits the GUI
         """
         logger.info("Close event called")
+        self.statusbar.SetStatusText("closing..")
         try:
             self.msgq.put(Msg.CLOSE_WINDOW)
             self.thread.join()
@@ -830,13 +833,12 @@ class MainFrame(wx.Frame):
             logger.debug("no current stimulus thread: %s", err, exc_info=True)
 
         try:
-            self.trial_panel.close_task_panel()
-            self.trial_panel.Destroy()
+            self.widget_panel.Close(True)
         except Exception as err:
             logger.debug("error close task panel: %s", err, exc_info=True)
-        self.ctrl_panel.Destroy()
+        self.ctrl_panel.Close(True)
         self.statusbar.SetStatusText("")
-        self.Destroy()
+        self.Close()
 
     def HideWithEvent(self, event: wx.Event) -> None:
         self.is_hidden = True

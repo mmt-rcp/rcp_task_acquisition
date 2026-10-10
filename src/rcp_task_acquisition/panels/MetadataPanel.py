@@ -95,7 +95,7 @@ class MetadataPanel:
         self.get_metadata()
         self.metadata = self.get_metadata()
         self.dialog.EndModal(wx.ID_OK)
-        self.dialog.Destroy()
+        self.dialog.Close(True)
 
     def cancel_event(self, event):
         logger.debug("Cancel Pressed")

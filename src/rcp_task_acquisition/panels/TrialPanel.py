@@ -35,6 +35,11 @@ class TrialPanel(wx.Panel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
+    def Close(self, force: bool = False) -> bool:
+        ret = self.Unbind(wx.EVT_TIMER, self.rest_timer)
+        logger.debug("%s.Close(): unbind timer=%s", self.__class__, ret)
+        return super().Close(force=force)
+
     def populate_metadata(self, metadata: dict):
         """For task metadata. NB: The full global metadata dict is passed."""
 

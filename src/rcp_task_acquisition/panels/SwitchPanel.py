@@ -17,6 +17,8 @@ class ActivePanel(Enum):
 
 
 class SwitchPanel:
+    """Main "switch" (control-) panel"""
+
     def __init__(self, *, rcp_context: RcpRunContext) -> None:
         self._rcp_context: RcpRunContext = rcp_context
         self.active_panel = True
@@ -54,7 +56,6 @@ class SwitchPanel:
         else:
             self.launch_panel.protocol_button.SetLabel("Select Protocol")
             self.launch_panel.enable_gui(True)
-
             self.task_frame.HideWithEvent(event)
             self.launch_panel.Show()
 
@@ -75,6 +76,9 @@ class SwitchPanel:
         self.disable_timer.StartOnce(200)
 
     def exit_event(self, event: wx.Event) -> None:
-        self.launch_panel.exit_event()
         self.task_frame.HideWithEvent(event)
         self.task_frame.quitButton(event)
+        # prevents infinite recursion:
+        self.launch_panel.dialog.Unbind(wx.EVT_CLOSE)
+        # given launch_panel Close is also bound to this exit_event.
+        self.launch_panel.exit_event()
