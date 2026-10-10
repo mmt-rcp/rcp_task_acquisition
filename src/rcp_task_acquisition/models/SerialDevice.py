@@ -9,31 +9,33 @@ logger = get_logger(__name__)
 class SerialDevice:
     def __init__(self):
         self.serSuccess = False
-        self.ser = None
+        self.ser: serial.Serial | None = None
 
     def init_serial(self) -> None:
+        ser_dev = None
         for i in range(2, 10):
             port = f"COM{i}"
             try:
-                # self.ser = serial.Serial('/dev/ttyACM'+str(i),
-                #                          baudrate=self.baudrate,
-                #                          write_timeout = self.write_timeout)
-                self.ser = serial.Serial(port, baudrate=BAUDRATE, write_timeout=WRITE_TIMEOUT)
-                self.serSuccess = True
-                logger.info("Serial connected")
-                break
+                ser_dev = serial.Serial(port, baudrate=BAUDRATE, write_timeout=WRITE_TIMEOUT)
             except Exception as err:
-                logger.debug("Failed tried open serial #%s: %s", i, err)
-            if self.serSuccess:
+                logger.verbose("Failed tried open serial port %s: %s", port, err)
+            else:
+                logger.info("Serial connected on port %s", port)
+                self.serSuccess = True
                 break
-        if not self.serSuccess:
-            logger.info("Serial connection failed")
+        if ser_dev is None:
+            logger.error("Serial connection failed")
 
-    def write(self, serial_str: str) -> None:
-        if self.serSuccess:
-            self.ser.write(serial_str.encode())
+    def write(self, msg: str | bytes):
+        ser_dev = self.ser
+        if ser_dev is None:
+            logger.warning("Device not connected, skipped write of %r", msg)
+            return
+        data = msg.encode() if isinstance(msg, str) else msg
+        ser_dev.write(data)
 
     def close(self) -> None:
-        if self.serSuccess:
-            self.ser.close()
-            self.serSuccess = False
+        ser_dev = self.ser
+        if ser_dev is not None:
+            ser_dev.close()
+            self.ser = None
