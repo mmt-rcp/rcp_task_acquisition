@@ -656,7 +656,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         video_file = self.video_file
         self.video_writer = cv2.VideoWriter(
             video_file,
-            cv2.VideoWriter_fourcc("m", "p", "4", "v"),  # noqa
+            cv2.VideoWriter_fourcc("m", "p", "4", "v"),  # type: ignore  # noqa
             self.fps,
             (self.width, self.height),
         )

@@ -44,6 +44,8 @@ class Msg(str, Enum):
 
 
 class StimulusThread(ProcessWithLogging):
+    window: Window
+
     def __init__(
         self,
         msgq: multiprocessing.Queue,
@@ -116,7 +118,8 @@ class StimulusThread(ProcessWithLogging):
             logger.exception("Cannot evaluate stim thread data (%s): %s", data, err)
             trial_data = data
         # trial_data = trial_data.replace("(", "")
-        self.stimulus.update_data(trial_data)
+        if self.stimulus is not None:
+            self.stimulus.update_data(trial_data)
 
     def _handle_run_task(self) -> None:
         self.shared.value = 0
@@ -126,9 +129,12 @@ class StimulusThread(ProcessWithLogging):
         if self.shared.value == -1:
             self.alive = False
             return
-        self.stimulus.set_first_frame(self.frame.value)
+        stimulus = self.stimulus
+        if stimulus is not None:
+            stimulus.set_first_frame(self.frame.value)
         self.window.reset_stimulus_frame()
-        self.stimulus.present()
+        if stimulus is not None:
+            stimulus.present()
         self.window.idle(time_list=[])
         self.window.flip()
         self.totalStimFrames += self.window.stimulus_frame
@@ -146,19 +152,24 @@ class StimulusThread(ProcessWithLogging):
             self.finish.value = 0
 
     def _handle_reset_task(self) -> None:
-        self.stimulus.reset_task()
+        if self.stimulus is not None:
+            self.stimulus.reset_task()
 
     def _handle_end_task(self) -> None:
         self.end_stimulus()
 
     def _handle_vowel_space(self) -> None:
-        results = self.stimulus.get_trial()
-        logger.debug(results)
+        stimulus = self.stimulus
+        if not isinstance(stimulus, (VowelSpace, Diadochokinesis, VerbalFluency)):
+            logger.error("unexpected stimulus instance for vowel space: %s", stimulus)
+            return
+        results = stimulus.get_trial()
+        logger.debug("vowel_space result: %s", results)
         self.resultsq.put(results)
 
     def _handle_play_instructions(self) -> None:
         msg = self.msgq.get()
-        logger.debug(msg)
+        logger.debug("play instructions: %s", msg)
         self.play_video(msg)
 
     def _handle_add_instructions(self) -> None:
@@ -182,11 +193,11 @@ class StimulusThread(ProcessWithLogging):
         self.close_window()
 
     def run(self) -> None:
-        try:
+        try:  # temporary try
             self.window = Window(screen=self.screenConfig, fullScreen=True)
         except Exception as err:
             logger.exception("Could not create window: %s", err)
-            self.window = None
+            # self.window = None
 
         logger.info("entering main loop")
         while self.alive:

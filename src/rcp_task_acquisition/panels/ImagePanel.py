@@ -41,7 +41,7 @@ class ImagePanel(wx.Panel):
         for c in range(int(column_count)):
             self.axes.append(self.figure.add_subplot(1, column_count, c + 1, frameon=True))
 
-            self.axes[c].set_position([row_pos, 0.005, 0.49, 0.99])
+            self.axes[c].set_position((row_pos, 0.005, 0.49, 0.99))
 
             row_pos += row_inc
             self.axes[c].xaxis.set_visible(False)

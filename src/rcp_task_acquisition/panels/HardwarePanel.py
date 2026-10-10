@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 # keeping cameras and hardware seperate since we handle them differently in setup and values needed
 @dataclass
 class HardwareRow:
-    name: wx.StaticText
+    name: wx.StaticText | wx.TextCtrl
     in_use: wx.CheckBox
     labjack: wx.Choice
     voltage_range: wx.Choice
@@ -532,23 +532,23 @@ class HardwarePanel(wx.Panel):
 
     def _create_hardware_config(self) -> config.HardwareDictConfig | None:
         cfg = config.HardwareDictConfig()
-        for hardware in self.hardware_list:
-            if hardware.in_use_all:
-                labjack_pin = hardware.labjack.GetCurrentSelection()
+        for hard_row in self.hardware_list:
+            if hard_row.in_use_all:
+                labjack_pin = hard_row.labjack.GetCurrentSelection()
                 if labjack_pin == -1:
                     WarningHandler(WarnCat.HARDWARE).display()
                     return None
-                name = self._get_name(hardware)
+                name = self._get_name(hard_row)
                 if not name:
                     WarningHandler(WarnCat.NAME).display()
                     return None
-                labjack_list = hardware.labjack.GetStrings()
+                labjack_list = hard_row.labjack.GetStrings()
                 labjack_value = labjack_list[labjack_pin]
                 voltage_range: tuple[float, float] = (0, 1)
                 if "A" in labjack_value:
                     voltage = float(
-                        hardware.voltage_range.GetStrings()[
-                            hardware.voltage_range.GetCurrentSelection()
+                        hard_row.voltage_range.GetStrings()[
+                            hard_row.voltage_range.GetCurrentSelection()
                         ]
                     )
                     voltage_range = (voltage * -1, voltage)
@@ -602,10 +602,12 @@ class HardwarePanel(wx.Panel):
                 cam_cfg.ismaster = False
         return cameras
 
-    def _get_name(self, hardware) -> str:
-        return (
-            hardware.name.GetLabel() if hardware.name.GetLabel() != "" else hardware.name.GetValue()
-        )
+    def _get_name(self, hardware: HardwareRow | CameraRow) -> str:
+        lbl = hardware.name.GetLabel()
+        if lbl != "":
+            return lbl
+        assert isinstance(hardware.name, wx.TextCtrl)
+        return hardware.name.GetValue()
 
     def _on_choice_labjack(self, event: wx.Event) -> None:
         self._update_lists(self.hardware_list)

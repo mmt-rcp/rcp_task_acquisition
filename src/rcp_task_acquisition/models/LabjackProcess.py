@@ -71,7 +71,7 @@ class LabJackDataStream(ProcessWithLogging):
         self.create_csv = create_csv
         self.folder_queue = folder_queue
         self.session_file = ""
-        self.labjack_csv = None
+        self.labjack_csv = ""
         self.results = np.empty(self.scan_num * SCANS_PER_READ)
         self.results.fill(np.nan)
         self.graph_indices = graph_indices
