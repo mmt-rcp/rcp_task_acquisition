@@ -66,6 +66,69 @@ class TrialPanel(wx.Panel):
         )
         return grid_sizer
 
+    def reset(self, count):
+        self.seconds = 0
+
+    def show(self):
+        self.rest_timer.Start(1000)
+        self.Show()
+
+    def hide(self):
+        self.rest_timer.Stop()
+        self.Hide()
+
+    def start_trial(self):
+        self.trial_is_active = True
+
+    def end_trial(self):
+        self.trial_is_active = False
+
+    def get_video_buttons(self):
+        return self.start_video_button, self.pause_video_button
+
+    def start_video(self):
+        self.continue_button.Enable(False)
+        self.repeat_trial.Enable(False)
+
+    def stop_video(self):
+        self.continue_button.Enable(True)
+        self.repeat_trial.Enable(True)
+
+    def pause_video(self):
+        self.continue_button.Enable(True)
+        self.repeat_trial.Enable(True)
+
+    def resume_video(self):
+        self.continue_button.Enable(False)
+        self.repeat_trial.Enable(False)
+
+    def run_trial(self, count) -> None:
+        self.start_trial()
+
+    def get_result(self):
+        return None
+
+    def on_timer(self, event) -> None:
+        pass
+
+    def get_instructions(self):
+        return self.instruction_paths
+
+    def start_new_trial(self) -> None:
+        self.trial_number = 0
+
+    def update_values(self) -> None:
+        pass
+
+    def add_timer(self, timer: sharedctypes.Synchronized) -> None:
+        self.timer = timer
+
+
+class TrialPanelWithInstructPlayback(TrialPanel):
+    video_title: wx.StaticText
+    start_video_button: wx.ToggleButton
+    pause_video_button: wx.ToggleButton
+
     def setup_instruction_playback(self):
         vid_title = self.video_title = wx.StaticText(self, label="")
         start_but = self.start_video_button = wx.ToggleButton(
@@ -105,72 +168,32 @@ class TrialPanel(wx.Panel):
 
         return static_box_sizer
 
-    def reset(self, count):
-        self.seconds = 0
-
-    def show(self):
-        self.rest_timer.Start(1000)
-        self.Show()
-
-    def hide(self):
-        self.rest_timer.Stop()
-        self.Hide()
-
-    def start_trial(self):
-        self.trial_is_active = True
+    def start_trial(self) -> None:
+        super().start_trial()
         self.pause_video_button.Enable(False)
         self.start_video_button.Enable(False)
 
-    def end_trial(self):
-        self.trial_is_active = False
-        if self.start_video_button != None:
-            self.start_video_button.Enable(True)
+    def end_trial(self) -> None:
+        super().end_trial()
+        self.start_video_button.Enable(True)
 
-    def get_video_buttons(self):
-        return self.start_video_button, self.pause_video_button
-
-    def start_video(self):
+    def start_video(self) -> None:
         self.start_video_button.SetLabel("Stop Video")
         self.pause_video_button.Enable(True)
-        self.continue_button.Enable(False)
-        self.repeat_trial.Enable(False)
+        super().start_video()
 
-    def stop_video(self):
+    def stop_video(self) -> None:
         self.start_video_button.SetLabel("Start Video")
         self.start_video_button.SetValue(False)
         self.pause_video_button.SetValue(False)
         self.pause_video_button.Enable(False)
-        self.continue_button.Enable(True)
-        self.repeat_trial.Enable(True)
+        super().stop_video()
         self.pause_video_button.SetLabel("Pause Video")
 
     def pause_video(self):
         self.pause_video_button.SetLabel("Resume Video")
-        self.continue_button.Enable(True)
-        self.repeat_trial.Enable(True)
+        super().pause_video()
 
     def resume_video(self):
         self.pause_video_button.SetLabel("Pause Video")
-        self.continue_button.Enable(False)
-        self.repeat_trial.Enable(False)
-
-    def run_trial(self, count):
-        pass
-
-    def get_result(self):
-        return None
-
-    def on_timer(self, event):
-        pass
-
-    def get_instructions(self):
-        return self.instruction_paths
-
-    def start_new_trial(self):
-        self.trial_number = 0
-
-    def update_values(self):
-        pass
-
-    def add_timer(self, timer: sharedctypes.Synchronized):
-        self.timer = timer
+        super().resume_video()

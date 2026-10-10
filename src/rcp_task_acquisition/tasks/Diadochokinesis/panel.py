@@ -1,7 +1,7 @@
 import numpy as np
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.Diadochokinesis.constants import (
     DDK_PATHS,
     DDK_TRIAL_TIME,
@@ -13,7 +13,7 @@ from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class DdkPanel(TrialPanel):
+class DdkPanel(TrialPanelWithInstructPlayback):
     def __init__(self, parent=None):
         self.param_list = np.repeat(np.array(DDK_TRIALS), DDK_TRIALS_PER_SYLLABLE).tolist()
         self.trial_number_ = 1

@@ -1,13 +1,13 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.ToneTaps.constants import IVRY_TAPS_VIDEO_PATH
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class ToneTapsClosedPanel(TrialPanel):
+class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tap_hand = "Left"
