@@ -1,38 +1,49 @@
 import ctypes
 import multiprocessing
 import os
+import queue
 import shutil
 import time
 from dataclasses import dataclass
 from multiprocessing import Array, Queue, Value
+from pathlib import Path
 
 import cv2
 import numpy as np
+import wx
+from matplotlib.image import AxesImage
 
 import rcp_task_acquisition.models.CameraProcess as spin
 from rcp_task_acquisition.models.CameraProcess import CameraCommand
 from rcp_task_acquisition.models.Crop import Crop
-from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
-from rcp_task_acquisition.utils import file_utils
+from rcp_task_acquisition.models.SerialDevice import SerialDevice
+from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
+from rcp_task_acquisition.panels.GraphPanel import GraphPanel
+from rcp_task_acquisition.panels.ImagePanel import ImagePanel
+from rcp_task_acquisition.panels.ParticipantMonitorPanel import MonitorPanel
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.typing import SharedArray, SharedInt
 
 logger = get_logger(__name__)
 
 
 @dataclass
 class FrameDims:
-    x1: int
-    x2: int
-    y1: int
-    y2: int
-    h: int
-    w: int
-    dispSize: int
+    x1: int = 0
+    x2: int = 0
+    y1: int = 0
+    y2: int = 0
+    h: int = 0
+    w: int = 0
+    dispSize: int = 0
 
 
 @dataclass
 class CamSettings:
+    idx: int  # cam index
     name: str
     serial: str
     is_primary: bool
@@ -47,15 +58,26 @@ class CamSettings:
     contrast_tests: np.ndarray
     frame: np.ndarray
     frameBuff: np.ndarray
-    array4feed: Array
-    frmGrab: Value
+    array4feed: SharedArray
+    frmGrab: SharedInt
     camq: multiprocessing.Queue
     camq_p2read: multiprocessing.Queue
-    frame_size: None | FrameDims
+    frame_size: FrameDims
 
 
 class Camera:
-    def __init__(self, serial, panel, image_panel, contrast_test, focus_test, monitor):
+    def __init__(
+        self,
+        serial: SerialDevice,
+        panel: GraphPanel,
+        image_panel: ImagePanel,
+        contrast_test: wx.ToggleButton,
+        focus_test: wx.ToggleButton,
+        monitor: MonitorPanel,
+        *,
+        rcp_context: RcpRunContext,
+    ):
+        self._rcp_context = rcp_context
         self.serial = serial
         self.shared = Value(ctypes.c_byte, 0)
         self.camaq = Value(ctypes.c_byte, 0)
@@ -68,90 +90,123 @@ class Camera:
         self.contrast_test = contrast_test
         self.focus_test = focus_test
         self.warning = WarningHandler()
-        self.unconnected = []
-        self.camStrList = []
-        self.cam_settings = []
         self.trial = 0
         self.session = 0
         self.participant_monitor = monitor
-        self.framerate = None
-        self.cam_dict: dict[str, CamSettings] = {}
-        self.cam: list[spin.multiCam_DLC_Cam] = []
+        self.framerate: float = 0
+        self.crop = False
+        self.cam_dict: dict[str, CamSettings] = {}  # key is cam serial
+        # NB: cam_dict is used from MainFrame
+        self._cam_by_idx: list[CamSettings] = []
+        self.multi_cameras: dict[str, spin.multiCam_DLC_Cam] = {}  # key is cam serial
+        #
+        self.labjack_scan_rate = None
+        self.primary_cams: list[str] = []  # cam serial
+        self.secondary_cams: list[str] = []  # cam serial
+        self.cam_pointer = 0
+        self.im: list[AxesImage] = []
+        self.x1 = 0
+        self.y1 = 0
+        self.shared.value = 0
+        self.camaq.value = 0
+        self.frmaq.value = 0
+        self.crop = True
+        self.hardware_test = True
+        self._cams_cfg = config.CamerasDictConfig()
+        self._is_unconnected = True
 
-    def setup(self, config, is_unconnected, requested_framerate):
-        self.cam_cfg = config
-        self.cam_crop = Crop()
+    def setup(
+        self,
+        cams_cfg: config.CamerasDictConfig,
+        is_unconnected: bool,
+        requested_framerate: float,
+    ) -> None:
+        logger.info("Camera.setup: cams_cfg: %s", cams_cfg)
+        self._cams_cfg = cams_cfg
+        self._is_unconnected = is_unconnected
         self.framerate = requested_framerate
+
+    def _prepare_cams(self) -> None:
+        self.cam_crop = Crop()
         self.reset_variables()
         self.cam_dict.clear()
+        self._cam_by_idx.clear()
 
-        for name in self.cam_cfg:
-            if not self.cam_cfg[name]["in_use"]:
+        cam_idx = -1
+        for cam_item, cfg in self._cams_cfg.items():
+            name = cam_item.value
+            if not cfg.in_use:
+                logger.debug("skipping %s not in_use", cam_item)
                 continue
 
-            else:
-                cam_bin = int(self.cam_cfg[name]["bin"])
-                cam_dims = [
-                    0,
-                    int(CAM_MAX_HEIGHT / DOWNSAMPLE_VAL / cam_bin),
-                    0,
-                    int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
-                ]
-                is_primary = bool(self.cam_cfg[name]["ismaster"] or is_unconnected)
-                new_cam = CamSettings(
-                    name=name,
-                    serial=self.cam_cfg[name]["serial"],
-                    is_primary=is_primary,
-                    size=cam_dims[1] * cam_dims[3] * 3,
-                    shape=[cam_dims[1], cam_dims[3], 3],
-                    bin_val=cam_bin,
-                    frame_dims=cam_dims,
-                    decrease_val=int(self.cam_cfg[name]["framerate_decrease_factor"]),
-                    actual_framerate=None,
-                    exposure=None,
-                    cam_tests=np.full(shape=30 * 2, fill_value=np.nan),
-                    contrast_tests=np.full(shape=30 * 2, fill_value=np.nan),
-                    frame=np.zeros([cam_dims[1], cam_dims[3], 3], dtype="ubyte"),
-                    frameBuff=np.zeros(cam_dims[1] * cam_dims[3] * 3, dtype="ubyte"),
-                    array4feed=Array(ctypes.c_ubyte, cam_dims[1] * cam_dims[3] * 3),
-                    frmGrab=Value(ctypes.c_byte, 0),
-                    camq=None,
-                    camq_p2read=None,
-                    frame_size=None,
-                )
+            cam_idx += 1
+            cam_bin = int(cfg.bin)
+            cam_dims = [
+                0,
+                int(CAM_MAX_HEIGHT / DOWNSAMPLE_VAL / cam_bin),
+                0,
+                int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
+            ]
+            is_primary = bool(cfg.ismaster or self._is_unconnected)
+            new_cam = CamSettings(
+                idx=cam_idx,
+                name=name,
+                serial=cfg.serial,
+                is_primary=is_primary,
+                size=cam_dims[1] * cam_dims[3] * 3,
+                shape=[cam_dims[1], cam_dims[3], 3],
+                bin_val=cam_bin,
+                frame_dims=cam_dims,
+                decrease_val=int(cfg.framerate_decrease_factor),
+                actual_framerate=None,
+                exposure=None,
+                cam_tests=np.full(shape=30 * 2, fill_value=np.nan),
+                contrast_tests=np.full(shape=30 * 2, fill_value=np.nan),
+                frame=np.zeros([cam_dims[1], cam_dims[3], 3], dtype="ubyte"),
+                frameBuff=np.zeros(cam_dims[1] * cam_dims[3] * 3, dtype="ubyte"),
+                array4feed=Array(ctypes.c_ubyte, cam_dims[1] * cam_dims[3] * 3),
+                frmGrab=Value(ctypes.c_byte, 0),
+                camq=Queue(),
+                camq_p2read=Queue(),
+                frame_size=FrameDims(),
+            )
             self.cam_dict[new_cam.serial] = new_cam
+            self._cam_by_idx.append(new_cam)
 
-            self.cam_crop.add_crop(self.cam_cfg[new_cam.name]["crop"])
-            if self.cam_cfg[name]["ismaster"] or is_unconnected:
+            self.cam_crop.add_crop(cfg.crop)
+            if cfg.ismaster or self._is_unconnected:
                 self.primary_cams.append(new_cam.serial)
             else:
                 self.secondary_cams.append(new_cam.serial)
+
         camCt = len(self.cam_dict)
-        cam_names = [self.cam_dict[cam].name for cam in self.cam_dict]
+        cam_names = [cam.name for cam in self._cam_by_idx]
         self.ctrl_panel.hardware_test(30 * 2, camCt, cam_names)
 
         self.figure, self.axes, self.canvas = self.image_panel.getfigure()
         for ndx in range(self.cam_pointer, self.cam_pointer + 2):
-            serial = list(self.cam_dict)[ndx]
-            self.im.append(self.axes[ndx].imshow(self.cam_dict[serial].frame))
+            cam = self._cam_by_idx[ndx]
+            self.im.append(self.axes[ndx].imshow(cam.frame))
             self.im[ndx].set_clim(0, 255)
-            self.cam_crop.update_crop(ndx, self.axes[ndx], self.cam_dict[serial].frame_dims)
+            self.cam_crop.update_crop(ndx, self.axes[ndx], cam.frame_dims)
+        cam0 = self._cam_by_idx[self.cam_pointer]
+        cam1 = self._cam_by_idx[self.cam_pointer + 1]
         self.image_panel.update_names(
             [
-                self.cam_dict[list(self.cam_dict)[self.cam_pointer]].name,
-                self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].name,
+                cam0.name,
+                cam1.name,
             ]
         )
         self.image_panel.draw()
 
-    def initialize(self, event):
+    def initialize(self, event: wx.Event) -> bool:
         self.serial.init_serial()
         self.initThreads()
         try:
             self.updateSettings(event)
         except Exception as err:
             logger.exception("Error updating settings: %s", err)
-            logger.info("\nTrying to fix cameras. Please wait...\n")
+            logger.info("Trying to fix cameras. Please wait...")
             self.deinitThreads()
             self.camReset(event)
             self.initThreads()
@@ -169,12 +224,10 @@ class Camera:
         self.camaq.value = 0
         self.stopAq()
 
-        for ndx, cam in enumerate(self.cam_dict):
-            self.cam_dict[cam].frame = np.zeros(self.cam_dict[cam].shape, dtype="ubyte")
-            self.cam_dict[cam].frameBuff[0:] = np.frombuffer(
-                self.cam_dict[cam].array4feed.get_obj(), self.dtype, self.cam_dict[cam].size
-            )
-            dimensions = self.cam_crop.croproi[ndx] if self.crop else self.cam_dict[cam].frame_dims
+        for cam in self._cam_by_idx:
+            cam.frame = np.zeros(cam.shape, dtype="ubyte")
+            cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
+            dimensions = self.cam_crop.croproi[cam.idx] if self.crop else cam.frame_dims
 
             new_dims = FrameDims(
                 x1=dimensions[0],
@@ -186,33 +239,28 @@ class Camera:
                 dispSize=dimensions[3] * dimensions[1] * 3,
             )
 
-            frame = (
-                self.cam_dict[cam]
-                .frameBuff[0 : new_dims.dispSize]
-                .reshape([new_dims.h, new_dims.w, 3])
-            )
+            frame = cam.frameBuff[0 : new_dims.dispSize].reshape([new_dims.h, new_dims.w, 3])
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             for f in range(3):
-                self.cam_dict[cam].frame[
-                    new_dims.y1 : new_dims.y2, new_dims.x1 : new_dims.x2, f
-                ] = frame[:, :, f]
-            self.cam_dict[cam].frame_size = new_dims
+                cam.frame[new_dims.y1 : new_dims.y2, new_dims.x1 : new_dims.x2, f] = frame[:, :, f]
+            cam.frame_size = new_dims
 
-        self.im[0].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer]].frame)
-        self.im[1].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].frame)
+        cam0, cam1 = self._cam_by_idx[self.cam_pointer : self.cam_pointer + 2]
+        self.im[0].set_data(cam0.frame)
+        self.im[1].set_data(cam1.frame)
         return True
 
-    def deinitialize(self):
+    def deinitialize(self) -> None:
         self.serial.close()
 
         for ndx, im in enumerate(self.im):
-            frame = np.zeros(self.cam_dict[list(self.cam_dict)[ndx]].shape, dtype="ubyte")
-            im.set_data(frame)
+            cam_s = self._cam_by_idx[ndx]
+            im.set_data(np.zeros(cam_s.shape, dtype="ubyte"))
             self.cam_crop.croprec[ndx].set_alpha(0)
 
         self.deinitThreads()
 
-    def camReset(self, event):
+    def camReset(self, event: wx.Event) -> None:
         self.initThreads()
         self.camaq.value = 2
         self.startAq()
@@ -221,50 +269,46 @@ class Camera:
         self.deinitThreads()
         logger.info("\n*** CAMERAS RESET ***\n")
 
-    def live_start(self):
+    def live_start(self) -> None:
         self.camaq.value = 1
         self.startAq()
 
-    def live_stop(self):
+    def live_stop(self) -> None:
         self.stopAq()
         time.sleep(2)
 
-    def vidPlayer(self, event):
+    def vidPlayer(self, event: wx.Event) -> None:
         if self.camaq.value == 2:
             return
         self.participant_monitor.update_screen()
-        for ndx, im in enumerate(self.cam_dict):
-            if self.cam_dict[im].frmGrab.value == 1:
-                self.cam_dict[im].frameBuff[0:] = np.frombuffer(
-                    self.cam_dict[im].array4feed.get_obj(), self.dtype, self.cam_dict[im].size
-                )
-                dims = self.cam_dict[im].frame_size
-                frame = self.cam_dict[im].frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
+        for cam in self._cam_by_idx:
+            if cam.frmGrab.value == 1:
+                cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
+                dims = cam.frame_size
+                frame = cam.frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 for f in range(3):
-                    self.cam_dict[im].frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[
-                        :, :, f
-                    ]
-                self.cam_dict[im].frame_size = dims
+                    cam.frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[:, :, f]
+                cam.frame_size = dims
 
-                if ndx == self.cam_pointer:
-                    self.im[0].set_data(self.cam_dict[im].frame)
-                elif ndx == self.cam_pointer + 1:
-                    self.im[1].set_data(self.cam_dict[im].frame)
-                self.cam_dict[im].frmGrab.value = 0
+                if cam.idx == self.cam_pointer:
+                    self.im[0].set_data(cam.frame)
+                elif cam.idx == self.cam_pointer + 1:
+                    self.im[1].set_data(cam.frame)
+                cam.frmGrab.value = 0
 
                 if self.hardware_test:
-                    self.cam_dict[im].cam_tests = np.roll(self.cam_dict[im].cam_tests, 1)
+                    cam.cam_tests = np.roll(cam.cam_tests, 1)
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     laplacian = cv2.Laplacian(gray, cv2.CV_64F)
                     variance = laplacian.var()
-                    self.cam_dict[im].cam_tests[0] = variance
+                    cam.cam_tests[0] = variance
 
                     normalized_img = gray / 255.0
                     # Calculate RMS contrast (Standard Deviation)
                     rms = np.std(normalized_img)
-                    self.cam_dict[im].contrast_tests = np.roll(self.cam_dict[im].contrast_tests, 1)
-                    self.cam_dict[im].contrast_tests[0] = rms
+                    cam.contrast_tests = np.roll(cam.contrast_tests, 1)
+                    cam.contrast_tests[0] = rms
         if self.hardware_test:
             if self.focus_test.GetValue():
                 self.update_focus()
@@ -272,91 +316,99 @@ class Camera:
                 self.update_contrast()
         self.figure.canvas.draw()
 
-    def update_focus(self, plot=True):
+    def update_focus(self, plot: bool = True) -> None:
         if plot:
             cam_list = []
-            for cam in self.cam_dict:
-                cam_list.append(self.cam_dict[cam].cam_tests)
+            for cam in self._cam_by_idx:
+                cam_list.append(cam.cam_tests)
             self.ctrl_panel.plot_hardware(cam_list, 300)
         else:
-            for cam in self.cam_dict:
-                self.cam_dict[cam].cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
+            for cam in self._cam_by_idx:
+                cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
-    def update_contrast(self, plot=True):
+    def update_contrast(self, plot: bool = True) -> None:
         if plot:
             cam_list = []
-            for cam in self.cam_dict:
-                cam_list.append(self.cam_dict[cam].contrast_tests)
+            for cam in self._cam_by_idx:
+                cam_list.append(cam.contrast_tests)
             self.ctrl_panel.plot_hardware(cam_list, 1)
         else:
-            for cam in self.cam_dict:
-                self.cam_dict[cam].cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
+            for cam in self._cam_by_idx:
+                cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
-    def start_recording(self, event, base_dir, sess_dir, path_base, count):
+    def start_recording(
+        self, event: wx.Event, base_dir: Path, sess_dir: Path, path_base: str, count: int
+    ) -> None:
         totTime = 20  # int(self.secRec.GetValue())+int(self.minRec.GetValue())*60
         spaceneeded = 0
         freespace = shutil.disk_usage(base_dir)[2]
-        for ndx, w in enumerate(self.cam_dict):
-            recSize = (
-                self.aqW[ndx] * self.aqH[ndx] * 3 * self.cam_dict[w].actual_framerate * totTime
-            )
+        for cam in self._cam_by_idx:
+            recSize = self.aqW[cam.idx] * self.aqH[cam.idx] * 3 * cam.actual_framerate * totTime
             spaceneeded += recSize
         if spaceneeded > freespace:
             self.warning.update_error(WarnCat.SPACE).display()
 
         logger.info(f"Total estimated run time: {totTime}")
-        for ndx, cam_d in enumerate(self.cam_dict.values()):
-            cam_d.camq.put(CameraCommand.RECORD_PREP)
-            name_base = "%s_%s_trial%03d" % (path_base, cam_d.name, count)
+        for cam in self._cam_by_idx:
+            cam.camq.put(CameraCommand.RECORD_PREP)
+            name_base = "%s_%s_trial%03d" % (path_base, cam.name, count)
             new_base = os.path.join(sess_dir, name_base)
-            cam_d.camq.put(new_base)
-            cam_d.camq_p2read.get()
+            cam.camq.put(new_base)
+            cam.camq_p2read.get()
 
         self.camaq.value = 1
         self.startAq()
 
-    def stop_recording(self, event):
+    def stop_recording(self, event: wx.Event) -> None:
         self.shared.value = -1
         self.stopAq()
         time.sleep(2)
 
-    def initThreads(self):
-        self.camq = {}
-        self.camq_p2read = {}
-        self.cam.clear()
-        for ndx, camID in enumerate(self.cam_dict):
-            cam_d = self.cam_dict[camID]
-            cam_d.camq = Queue()
-            cam_d.camq_p2read = Queue()
-            cam = spin.multiCam_DLC_Cam(
+    def initThreads(self) -> None:
+        logger.verbose("initThreads started")
+        self._prepare_cams()
+        self.multi_cameras.clear()
+        all_cams_serial = [c.serial for c in self._cam_by_idx]
+        for cam_d in self._cam_by_idx:
+            multi_cam = spin.multiCam_DLC_Cam(
                 cam_d.camq,
                 cam_d.camq_p2read,
-                camID,
-                list(self.cam_dict),
+                cam_d.serial,
+                all_cams_serial,
                 cam_d.frame_dims,
                 self.camaq,
                 self.frmaq,
                 cam_d.array4feed,
                 cam_d.frmGrab,
                 DOWNSAMPLE_VAL,
+                rcp_context=self._rcp_context,
             )
-            self.cam.append(cam)
-            cam.start()
+            self.multi_cameras[cam_d.serial] = multi_cam
+            multi_cam.start()
         time.sleep(1)
-        for cam_d in self.cam_dict.values():
-            initialization = CameraCommand.INIT_M if cam_d.is_primary else CameraCommand.INIT_S
-            cam_d.camq.put(initialization)
-            cam_d.camq_p2read.get()
+        for cam in self._cam_by_idx:
+            initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
+            cam.camq.put(initialization)
+            cam.camq_p2read.get()
 
-    def deinitThreads(self):
-        for n, cam_d in enumerate(self.cam_dict.values()):
-            cam_d.camq.put(CameraCommand.RELEASE)
-            cam_d.camq_p2read.get()
-            cam_d.camq.close()
-            cam_d.camq_p2read.close()
-            self.cam[n].terminate()
+    def deinitThreads(self) -> None:
+        logger.verbose("deinitThreads started")
+        for cam in self.cam_dict.values():
+            cam.camq.put(CameraCommand.RELEASE)
+            try:
+                cam.camq_p2read.get(timeout=3)
+            except queue.Empty:
+                logger.warning("timeout get from p2read")
+            cam.camq.close()
+            cam.camq_p2read.close()
+            multi_cam = self.multi_cameras[cam.serial]
+            multi_cam.terminate()
+            # multi_cam.join()  # todo, should
+        self.cam_dict.clear()
+        self.multi_cameras.clear()
 
-    def startAq(self):
+    def startAq(self) -> None:
+        logger.verbose("startAq started")
         if self.serial.serSuccess:
             msg = f"S{self.session}x{self.trial}x"
             self.serial.write(msg)
@@ -364,17 +416,17 @@ class Camera:
         if self.camaq.value < 2:
             self.camaq.value = 1
 
-        for cam_d in self.cam_dict.values():
-            cam_d.camq.put(CameraCommand.START)
-        for cam in self.primary_cams:
-            self.cam_dict[cam].camq.put(CameraCommand.TRIG_OFF)
+        for cam in self._cam_by_idx:
+            cam.camq.put(CameraCommand.START)
+        for prim_cam_serial in self.primary_cams:
+            self.cam_dict[prim_cam_serial].camq.put(CameraCommand.TRIG_OFF)
 
-    def stopAq(self):
+    def stopAq(self) -> None:
+        logger.verbose("stopAq started")
         if self.serial.serSuccess:
             msg = "Xx"
-            self.serial.ser.write(msg.encode())
-        error_message = []
-        video_errors = []
+            self.serial.write(msg)
+        error_message: list[str] = []
         self.camaq.value = 0
         threshold = 1
         for camID in self.secondary_cams:
@@ -395,8 +447,6 @@ class Camera:
                 cam_d.camq_p2read.get()
         logger.warning(error_message)
         error = ""
-        if video_errors:
-            error = "\n" + "\n".join(video_errors)
         if error_message:
             if error == "":
                 error += "\n"
@@ -404,13 +454,11 @@ class Camera:
         if error != "":
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
-    def updateSettings(self, event):
-        self.user_cfg = file_utils.read_config("userdata.yaml")
+    def updateSettings(self, event: wx.Event) -> None:
         self.aqW = []
         self.aqH = []
-        self.recSet = []
-        for n, camID in enumerate(self.cam_dict):
-            cam_d = self.cam_dict[camID]
+        # self.recSet = []
+        for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.UPDATE_SETTINGS)
             suc_test = cam_d.camq_p2read.get()
             if suc_test == -1:
@@ -422,19 +470,19 @@ class Camera:
             self.aqW.append(cam_d.camq_p2read.get())
             self.aqH.append(cam_d.camq_p2read.get())
 
-    def get_exposure(self, event):
-        for n, cam_d in enumerate(self.cam_dict.values()):
+    def get_exposure(self, event: wx.Event) -> None:
+        for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.SET_EXPOSURE)
         self.startAq()
         self.camaq.value = 1
         time.sleep(1)
         self.camaq.value = 0
         self.stopAq()
-        for n, cam_d in enumerate(self.cam_dict.values()):
+        for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.GET_EXPOSURE)
             cam_d.exposure = cam_d.camq_p2read.get()
 
-        for n, cam_d in enumerate(self.cam_dict.values()):
+        for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.SET_BALANCE)
         self.startAq()
         self.camaq.value = 1
@@ -443,48 +491,45 @@ class Camera:
         self.stopAq()
         primary_rate = self.framerate
         if len(self.primary_cams) <= 1:
-            self.cam_dict[self.primary_cams[0]].camq.put(CameraCommand.GET_BALANCE)
-            rate = self.cam_dict[self.primary_cams[0]].camq_p2read.get()
-            primary_rate = self.cam_dict[self.primary_cams[0]].actual_framerate = rate
-        for n, cam_d in enumerate(self.cam_dict.values()):
+            prim_cam = self.cam_dict[self.primary_cams[0]]
+            prim_cam.camq.put(CameraCommand.GET_BALANCE)
+            rate = prim_cam.camq_p2read.get()
+            primary_rate = prim_cam.actual_framerate = rate
+        for cam_d in self._cam_by_idx:
             if not cam_d.is_primary:
                 cam_d.actual_framerate = primary_rate / int(cam_d.decrease_val)
                 cam_d.camq.put(CameraCommand.GET_BALANCE)
 
-    def update_crop(self, value):
+    def update_crop(self, value) -> None:
         self.crop = value
 
-    def update_cameras_viewed(self, event):
+    def update_cameras_viewed(self, event: wx.Event) -> None:
         # switching which 2 cameras are seen
         if self.cam_pointer + 2 >= len(self.cam_dict):
             self.cam_pointer = 0
         else:
             self.cam_pointer += 2
 
-        self.im[0].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer]].frame)
+        cam1 = self._cam_by_idx[self.cam_pointer]
 
-        cam1 = self.cam_dict[list(self.cam_dict)[self.cam_pointer]].name
+        self.im[0].set_data(cam1.frame)
 
-        if not (len(self.cam_dict) <= self.cam_pointer + 1):
-            cam2 = self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].name
-            self.im[1].set_data(self.cam_dict[list(self.cam_dict)[self.cam_pointer + 1]].frame)
+        if len(self.cam_dict) > self.cam_pointer + 1:
+            cam2 = self._cam_by_idx[self.cam_pointer + 1]
+            self.im[1].set_data(cam2.frame)
+            cam2_name = cam2.name
         else:
-            cam2 = ""
-            self.im[1].set_data(
-                np.zeros(self.cam_dict[list(self.cam_dict)[self.cam_pointer]].shape, dtype="ubyte")
-            )
+            cam2_name = ""
+            self.im[1].set_data(np.zeros(cam1.shape, dtype="ubyte"))
 
-        self.image_panel.update_names([cam1, cam2])
+        self.image_panel.update_names([cam1.name, cam2_name])
 
-    def reset_variables(self):
+    def reset_variables(self) -> None:
         self.labjack_scan_rate = None
-        self.camStrList = []
-        self.cam_settings = []
         self.secondary_cams = []
         self.primary_cams = []
         self.cam_pointer = 0
         self.im = []
-        self.exposure = []
         self.x1 = 0
         self.y1 = 0
         self.shared.value = 0

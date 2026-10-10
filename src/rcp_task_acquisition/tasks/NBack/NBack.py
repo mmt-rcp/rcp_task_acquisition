@@ -4,6 +4,7 @@ import os
 import random
 import time
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from psychopy import core, event, visual
@@ -13,6 +14,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.constants import CODE_DIR
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import SharedBool
 
 logger = get_logger(__name__)
 
@@ -76,7 +78,7 @@ def _is_practice_block(trial_num: int) -> bool:
     return trial_num == 10
 
 
-def _all_stimuli_paths() -> list[Path]:
+def _all_stimuli_paths() -> list[str]:
     # """Return the list of all available stimuli paths (length = STIMULI_COUNT)."""
     # base = cfg.RESOURCES_DIR / "stimuli"
     # paths = [base / f"attneave_{i}.png" for i in range(1, cfg.STIMULI_COUNT + 1)]
@@ -89,7 +91,7 @@ def _all_stimuli_paths() -> list[Path]:
 
 def _create_deterministic_sequence(
     n_back_level: int, total_trials: int
-) -> tuple[list[Path], list[Answer]]:
+) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence with exact target count and repetition constraints.
 
@@ -141,7 +143,7 @@ def _create_deterministic_sequence(
             all_paths[num - 1] for num in sequence_numbers
         ]  # Convert 1-based to 0-based indexing
 
-        answers = []
+        answers: list[Answer] = []
 
         for pos in range(len(sequence_numbers)):
             if pos < n_back_level:
@@ -158,7 +160,7 @@ def _create_deterministic_sequence(
 
 def _create_practice_sequence(
     n_back_level: int, total_trials: int
-) -> tuple[list[Path], list[Answer]]:
+) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for practice blocks with 3 targets.
 
@@ -173,6 +175,9 @@ def _create_practice_sequence(
         Tuple containing stimulus paths and corresponding answer sequence
     """
     all_paths = _all_stimuli_paths()
+
+    stimulus_paths: list[str] = []
+    answers: list[Answer] = []
 
     while True:  # Keep generating until valid sequence found
         # Step 1: Generate random sequence using available stimuli (1-10)
@@ -221,13 +226,14 @@ def _create_practice_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
 
-        logger.info(
-            f"Generated practice {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
-        )
-        return stimulus_paths, answers
+        break
+    logger.info(
+        f"Generated practice {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+    )
+    return stimulus_paths, answers
 
 
-def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
+def pull_stimuli_1back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for 1-back tasks.
 
@@ -257,7 +263,7 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     return _create_deterministic_sequence(1, trial_num)
 
 
-def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
+def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for 2-back tasks.
 
@@ -288,15 +294,14 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
 
 class N_back(bases.StimulusBase):
-    def __init__(self, base_vars, button):
-        self.parameters = {}
+    def __init__(self, base_vars: dict[str, Any], button: SharedBool):
         super().__init__(**base_vars)
         self.button = button
         self.trial = 0
-        self.is_real = None
-        self.type = None
+        self.is_real: str | None = None
+        self.type: int = -1
         self.button_press = False
-        self.instructions = None
+        self.instructions: dict[str, str] = {}
         self.letters = {
             "D": visual.TextStim(self.display, text="D", name="trial", pos=(-100, 0), height=1000),
             "F": visual.TextStim(self.display, text="F", name="trial", pos=(-50, 0), height=1000),
@@ -612,13 +617,3 @@ class N_back(bases.StimulusBase):
             )
 
         return texts
-
-    def finish(self):
-        label = "end_text"
-        return visual.TextStim(
-            self.display,
-            text=("Task complete\nThank you for participating!"),
-            name=label,
-            wrapWidth=1000,
-            height=50,
-        )

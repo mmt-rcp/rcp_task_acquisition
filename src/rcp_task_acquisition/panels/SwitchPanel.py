@@ -6,6 +6,7 @@ from rcp_task_acquisition.models.Warnings import WarningHandler
 from rcp_task_acquisition.panels.LaunchPanel import LaunchPanel
 from rcp_task_acquisition.panels.MainFrame import MainFrame
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
@@ -16,10 +17,11 @@ class ActivePanel(Enum):
 
 
 class SwitchPanel:
-    def __init__(self) -> None:
+    def __init__(self, *, rcp_context: RcpRunContext) -> None:
+        self._rcp_context: RcpRunContext = rcp_context
         self.active_panel = True
-        self.launch_panel = LaunchPanel()
-        self.task_frame = MainFrame()
+        self.launch_panel = LaunchPanel(rcp_context=rcp_context)
+        self.task_frame = MainFrame(rcp_context=rcp_context)
         self.warning = WarningHandler()
 
         self.disable_timer = wx.Timer(self.launch_panel.panel, wx.ID_ANY)
@@ -31,12 +33,17 @@ class SwitchPanel:
         self.launch_panel.protocol_button.Bind(wx.EVT_BUTTON, self.disable_panel)
         self.launch_panel.exit_button.Bind(wx.EVT_BUTTON, self.exit_event)
         self.launch_panel.dialog.Bind(wx.EVT_CLOSE, self.exit_event)
-        self.launch_panel.panel.Bind(wx.EVT_TIMER, self.switch_panel, self.disable_timer)
-        self.task_frame.Bind(wx.EVT_TIMER, self.switch_panel, self.disable_timer)
+        self.launch_panel.panel.Bind(
+            wx.EVT_TIMER, lambda e: self.switch_panel(e, source="launch_panel"), self.disable_timer
+        )
+        self.task_frame.Bind(
+            wx.EVT_TIMER, lambda e: self.switch_panel(e, source="task_frame"), self.disable_timer
+        )
         self.launch_panel.panel.SetFocus()
 
-    def switch_panel(self, event: wx.Event) -> None:
+    def switch_panel(self, event: wx.Event, *, source: str = "NA") -> None:
         # if launch panel showing, switching to show task panel & vice versa
+        logger.verbose("switch_panel: event: %s ; source=%s", event, source)
         if self.active_panel == ActivePanel.LAUNCH.value:
             self.task_frame.Enable()
             self.task_frame.quit.SetLabel("Exit to Launch Menu")
@@ -48,7 +55,7 @@ class SwitchPanel:
             self.launch_panel.protocol_button.SetLabel("Select Protocol")
             self.launch_panel.enable_gui(True)
 
-            self.task_frame.Hide(event)
+            self.task_frame.HideWithEvent(event)
             self.launch_panel.Show()
 
         self.active_panel = not self.active_panel
@@ -69,5 +76,5 @@ class SwitchPanel:
 
     def exit_event(self, event: wx.Event) -> None:
         self.launch_panel.exit_event()
-        self.task_frame.Hide(event)
+        self.task_frame.HideWithEvent(event)
         self.task_frame.quitButton(event)

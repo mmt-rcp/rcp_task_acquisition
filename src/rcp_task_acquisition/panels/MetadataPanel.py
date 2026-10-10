@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 import wx
 import wx.lib.scrolledpanel as scrolled
@@ -15,9 +16,10 @@ class WxObject:
 
 
 class MetadataPanel:
-    def __init__(self, parent=None):
+    def __init__(self, parent: wx.Panel | None = None):
         wx_size = wx.Size(650, 275)
-        self.metadata = {}
+        self.metadata: dict[str, Any] = {}
+        self._metadata_wx_objects: dict[str, WxObject] = {}
         self.dialog = wx.Dialog(
             parent, id=wx.ID_ANY, title="Metadata Collection", size=wx_size, pos=wx.DefaultPosition
         )
@@ -35,7 +37,7 @@ class MetadataPanel:
 
     def _setup_metadata(self):
         notes_text = wx.StaticText(self.panel, label="Trial Notes:")
-        self.metadata["task_notes"] = WxObject(
+        self._metadata_wx_objects["task_notes"] = WxObject(
             object=wx.TextCtrl(
                 self.panel, size=wx.Size(520, 100), style=wx.TE_MULTILINE | wx.TE_LEFT
             ),
@@ -47,7 +49,7 @@ class MetadataPanel:
             notes_text, pos=(0, 0), span=(0, 1), flag=wx.ALIGN_CENTER_VERTICAL | wx.ALL, border=10
         )
         grid_sizer.Add(
-            self.metadata["task_notes"].object,
+            self._metadata_wx_objects["task_notes"].object,
             pos=(0, 1),
             span=(0, 4),
             flag=wx.ALIGN_LEFT | wx.ALL,
@@ -80,19 +82,18 @@ class MetadataPanel:
         )
         return row_sizer
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict[str, Any]:
         data = {}
-        for key in self.metadata:
-            if self.metadata[key].type == "text":
-                data[key] = self.metadata[key].object.GetValue()
-
-        logger.debug(data)
+        for key, wx_value in self._metadata_wx_objects.items():
+            if wx_value.type == "text":
+                data[key] = wx_value.object.GetValue()
+        logger.debug("metadata: %s", data)
         return data
 
     def continue_event(self, event):
         logger.debug("Continue Pressed")
         self.get_metadata()
-        self.data = self.get_metadata()
+        self.metadata = self.get_metadata()
         self.dialog.EndModal(wx.ID_OK)
         self.dialog.Destroy()
 

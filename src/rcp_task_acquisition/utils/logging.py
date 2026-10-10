@@ -4,37 +4,37 @@ import functools
 import itertools
 import logging
 import logging.handlers
+import math
 import multiprocessing
 import operator
+import os
 import signal
+import sys
 import threading
 import time
-import os
-from pathlib import Path
-from logging import LogRecord
-from queue import Empty
-from multiprocessing import Process
-from typing import Any, Callable, Optional
-
-import sys
-import verboselogs
-import coloredlogs
+from collections.abc import Callable
 from datetime import datetime
+from logging import LogRecord
+from multiprocessing import Process
+from pathlib import Path
+from queue import Empty
+from typing import Any, Optional, Dict
 
+import coloredlogs
+import verboselogs
 
 _LogLevelT = str | int
 
 _orig_logger_set_level = logging.Logger.setLevel
 
-#
 
 _already_setup = False
 _base_logger: logging.Logger = logging.root
 _multiprocess_log_queue: Optional[multiprocessing.Queue] = None
-_queue_listener: logging.handlers.QueueListener | None = None
+_queue_listener: "LogQueueListenerProc | None" = None
 _queue_handler: logging.Handler | None = None
-_console_handler: logging.StreamHandler | None = None
-_root_handler: logging.Logger | None = None
+_console_handler: "logging.StreamHandler | RelayHandler | None" = None
+_root_handler: "logging.Logger | WithThreadIdQueueHandler | None" = None
 
 
 DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
@@ -60,7 +60,7 @@ class DateTimeFormats:
     year_precise = f"%Y/%m/%d {hour_time_precise}"
 
 
-DEFAULT_FIELD_STYLES = dict(
+DEFAULT_FIELD_STYLES: Dict[str, Dict[str, Any]] = dict(
     asctime=dict(color="white", bold=False),
     hostname=dict(color="magenta"),
     levelname=dict(color="blue", bold=True),
@@ -70,7 +70,7 @@ DEFAULT_FIELD_STYLES = dict(
 )
 
 
-DEFAULT_LEVEL_STYLES = dict(
+DEFAULT_LEVEL_STYLES: Dict[str, Dict[str, Any]] = dict(
     spam=dict(color="white", faint=True),
     debug=dict(color="white", bold=False, faint=False),
     verbose=dict(color="white", bold=True),
@@ -148,6 +148,9 @@ class LogQueueListenerProc(Process):
         self._listener: WithThreadIdQueueListener
         self._console_handler: logging.StreamHandler
         self._file_handler: logging.FileHandler | None = None
+        self._buffer_previous: list[logging.LogRecord] = []
+        self._buffer_file_handler_interval_seconds = 5
+        self._lock: threading.Lock = None  # type: ignore  # mypy: disable-error-code=assignment
 
     def _send_command(self, cmd, data):
         self._command_executed.clear()
@@ -172,7 +175,7 @@ class LogQueueListenerProc(Process):
     @listener_command
     def add_file_handler(self, path, *, formatter: logging.Formatter | None = None):
         """Add file handler to path"""
-        logger.verbose("Adding file handler to %s", path)
+        logger.info("Adding file handler to %s", path)
         file_handler = logging.FileHandler(path)
         file_handler.addFilter(thread_id_filter)
         if formatter is None:
@@ -185,6 +188,14 @@ class LogQueueListenerProc(Process):
         file_handler.setLevel(
             verboselogs.SPAM + 1
         )  # writes everything up to DEBUG which reaches it
+        # before adding to listener handlers:
+        with self._lock:
+            save_buffer = self._buffer_previous
+            self._buffer_previous = []
+        logger.verbose("prepending %s records to %s", len(save_buffer), file_handler)
+        if file_handler is not None:
+            for r in save_buffer:
+                file_handler.handle(r)
         self._listener.handlers += (file_handler,)
         self._file_handler = file_handler
         logger.debug(
@@ -208,34 +219,41 @@ class LogQueueListenerProc(Process):
             logger.debug("new handlers: %s", self._listener.handlers)
             prev.close()
 
-    #
-
     def stop(self):
         self._command_queue.put(None)
         # os.kill(self.pid, signal.SIGINT)
         self.join()
 
+    def _add_to_buffer(self, rec):
+        with self._lock:
+            self._buffer_previous.append(rec)
+
     def run(self):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         cfg = self._log_config
-        #
         console_handler = self._console_handler = make_console_handler(cfg)
+
+        self._buffer_previous = []
+        self._lock = threading.Lock()
 
         # NB: start the listener as soon as possible
         listener = self._listener = WithThreadIdQueueListener(
             self._queue,
             console_handler,
             respect_handler_level=True,  # False,  # True,
+            add_to_buffer=self._add_to_buffer,
         )
         listener.start()
 
         base_logger = get_verbose_logger(cfg.base_logger_name)
         base_logger.addHandler(console_handler)
 
-        base_logger.setLevel(cfg.log_queue_proc_handler_level)
-        # base_logger.setLevel(logging.INFO)
-        base_logger.debug("Started log queue listener. config=%s", self._log_config)
+        proc_level = cfg.log_queue_proc_handler_level
+        if proc_level == logging.NOTSET:
+            proc_level = os.environ.get("RCP_LOG_PROCESS_LOG_LEVEL", logging.NOTSET)
+        base_logger.setLevel(proc_level)
+        base_logger.verbose("Started log queue listener. config=%s", self._log_config)
         # base_logger.setLevel(cfg.root_level)
 
         # NB: must be installed AFTER the listener is started
@@ -243,9 +261,22 @@ class LogQueueListenerProc(Process):
 
         command_q = self._command_queue
         command_executed = self._command_executed.set
+        p_next_check_buffer = -math.inf
+
         while True:
+            p_now = time.perf_counter()
+            if p_now > p_next_check_buffer:
+                t_now = time.time()
+                p_next_check_buffer += 2
+                idx = 0
+                with self._lock:
+                    for record in self._buffer_previous:
+                        if t_now - record.created < self._buffer_file_handler_interval_seconds:
+                            break
+                        idx += 1
+                    del self._buffer_previous[:idx]
             try:
-                data = command_q.get()
+                data = command_q.get(timeout=1)
             except Empty:
                 continue
             if data is None:
@@ -257,7 +288,7 @@ class LogQueueListenerProc(Process):
                 logger.warning("unknown command: %s", cmd)
                 command_executed()
                 continue
-            meth: Callable
+            meth: Callable  # type: ignore
             try:
                 meth(*args, **kwargs)
             except Exception as err:
@@ -292,7 +323,7 @@ def get_root_handler():
     return _root_handler
 
 
-def get_console_handler() -> None | logging.StreamHandler:
+def get_console_handler() -> "None | logging.StreamHandler | RelayHandler":
     return _console_handler
 
 
@@ -322,7 +353,7 @@ thread_id_filter = ThreadIdFilter()
 class PreciseTimeFormatter(logging.Formatter):
     """A logger formatter with time precision handling"""
 
-    converter = datetime.fromtimestamp
+    converter = datetime.fromtimestamp  # type: ignore
 
     def __init__(self, *args, time_precision: int = 3, **kwargs):
         self._time_precision = time_precision
@@ -340,7 +371,7 @@ class PreciseTimeFormatter(logging.Formatter):
         else:
             v = ""
         with_dot = ".%f" in datefmt
-        rep = f".%f" if with_dot and self._time_precision == 0 else "%f"
+        rep = ".%f" if with_dot and self._time_precision == 0 else "%f"
         datefmt = datefmt.replace(rep, v)
         s = ct.strftime(datefmt)
         return s
@@ -414,8 +445,9 @@ def repr_handler(obj: logging.Handler):
 
 
 class WithThreadIdQueueListener(logging.handlers.QueueListener):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, add_to_buffer, **kwargs):
         super().__init__(*args, **kwargs)
+        self._add_to_buffer = add_to_buffer
         self._2_sorter = []
         self._q_2_sorter_lock = threading.Lock()
         self._delay_buffer = (
@@ -431,7 +463,7 @@ class WithThreadIdQueueListener(logging.handlers.QueueListener):
             self._2_sorter = []
         return buff
 
-    def _sorter(self):
+    def _sorter(self) -> None:
         buffer: list[LogRecord] = []
         recheck_delay = self._recheck_delay
         p_next_sort = time.perf_counter() + recheck_delay
@@ -458,11 +490,13 @@ class WithThreadIdQueueListener(logging.handlers.QueueListener):
                     self._handle(record)
                     idx += 1
                 del buffer[:idx]
-            #
             if want_quit:
+                for record in buffer:
+                    self._handle(record)
                 break
 
     def _handle(self, record):
+        self._add_to_buffer(record)
         for handler in self.handlers:
             if not self.respect_handler_level:
                 process = True
@@ -547,7 +581,6 @@ def setup_logging(
         level_styles = DEFAULT_LEVEL_STYLES
     if field_styles is None:
         field_styles = DEFAULT_FIELD_STYLES
-    #
     cfg = LogConfig(
         base_logger_name=base_logger_name,
         logger_level=logger_level,
@@ -560,17 +593,14 @@ def setup_logging(
         console_handler_level=console_handler_level,
         # stream: TextIO = sys.stdout,
     )
-    #
     stop_multiproc_logging()
     #
     # pre-set these too verbose loggers level:
     for _limit_name, v in _limit_loggers_level.items():
         logging.getLogger(_limit_name).setLevel(v["level"])
-    #
     base_logger = get_verbose_logger(base_logger_name)
     # set the base logger level before creating possible dedicated subproc log handling:
     base_logger.setLevel(root_level)
-    #
     if multiprocess_enabled:
         # using queue created using the desired fork method context:
         multiproc_ctx = multiprocessing.get_context(fork_method)
@@ -587,7 +617,8 @@ def setup_logging(
         _console_handler.name = (
             "console_handler"  # "fake" it so that it will relay to the correct handler
         )
-        logging.Logger.setLevel = lambda self, lvl: listener.set_logger_level(self.name, lvl)
+        relay_to_listener = lambda self, level: listener.set_logger_level(self.name, level)
+        logging.Logger.setLevel = relay_to_listener  # type: ignore
     else:
         _console_handler = console_handler = make_console_handler(cfg)
         root_handler = _root_handler = console_handler
@@ -665,7 +696,7 @@ def get_verbose_logger(name: str | None = None) -> VerboseLoggerWithThreadId:
     return obj
 
 
-def get_log_file_location(*, log_base_dir: str = "", full_format: str):
+def get_log_file_location(*, log_base_dir: str | Path = "", full_format: str):
     if not log_base_dir:
         log_base_dir = Path.home().joinpath("Documents/RawDataLocal")
     else:
@@ -705,7 +736,6 @@ _prev_file_handler: logging.FileHandler | None = None
 def set_log_location(log_file: Path):
     global _prev_file_handler
     logger.verbose("Setting log file to %s", log_file)
-    #
     q_listener = get_log_queue_listener()
     if q_listener is not None:
         q_listener.switch_file_handler(log_file)
@@ -730,4 +760,4 @@ def set_log_location(log_file: Path):
 
 # finally:
 
-logger = get_verbose_logger(__name__)  # noqa
+logger = get_verbose_logger(__name__)

@@ -1,42 +1,49 @@
+import matplotlib
 import numpy as np
+import wx
 from matplotlib import patches
 
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import CropTupleType
 
 logger = get_logger(__name__)
 
 
 class Crop:
     def __init__(self):
-        self.croprec = []
-        self.croproi = []
+        self.croprec: list[matplotlib.patches.Rectangle] = []
+        self.croproi: list[CropTupleType] = []
         self.set_crop = None
 
-    def set_key_crop(self, axes, keyCode):
-        if self.cropAxes == None:
+    def set_key_crop(self, axes, keyCode) -> None:
+        if self.cropAxes is None:
             return
-        if keyCode == 314:  # LEFT
+        if keyCode == wx.WXK_LEFT:
             x = -1
             y = w = h = 0
-        elif keyCode == 316:  # RIGHT
+        elif keyCode == wx.WXK_RIGHT:
             x = 1
             y = w = h = 0
-        elif keyCode == 315:  # UP
+        elif keyCode == wx.WXK_UP:
             x = w = h = 0
             y = -1
-        elif keyCode == 317:  # DOWN
+        elif keyCode == wx.WXK_DOWN:
             x = w = h = 0
             y = 1
         # Increase size
-        elif keyCode == 65:  # a
+        elif keyCode == ord("A"):
             x = -2
             y = +2
             w = h = +4
         # Decrease size
-        elif keyCode == 83:  # s
+        elif keyCode == ord("S"):
             x = +2
             y = -2
             w = h = -4
+        else:
+            logger.warning("set_key_crop: unhandled keycode: %s", keyCode)
+            return
 
         ndx = axes.index(self.cropAxes)
         self.croproi[ndx][0] += x
@@ -44,12 +51,12 @@ class Crop:
         self.croproi[ndx][2] += y
         self.croproi[ndx][3] += h
 
-    def create_crop(self, cam_cfg, cam_list, axes):
+    def create_crop(self, cam_cfg, cam_list, axes) -> None:
         ndx = axes.index(self.cropAxes)
         s = cam_list[ndx]
         cam_cfg[s]["crop"] = np.ndarray.tolist(self.croproi[ndx])
 
-    def drawROI(self, axes):
+    def drawROI(self, axes) -> None:
         # if self.set_crop.GetValue():
         ndx = axes.index(self.cropAxes)
         self.croprec[ndx].set_x(self.croproi[ndx][0])
@@ -60,11 +67,11 @@ class Crop:
         #     self.croprec[ndx].set_alpha(0.6)
         # self.figure.canvas.draw()
 
-    def adjust_crop(self, event, axes, cam_list, cam_config):
+    def adjust_crop(self, event, axes, cam_list, cam_config: config.CamerasDictConfig) -> None:
         self.cropAxes = event.inaxes
         ndx = axes.index(event.inaxes)
         s = cam_list[ndx]
-        self.croproi[ndx] = cam_config[s]["crop"]
+        self.croproi[ndx] = cam_config[s].crop
         roi_x = event.xdata
         roi_y = event.ydata
         x_center = self.croproi[ndx][1] / 2
@@ -91,7 +98,7 @@ class Crop:
         logger.info(self.croproi)
         # self.drawROI()
 
-    def update_crop(self, index, axis, frmDims):
+    def update_crop(self, index, axis, frmDims) -> None:
         self.frmDims = frmDims
         cpt = self.croproi[index]
         rec = [
@@ -108,5 +115,5 @@ class Crop:
         ]
         self.croprec.append(axis.add_patch(rec[0]))
 
-    def add_crop(self, crop):
+    def add_crop(self, crop: CropTupleType) -> None:
         self.croproi.append(crop)

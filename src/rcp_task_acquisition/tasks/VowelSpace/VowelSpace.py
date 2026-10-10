@@ -93,6 +93,7 @@ class VowelSpace(bases.StimulusBase):
             CHUNK = 1024
             file = c.VS_PATHS[trial]
             import wave
+
             import pyaudio
 
             path = os.path.join(c.STIM_DIR, file)

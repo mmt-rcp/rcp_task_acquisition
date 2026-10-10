@@ -12,17 +12,14 @@ top_dir = Path(__file__).parent.parent.resolve()
 
 
 def _get_from_setuptools_scm():
-
     out = subprocess.check_output([sys.executable, "-m", "setuptools_scm"], cwd=top_dir)
-
     out = out.decode().strip()
     return out if len(out) > 0 else None
 
 
 __version__ = _get_from_setuptools_scm()
-logger.debug(__version__)
 
-if __version__ == None:
+if __version__ is None:
     try:
         __version__ = importlib_metadata.version("rcp_task_acquisition")
     except importlib_metadata.PackageNotFoundError:

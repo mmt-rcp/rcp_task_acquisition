@@ -2,7 +2,7 @@ import json
 
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.VerbalFluency.constants import (
     PHONEMIC_LIST,
     PHONEMIC_PHRASE,
@@ -15,7 +15,7 @@ from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class VerbalFluencyPanel(TrialPanel):
+class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.prompt = None
@@ -35,6 +35,9 @@ class VerbalFluencyPanel(TrialPanel):
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
         self.SetSizer(vertical_sizer)
+
+    def populate_metadata(self, metadata: dict):
+        metadata["trial_data"]["categories"] = self.add_metadata()
 
     def _setup_panel(self):
         self.phonemic_task = wx.StaticText(self, label="Choose Phonemic Category:")
@@ -182,7 +185,7 @@ class VerbalFluencyPanel(TrialPanel):
 
     def run_trial(self, count):
         self.seconds = 60
-        super().start_trial()
+        self.start_trial()
 
     def get_trials(self):
         logger.debug(f"get_trials: {'.'.join(self.phonemic_list)}, {self.semantic}, {self.value}")

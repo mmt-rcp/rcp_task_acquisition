@@ -1,13 +1,13 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.VowelSpace.constants import VIDEO_PATHS
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class VowelSpacePanel(TrialPanel):
+class VowelSpacePanel(TrialPanelWithInstructPlayback):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tap_hand = None

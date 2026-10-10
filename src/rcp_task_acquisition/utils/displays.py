@@ -1,7 +1,8 @@
 import time
 
 import numpy as np
-from psychopy.visual import GratingStim, Window
+from psychopy.visual import Window as PsychoPyWindow
+from psychopy.visual.grating import GratingStim
 
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -12,7 +13,7 @@ _lowStateTexture = np.full([16, 16], -1).astype(np.int8)
 _highStateTexture = np.full([16, 16], 1).astype(np.int8)
 
 
-class Window(Window):
+class Window(PsychoPyWindow):
     """ """
 
     # patchCoords=(600, -325, 200),

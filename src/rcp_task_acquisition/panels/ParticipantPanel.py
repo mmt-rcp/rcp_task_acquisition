@@ -1,19 +1,19 @@
-import os
+from pathlib import Path
 
 import wx
 import wx.lib.scrolledpanel as scrolled
 
 from rcp_task_acquisition.models.ParticipantDatabase import ParticipantDatabase
-from rcp_task_acquisition.utils.constants import BASEDIR
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
 logger = get_logger(__name__)
 
 
 class ParticipantPanel:
-    def __init__(self, parent=None):
+    def __init__(self, parent: wx.Panel | None = None, *, rcp_context: RcpRunContext):
+        self._rcp_context = rcp_context
         wx_size = wx.Size(525, 250)
-        self.metadata = {}
         self.dialog = wx.Dialog(
             parent, id=wx.ID_ANY, title="Add Participant", size=wx_size, pos=wx.DefaultPosition
         )
@@ -26,7 +26,11 @@ class ParticipantPanel:
         vertical_sizer.Add(self._setup_data(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 15)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 15)
         self.panel.SetSizerAndFit(vertical_sizer)
-        self.data = None
+        self.participant_id: str | None = None
+
+    @property
+    def database_path(self) -> Path:
+        return self._rcp_context.base_dir.joinpath("database")
 
     def _setup_data(self):
         id_text = wx.StaticText(self.panel, label="Id:")
@@ -106,8 +110,7 @@ class ParticipantPanel:
 
     def add_event(self, event):
         participantDB = ParticipantDatabase()
-        database = os.path.join(BASEDIR, "database")
-        participantDB.connect(database, "participants.db")
+        participantDB.connect(self.database_path, "participants.db")
 
         participant_id = self.id_box.GetValue()
         if participant_id == "":
@@ -131,7 +134,7 @@ class ParticipantPanel:
             error.Destroy()
 
         else:
-            self.data = participant_id
+            self.participant_id = participant_id
             self.dialog.Close()
             self.first_name_box.SetValue("")
             self.last_name_box.SetValue("")
@@ -148,8 +151,7 @@ class ParticipantPanel:
 
     def get_all_participants(self):
         participantDB = ParticipantDatabase()
-        database = os.path.join(BASEDIR, "database")
-        participantDB.connect(database, "participants.db")
+        participantDB.connect(self.database_path, "participants.db")
         participant_list = participantDB.get_display_list()
         participantDB.close()
         tuple_list = []
@@ -167,7 +169,6 @@ class ParticipantPanel:
 
     def remove_participant(self, participant_id):
         participantDB = ParticipantDatabase()
-        database = os.path.join(BASEDIR, "database")
-        participantDB.connect(database, "participants.db")
+        participantDB.connect(self.database_path, "participants.db")
         participantDB.remove_participant(participant_id)
         participantDB.close()

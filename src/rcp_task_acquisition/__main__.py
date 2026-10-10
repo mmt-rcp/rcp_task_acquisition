@@ -1,13 +1,17 @@
-import os
 import multiprocessing
+import os
 import shlex
 import sys
 import threading
+import time
 from pathlib import Path
 
 import wx
 import wx.adv
 
+from rcp_task_acquisition.utils import config, logging, trial, constants
+from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.task_acquisistion_version import __version__ as app_version
 
 # set up matplotlib to be compatible on commandline/spyder
 # import matplotlib
@@ -17,9 +21,10 @@ import wx.adv
 class App(wx.App):
     """RCP Task Acquisition"""
 
-    def __init__(self):
+    def __init__(self, rcp_context: RcpRunContext):
         self._action_thread: None | threading.Thread = None
         self._load_app_dialog: wx.Dialog
+        self._rcp_context = rcp_context
         super().__init__()
 
     def _show_start_dialog(self):
@@ -113,18 +118,23 @@ class App(wx.App):
         wx.CallAfter(self.OnLoadDone)  # must be executed in main UI thread
 
     def OnLoadDone(self):
-        panel = self.SwitchPanel()
+        panel = self.SwitchPanel(rcp_context=self._rcp_context)
         self._load_app_dialog.Hide()
         self._load_app_dialog.Close()
 
 
 def run_app():
-    from rcp_task_acquisition.utils.constants import get_rcp_config
-    from rcp_task_acquisition.utils import logging, trial
+    from rcp_task_acquisition import cmdline
 
-    cfg = get_rcp_config()
+    args = cmdline.parse_args()
 
-    console_start_log_level = os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO")
+    cfg_dir = args.config_dir
+    if cfg_dir is None:
+        cfg_dir = Path(constants.CODE_CONFIG_DIR_PATH)
+
+    console_start_log_level = (
+        os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO") if args.log_level is None else args.log_level
+    )
     logging.setup_logging(
         multiprocess_enabled=True,
         date_format=logging.DateTimeFormats.hour_time_precise,
@@ -132,10 +142,28 @@ def run_app():
         console_handler_level=console_start_log_level,
     )
 
-    unit_serial = cfg.get("unitRef")
-    log_file_path = trial.get_new_log_file(unit_serial=unit_serial)
+    logger = logging.get_verbose_logger("rcp")
+    logger.notice("Starting application.. version=%s", app_version)
+    logger.debug("start cmdline=%s", shlex.join(sys.argv))
+    logger.debug("start env:\n%s", "\n".join(f"{k}={v!r}" for k, v in os.environ.items()))
+
+    logger.info("Loading config from %s", cfg_dir)
+    try:
+        user_cfg_data, tasks_cfg_data = config.load_rcp_config(cfg_dir)
+        user_cfg = user_cfg_data[0]
+    except BaseException as err:
+        # save_err = err
+        user_cfg_data = tasks_cfg_data = None
+        logger.error("Could not load config from %s: %s", cfg_dir, err)
+        user_cfg = config.RcpUserConfig(unitRef="unitME", RawDataDir=constants.DEFAULT_RAW_DATA_DIR)
+
+    log_file_path = trial.get_new_log_file(
+        base_dir=user_cfg.RawDataDir,
+        unit_serial=user_cfg.unitRef,
+    )
     log_q_listener = logging.get_log_queue_listener()
     if log_q_listener is not None:
+        logger.verbose("adding file handler to %s", log_file_path)
         log_q_listener.add_file_handler(
             log_file_path,
             formatter=logging.PreciseTimeFormatter(
@@ -145,28 +173,32 @@ def run_app():
             ),
         )
 
-    logger = logging.get_verbose_logger("rcp")
-    logger.notice("Starting application..")
-
-    # todo
-    # logger.notice("Activated app_model with version %s", app_version)
-    logger.debug("start cmdline=%s", shlex.join(sys.argv))
-    logger.debug("start env:\n%s", "\n".join(f"{k}={v!r}" for k, v in os.environ.items()))
-
     rc = -1
     try:
-        app = App()
+        if user_cfg_data is None:
+            # logger.error("Exiting given config load failed.")
+            return 1
+
+        rcp_context = RcpRunContext(
+            config_dir=cfg_dir,
+            user_config=user_cfg,
+            tasks_config=tasks_cfg_data[0],
+        )
+
+        app = App(rcp_context=rcp_context)
         logger.info("Running main loop..")
         rc = app.MainLoop()
         logger.verbose("app main loop returned %s", rc)
         return rc
     except KeyboardInterrupt:
         logger.notice("interrupted by user / keyboard interrupt from:", exc_info=True)
-    except SystemExit:
+        rc = 1
+    except SystemExit as err:
         logger.notice("interrupted by system exit from:", exc_info=True)
+        rc = err.code or 1
     except BaseException as err:
         logger.exception("Fatal error: %s", err)
-        rc = 1
+        rc = 255
     finally:
         (logger.success if rc == 0 else logger.error)("exiting application with exitcode=%s", rc)
         logger.debug("closing log manager..")

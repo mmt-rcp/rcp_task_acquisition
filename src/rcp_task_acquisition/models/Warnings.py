@@ -1,7 +1,7 @@
 import enum
-from typing_extensions import Self
 
 import wx
+from typing_extensions import Self
 
 from rcp_task_acquisition.utils.logger import get_logger
 

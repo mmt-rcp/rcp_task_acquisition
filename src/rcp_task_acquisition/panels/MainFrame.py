@@ -10,31 +10,38 @@ import datetime
 import json
 import os
 import shutil
-import sys
 import time
+import typing
 from multiprocessing import Event, Queue, Value
 from pathlib import Path
-from ruamel.yaml import YAML
+from typing import Any
 
 import wx
 import wx.lib.dialogs
+from ruamel.yaml import YAML
 
 from rcp_task_acquisition.models.CameraFrontend import Camera
 from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.models.LabjackFrontend import LabjackFrontend
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
-from rcp_task_acquisition.models.StimulusThread import StimulusThread, Msg
-from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
+from rcp_task_acquisition.models.StimulusThread import Msg, StimulusThread
+from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
 from rcp_task_acquisition.panels.ControlsPanel import ControlsPanel
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
-from rcp_task_acquisition.utils import file_utils
-from rcp_task_acquisition.utils.constants import PLOT_LENGTH, RAW_DATA_DIR, VideoStatus
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
+from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
+from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
+from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
+from rcp_task_acquisition.utils import config, file_utils
+from rcp_task_acquisition.utils.constants import PLOT_LENGTH, VideoStatus
 from rcp_task_acquisition.utils.deidentify_dates import DateDeidentification
-from rcp_task_acquisition.utils.file_utils import read_config
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 from rcp_task_acquisition.utils.task_acquisistion_version import __version__
+from rcp_task_acquisition.utils.typing import HardwareListsType
 
 logger = get_logger(__name__)
 
@@ -42,28 +49,39 @@ logger = get_logger(__name__)
 class MainFrame(wx.Frame):
     """Contains the main GUI and button boxes"""
 
-    def __init__(self, parent=None):
-        self.task_cfg = None
-        self.task = None
-        self.cam_cfg = {}
-        self.trial_button = None
+    base_dir: Path
+    metapath: Path
+    sess_string: str
+    session: int
+    path_base: str
+    date_string: str
+    start_time: str = ""
+    start_time_utc: str = ""
+    is_hidden: bool = False
+
+    trial_panel: TrialPanel
+
+    def __init__(self, parent=None, *, rcp_context: RcpRunContext):
+        self._rcp_context = rcp_context
+        self.task: str = ""
+        self.launch_args: dict[str, Any] = {}
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
         self.press_count = Value(ctypes.c_int, 0)
         self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
-        self.hardware_list = [[], [], []]
         self.count = 0
-        self.results_list = []
+        self.frames: float = 0  # ~framerate
+        self.results_list: list[Any] = []
         self.serial_device = SerialDevice()
         self.cam_crop = Crop()
         # setting up screen for stimulus thread
-        self.user_cfg = file_utils.read_config("userdata.yaml")
         # screen_settings = self.user_cfg["screen_settings"]
+        self.labjack_scan_rate: float | None = None
 
         self.warning = WarningHandler()
 
-        # Settting the GUI size and panels design
+        # Setting the GUI size and panels design
         displays = tuple(
             wx.Display(i) for i in range(wx.Display.GetCount())
         )  # Gets the number of displays
@@ -74,7 +92,7 @@ class MainFrame(wx.Frame):
         # index = 1 # For display 1.
         if len(screenSizes) != 2:
             self.warning.update_error(WarnCat.DISPLAY).display()
-            sys.exit()
+            # sys.exit()
         index = 0
         psychopy_monitor = 1
         if screenSizes[0][0] > screenSizes[1][0]:
@@ -82,7 +100,6 @@ class MainFrame(wx.Frame):
             index = 1
             psychopy_monitor = 0
         screenW = screenSizes[index][0]
-        screenSizes[index][1]
         self.gui_size = (int(screenW * 0.9), int(screenW * 0.45))
         # self.gui_size = (screenW-90, screenH-55)
         super().__init__(
@@ -159,6 +176,7 @@ class MainFrame(wx.Frame):
             self.contrast_test,
             self.focus_test,
             self.participant_monitor,
+            rcp_context=rcp_context,
         )
 
         self.init.Bind(wx.EVT_TOGGLEBUTTON, self.initCams)
@@ -183,7 +201,6 @@ class MainFrame(wx.Frame):
             PLOT_LENGTH,
             self.ctrl_panel,
             self.labjack_timer,
-            self.hardware_list,
             self.button_pressed,
             self.press_count,
             self.cam_test,
@@ -204,7 +221,6 @@ class MainFrame(wx.Frame):
         self.dtype = "uint8"
         self.size = self.frmDims[1] * self.frmDims[3] * 3
         self.shape = [self.frmDims[1], self.frmDims[3], 3]
-        self.array4feed = []
 
         self.canvas.mpl_connect("button_press_event", self.onClick)
         self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPressed)
@@ -221,10 +237,9 @@ class MainFrame(wx.Frame):
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
-        self.threads = []
-        self.msgq = Queue()
+        self.msgq: Queue[Any] = Queue()
         self.finish = Value(ctypes.c_byte, 0)
-        self.resultsq = Queue()
+        self.resultsq: Queue[Any] = Queue()
         self.video_lock = Event()
         self.thread = StimulusThread(
             self.msgq,
@@ -239,6 +254,7 @@ class MainFrame(wx.Frame):
             self.resultsq,
             self.stimulus_timer,
             self.video_lock,
+            rcp_context=rcp_context,
         )
         self.startingSession = False
         self.rest_timer = wx.Timer(self)
@@ -250,16 +266,19 @@ class MainFrame(wx.Frame):
 
         self.Bind(wx.EVT_SIZE, self.on_resize)
 
-    def on_resize(self, event):
+    @property
+    def trial_button(self) -> wx.ToggleButton:
+        return self.trial_panel.continue_button
+
+    def on_resize(self, event: wx.Event) -> None:
         wx.CallAfter(self.image_panel.reset_sizing)
         event.Skip()
         # pass
 
-    def run_task(self, event):
+    def run_task(self, event: wx.Event) -> None:
         self.Enable()
         if self.task_button.GetValue():
             self.task_active = True
-            self.trial_dict = {}
             self.start_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
             self.start_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.count = 0
@@ -281,7 +300,7 @@ class MainFrame(wx.Frame):
             self.startingSession = True
             self.task_button.SetLabel("End Task")
             # self.hardware_button.Enable(False)
-            if self.task == "vowel_space":
+            if isinstance(self.trial_panel, VowelSpacePanel):
                 self.msgq.put(Msg.VOWEL_SPACE)
                 trial_info = self.resultsq.get()
                 trial, syllable, finish = trial_info.split(",")
@@ -323,7 +342,7 @@ class MainFrame(wx.Frame):
             self.labjack_timer.Start(200)
             self.rest_timer.Stop()
 
-    def trial_event(self, event):
+    def trial_event(self, event: wx.Event) -> None:
         logger.debug(f"in trial_event: {self.video_status.value}")
         if self.trial_button.GetValue():
             logger.debug("in trial button")
@@ -345,7 +364,7 @@ class MainFrame(wx.Frame):
             self.finish.value = 0
             logger.debug("started timer")
 
-            if self.task == "verbal_fluency" and self.trial_panel.first:
+            if isinstance(self.trial_panel, VerbalFluencyPanel) and self.trial_panel.first:
                 self.count = 0
                 self.trial_button.SetLabel("Start Trial")
                 self.trial_panel.switch_panel()
@@ -374,12 +393,12 @@ class MainFrame(wx.Frame):
             self.finish.value = 2
 
             self.rest_timer.Stop()
-            if self.task == "sara":
+            if isinstance(self.trial_panel, SaraPanel):
                 self.trial_panel.show_scoring()
-            elif self.task == "verbal_fluency":
+            elif isinstance(self.trial_panel, VerbalFluencyPanel):
                 self.trial_panel.update_values()
                 logger.debug("ending verbal fluency")
-            elif self.task == "vowel_space":
+            elif isinstance(self.trial_panel, VowelSpacePanel):
                 self.trial_panel.repeat_trial.Enable(True)
                 self.trial_button.SetLabel("Repeat Trial")
                 self.trial_panel.repeat_trial.SetValue(False)
@@ -402,7 +421,8 @@ class MainFrame(wx.Frame):
 
             logger.debug("ending entire trial")
 
-    def next_trial(self, event):
+    def next_trial(self, event: wx.Event) -> None:
+        assert isinstance(self.trial_panel, VowelSpacePanel)
         self.msgq.put(Msg.UPDATE_DATA)
         str(self.trial_panel.get_result())
         self.msgq.put("False")  ## ??
@@ -416,11 +436,12 @@ class MainFrame(wx.Frame):
         if finish:
             self.trial_panel.is_finish()
 
-    def repeat_event(self, event):
+    def repeat_event(self, event: wx.Event) -> None:
+        assert isinstance(self.trial_panel, VowelSpacePanel)
         self.trial_panel.repeat_event()
         self.trial_event(event)
 
-    def update_intertrial(self, event):
+    def update_intertrial(self, event: wx.Event) -> None:
         logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
         if self.video_status.value == VideoStatus.FINISHED.value:
             logger.debug("in finish")
@@ -449,11 +470,15 @@ class MainFrame(wx.Frame):
             self.msgq.put(Msg.SEND_METADATA)
             self.update_task_metadata()
 
-    def play_instructions(self, event):
-        if event.GetEventObject().GetValue():
-            if type(self.trial_panel.get_instructions()) is str:
+    def play_instructions(self, event: wx.Event) -> None:
+        geo = event.GetEventObject()
+        assert isinstance(geo, wx.ToggleButton)
+        if geo.GetValue():
+            instructs = self.trial_panel.get_instructions()
+            if isinstance(instructs, str):
                 result = ""
             else:
+                # NB: get_instruction***s*** (above) vs get_instruction here:
                 result = self.trial_panel.get_instruction(self.count)
             self.msgq.put(Msg.PLAY_INSTRUCTIONS)
             self.msgq.put(result)
@@ -468,15 +493,17 @@ class MainFrame(wx.Frame):
             self.rest_timer.Stop()
             logger.debug(f"done stopping: {self.video_status.value}")
 
-    def pause_instructions(self, event):
-        if event.GetEventObject().GetValue():
+    def pause_instructions(self, event: wx.Event) -> None:
+        geo = event.GetEventObject()
+        assert isinstance(geo, wx.ToggleButton)
+        if geo.GetValue():
             self.video_status.value = VideoStatus.PAUSED.value
             self.trial_panel.pause_video()
         else:
             self.video_status.value = VideoStatus.START_FROM_PAUSE.value
             self.trial_panel.resume_video()
 
-    def set_focus(self, event):
+    def set_focus(self, event: wx.Event) -> None:
         if self.focus_test.GetValue():
             self.contrast_test.Enable(False)
             self.cam_test.value = True
@@ -488,7 +515,7 @@ class MainFrame(wx.Frame):
             self.cams.update_focus(False)
             self.cam_test.value = False
 
-    def set_contrast(self, event):
+    def set_contrast(self, event: wx.Event) -> None:
         if self.contrast_test.GetValue():
             self.focus_test.Enable(False)
             self.cam_test.value = True
@@ -500,9 +527,10 @@ class MainFrame(wx.Frame):
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
-    def liveFeed(self, event):
-        clicked_button = event.GetEventObject()
-        button_label = clicked_button.GetLabel()
+    def liveFeed(self, event: wx.Event) -> None:
+        geo = event.GetEventObject()
+        assert isinstance(geo, wx.ToggleButton)
+        button_label = geo.GetLabel()
         if button_label == "Abort":
             self.rec.SetValue(False)
             self.recordCam(event)
@@ -518,7 +546,9 @@ class MainFrame(wx.Frame):
                 self.Enable()
                 self.hardware_test = True
                 self.hardware_test_panel.Show()
-                if not self.task_active:
+                if self.task_active:
+                    is_success = True
+                else:
                     is_success = self.lj.start_labjack()
                 self.msgq.put(Msg.HARDWARE_TEST)
                 if not is_success:
@@ -567,7 +597,7 @@ class MainFrame(wx.Frame):
             buttons = [self.set_crop, self.rec, self.minRec, self.secRec, self.update_settings]
             self.enable_group(buttons, False)
 
-    def hardwareFeed(self, event):
+    def hardwareFeed(self, event: wx.Event) -> None:
         # clicked_button = event.GetEventObject()
         # button_label = clicked_button.GetLabel()
         self.Enable()
@@ -628,124 +658,122 @@ class MainFrame(wx.Frame):
             self.update_settings.Enable(True)
             self.task_button.Enable(True)
 
-    def create_metadata(self):
-        self.meta, _ruamelFile = file_utils.metadata_template()
-
+    def create_metadata(self) -> None:
+        user_cfg = self._rcp_context.user_config
+        meta, _ruamelFile = file_utils.metadata_template()
         date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
         # self.meta['screen_settings'] = self.user_cfg['screen_settings']
-        meta_name = "{}_{}_{}_metadata.yaml".format(
-            date_string,
-            self.user_cfg["unitRef"],
-            self.sess_string,
-        )
-        self.metapath = os.path.join(self.sess_dir, meta_name)
-        cameras = {}
-        self.meta["version"] = str(__version__)
-        self.meta["actual_scan_rate"] = self.labjack_scan_rate
+        meta_name = f"{date_string}_{user_cfg.unitRef}_{self.sess_string}_metadata.yaml"
+        self.metapath = Path(self.sess_dir, meta_name)
+        cameras_meta = {}
+        meta["version"] = str(__version__)
+        meta["actual_scan_rate"] = self.labjack_scan_rate
 
-        for ndx, s in enumerate(self.cams.cam_dict):
-            cam_d = self.cams.cam_dict[s]
-            cfg = self.cam_cfg[cam_d.name]
-            cameras[cam_d.name] = {
-                "serial": cfg["serial"],
-                "ismaster": cfg["ismaster"],
-                "crop": cfg["crop"],
-                "bin": cfg["bin"],
+        for cam_d in self.cams.cam_dict.values():
+            cfg = user_cfg.cameras[cam_d.name]
+            cameras_meta[cam_d.name] = {
+                "serial": cfg.serial,
+                "ismaster": cfg.ismaster,
+                "crop": cfg.crop,
+                "bin": cfg.bin,
                 "nickname": cam_d.name,
                 "actual_framerate": cam_d.actual_framerate,
                 "actual_exposure": cam_d.exposure,
             }
-        self.meta["cameras"] = cameras
-        self.meta["unitRef"] = self.user_cfg["unitRef"]
-        self.meta["Collection"] = "info"
-        self.meta["hardware"] = self.user_cfg["hardware"]
+        meta["cameras"] = cameras_meta
+        meta["unitRef"] = user_cfg.unitRef
+        meta["Collection"] = "info"
+        meta["hardware"] = config.to_raw_recursive(user_cfg.hardware)
 
-        self.meta["StartTime_Local"] = self.start_time
-        self.meta["StartTime_UTC"] = self.start_time_utc
-        self.meta["administrator_id"] = self.launch_args["administrator_id"]
-        self.meta["participant_id"] = self.launch_args["participant_id"]
-        self.meta["participant_details"] = self.launch_args["participant_detail"]
+        meta["StartTime_Local"] = self.start_time
+        meta["StartTime_UTC"] = self.start_time_utc
+        meta["administrator_id"] = self.launch_args["administrator_id"]
+        meta["participant_id"] = self.launch_args["participant_id"]
+        meta["participant_details"] = self.launch_args["participant_detail"]
 
-        self.meta["task"] = self.task
-        self.meta["task_settings"] = self.task_cfg[self.task]["settings"]
+        meta["task"] = self.task
+        meta["task_settings"] = list(
+            self._rcp_context.tasks_config[self.task].settings
+        )  # nb: use list to ensure if modified it won't modify the one in config.
 
         # if self.task == "verbal_fluency":
         #     self.meta["trial_data"]["categories"] = self.trial_panel.add_metadata()
         # if self.task == "sara":
         #     self.meta["trial_data"] = self.trial_panel.add_metadata()
 
-        file_utils.write_metadata(self.meta, self.metapath)
+        file_utils.write_metadata(meta, self.metapath)
 
-    def finalize_metadata(self):
-        metadata_notes = MetadataPanel()
-
-        if metadata_notes.show() == wx.ID_OK:
+    def finalize_metadata(self) -> None:
+        metadata_panel = MetadataPanel()
+        user_cfg = self._rcp_context.user_config
+        if metadata_panel.show() == wx.ID_OK:
             yaml = YAML()
-            with open(Path(self.metapath), "r", encoding="utf-8") as file:
+            with self.metapath.open("r", encoding="utf-8") as file:
                 metadata = yaml.load(file)
 
             metadata["actual_scan_rate"] = self.labjack_scan_rate
 
-            for data in metadata_notes.data:
-                metadata[data] = metadata_notes.data[data]
+            for data in metadata_panel.metadata:
+                metadata[data] = metadata_panel.metadata[data]
                 logger.debug(data)
             metadata["EndTime_Local"] = self.end_time
             metadata["EndTime_UTC"] = self.end_time_utc
-            if self.task == "sara":
+            if isinstance(self.trial_panel, SaraPanel):
                 metadata["trial_data"] = self.trial_panel.add_metadata()
 
-            with open(Path(self.metapath), "w", encoding="utf-8") as f:
+            with self.metapath.open("w", encoding="utf-8") as f:
                 yaml.dump(metadata, f)
 
-            deidentify = DateDeidentification(self.user_cfg)
+            deidentify = DateDeidentification(user_cfg)
             deidentify.deidentify_one_session(self.sess_dir)
         else:
             # remove entire directory
             logger.debug(self.sess_dir)
             shutil.rmtree(self.sess_dir)
 
-    def update_task_metadata(self):
+    def update_task_metadata(self) -> None:
         yaml = YAML()
         params = None
         try:
             params = json.loads(self.resultsq.get())
         except Exception as e:
             logger.error(f"update task metadata error: {e}")
-        with open(Path(self.metapath), "r", encoding="utf-8") as file:
+        with self.metapath.open("r", encoding="utf-8") as file:
             metadata = yaml.load(file)
-
+        logger.debug("%s yaml loaded: %r", self.metapath, metadata)
         metadata["trial_data"] = params
-        if self.task == "verbal_fluency":
-            metadata["trial_data"]["categories"] = self.trial_panel.add_metadata()
-        if self.task == "sara":
-            metadata["trial_data"] = self.trial_panel.add_metadata()
+        self.trial_panel.populate_metadata(metadata)
 
-        with open(Path(self.metapath), "w", encoding="utf-8") as f:
+        with self.metapath.open("w", encoding="utf-8") as f:
             yaml.dump(metadata, f)
 
-    def create_file(self):
+    def create_file(self) -> None:
+        ctx = self._rcp_context
+        user_cfg = ctx.user_config
+        unit_ref = user_cfg.unitRef
         date_string = datetime.datetime.now().strftime("%Y%m%d")
-        self.base_dir = os.path.join(RAW_DATA_DIR, date_string, self.user_cfg["unitRef"])
-        if not os.path.exists(self.base_dir):
-            os.makedirs(self.base_dir)
-
-        prev_expt_list = [name for name in os.listdir(self.base_dir) if name.startswith("session")]
+        base_dir = Path(ctx.user_config.RawDataDir).joinpath(date_string, unit_ref)
+        self.base_dir = base_dir
+        if not base_dir.exists():
+            base_dir.mkdir(parents=True, exist_ok=True)
+        prev_expt_list = [v.name for v in base_dir.glob("session*")]
         file_count = len(prev_expt_list) + 1
         self.session = file_count
         self.sess_string = "%s%03d" % ("session", file_count)
-        self.sess_dir = os.path.join(self.base_dir, self.sess_string)
-        if not os.path.exists(self.sess_dir):
-            os.makedirs(self.sess_dir)
+        self.sess_dir = Path(self.base_dir, self.sess_string)
+        if not self.sess_dir.exists():
+            self.sess_dir.mkdir(parents=True, exist_ok=True)
         self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-        self.path_base = f"{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}"
+        self.path_base = f"{self.date_string}_{unit_ref}_{self.sess_string}"
         # msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
 
-    def initCams(self, event):
-        if self.init.GetValue() == True:
+    def initCams(
+        self, event: wx.Event
+    ) -> bool:  # NB: but return value unused/unchecked in all callers
+        if self.init.GetValue():
             success = self.cams.initialize(event)
-
             if not success:
-                return
+                return False
             self.init.SetLabel("Release")
             self.exposure_button.Enable(True)
             self.play.Enable(True)
@@ -787,10 +815,10 @@ class MainFrame(wx.Frame):
             # self.cams.deinitThreads()
         return True
 
-    def tens_pulse(self, event):
+    def tens_pulse(self, event: wx.Event) -> None:
         self.serial_device.write("A")
 
-    def quitButton(self, event):
+    def quitButton(self, event: wx.Event) -> None:
         """
         Quits the GUI
         """
@@ -810,7 +838,7 @@ class MainFrame(wx.Frame):
         self.statusbar.SetStatusText("")
         self.Destroy()
 
-    def Hide(self, event):
+    def HideWithEvent(self, event: wx.Event) -> None:
         self.is_hidden = True
         self.lj.stop_labjack()
 
@@ -834,36 +862,38 @@ class MainFrame(wx.Frame):
         if self.init.GetValue():
             self.init.SetValue(False)
             self.initCams(event)
-        super().Hide()
-        return True
+        self.Hide()
 
     def update_crop(self, event):
         value = bool(self.crop.GetValue())
         self.cams.update_crop(value)
 
-    def recordCam(self, event):
+    def recordCam(self, event: wx.Event) -> None:
+        ctx = self._rcp_context
+        user_cfg = ctx.user_config
         if self.rec.GetValue() or self.task_button.GetValue():
             if self.recording:
                 return
             self.recording = True
 
             if self.calibrate:
-                calibrate_path = Path(RAW_DATA_DIR).parent
+                calibrate_path = Path(user_cfg.RawDataDir).parent
                 date_string = datetime.datetime.now().strftime("%Y%m%d")
 
-                self.base_dir = os.path.join(calibrate_path, "CalibrationData", date_string)
-                if not os.path.exists(self.base_dir):
-                    os.makedirs(self.base_dir)
+                base_dir = self.base_dir = Path(calibrate_path, "CalibrationData", date_string)
+                if not base_dir.exists():
+                    base_dir.mkdir(parents=True, exist_ok=True)
 
-                prev_expt_list = [name for name in os.listdir(self.base_dir)]
+                prev_expt_list = [p.name for p in base_dir.glob("*")]
+                # prev_expt_list = [name for name in os.listdir(self.base_dir)]
                 file_count = len(prev_expt_list) + 1
                 self.session = file_count
                 self.sess_string = "%s_%03d" % (self.task, file_count)
-                self.sess_dir = os.path.join(self.base_dir, self.sess_string)
-                if not os.path.exists(self.sess_dir):
-                    os.makedirs(self.sess_dir)
+                self.sess_dir = Path(self.base_dir, self.sess_string)
+                if not self.sess_dir.exists():
+                    self.sess_dir.mkdir(parents=True, exist_ok=True)
                 self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-                self.path_base = f"{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}"
+                self.path_base = f"{self.date_string}_{user_cfg.unitRef}_{self.sess_string}"
                 self.task_button.SetLabel("Stop Recording")
                 self.trial_panel.reset(0)
                 self.trial_panel.show()
@@ -903,25 +933,38 @@ class MainFrame(wx.Frame):
                             os.remove(full_path)
                 # remove any files that arent the calibraated files
 
-    def onClick(self, event):
+    def onClick(self, event: wx.Event) -> None:
         if self.set_crop.GetValue():
-            self.cam_crop.adjust_crop(event, self.axes, self.camStrList, self.cam_cfg)
+            cameras = self._rcp_context.user_config.cameras
+            self.cam_crop.adjust_crop(
+                event, self.axes, [cam_item.value for cam_item in cameras], cameras
+            )
             self.cam_crop.drawROI(self.axes)
             self.figure.canvas.draw()
 
-    def OnKeyPressed(self, event):
+    def OnKeyPressed(self, event: wx.Event) -> None:
         keyCode = event.GetKeyCode()
         # Save the new ROI parameters
         if keyCode in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+            pass
             # Write the new parameters to the user config file
-            if self.set_crop.GetValue():
-                self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
-            file_utils.write_config(self.user_cfg)
-            self.set_crop.SetValue(False)
-            self.widget_panel.Enable(True)
-            self.play.SetFocus()
+            # TODO: dead: refering to attributes never assigned
+            # if self.set_crop.GetValue():
+            #     self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
+            # file_utils.write_config(self.user_cfg)
+            # self.set_crop.SetValue(False)
+            # self.widget_panel.Enable(True)
+            # self.play.SetFocus()
         # Modify existing ROI parameters
-        elif self.set_crop.GetValue() == True and keyCode in (314, 316, 315, 317, 65, 83, 127):
+        elif self.set_crop.GetValue() == True and keyCode in (
+            wx.WXK_UP,
+            wx.WXK_DOWN,
+            wx.WXK_LEFT,
+            wx.WXK_RIGHT,
+            ord("A"),
+            ord("S"),
+            wx.WXK_DELETE,
+        ):
             self.cam_crop.set_key_crop(self.axes, keyCode)
             self.cam_crop.drawROI(self.axes)
             self.figure.canvas.draw()
@@ -929,54 +972,54 @@ class MainFrame(wx.Frame):
         else:
             event.Skip()
 
-    def show(self, launch_args, event):
+    def show(self, launch_args: dict[str, Any], event: wx.Event) -> None:
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
         self.cam_test.value = False
-        self.user_cfg = file_utils.read_config("userdata.yaml")
-        self.task_cfg = read_config("taskconfig.yaml")
-        self.task = launch_args["task"].strip()
+        task = self.task = launch_args["task"].strip()
         self.msgq.put(Msg.UPDATE_TASK)
-        self.msgq.put(launch_args["task"].strip())
+        self.msgq.put(task)
         self.launch_args = launch_args
-        args = {}
         self.video_status.value = VideoStatus.NOT_PLAYING.value
-        self.task_metadata = launch_args
-        self.cam_cfg = {}
-        self.frames = None
-        if not self.task or self.task not in self.task_cfg:
-            args = self.user_cfg["hardware"]
-            self.cam_cfg = self.user_cfg["cameras"]
+        tasks_cfg = self._rcp_context.tasks_config
+        user_cfg = self._rcp_context.user_config
+        cams_cfg = user_cfg.cameras
+        args: config.HardwareDictConfig
+        if not self.task or self.task not in tasks_cfg:
+            args = user_cfg.hardware
             self.widget_panel.show_cams()
-            self.frames = self.user_cfg["cam_config"]["framerate"]
+            self.frames = user_cfg.cam_config.framerate
         else:
-            hardware_list = self.task_cfg[self.task]["settings"]
+            cams_cfg = config.CamerasDictConfig()
+            args = config.HardwareDictConfig()
+            self.frames = 0
+            task_cfg = tasks_cfg[self.task]
             self.widget_panel.hide_cams()
-            for hardware in hardware_list:
-                if hardware in self.user_cfg["hardware"]:
-                    args[hardware] = self.user_cfg["hardware"][hardware]
-                elif hardware in self.user_cfg["cameras"]:
-                    self.cam_cfg[hardware] = self.user_cfg["cameras"][hardware]
-        logger.debug(f"args: {args}")
-        hardware_tuple = [
-            (arg, args[arg]["labjack_input"], "", args[arg]["voltage_range"]) for arg in args
-        ]
-        sorted_hardware = sorted(hardware_tuple, key=lambda item: item[1])
-        hardware_lists = list(zip(*sorted_hardware))
-        self.hardware_list = hardware_lists
-        logger.debug(hardware_lists)
-        self.cams.setup(self.cam_cfg, self.user_cfg["cam_config"]["is_unconnected"], self.frames)
+            for hard_name in task_cfg.settings:
+                if hard_name in user_cfg.hardware:
+                    args[hard_name] = user_cfg.hardware[hard_name]
+                elif hard_name in user_cfg.cameras:
+                    cams_cfg[hard_name] = user_cfg.cameras[hard_name]
+                else:
+                    logger.warning(
+                        "Task %s: unknown hardware name in task settings: %s", task, hard_name
+                    )
+        # logger.debug(f"args: {args}")
+        hard_gen = ((arg.value, v.labjack_input, "", v.voltage_range) for arg, v in args.items())
+        sorted_hardware: tuple[tuple[str, str, str, tuple[float, float]], ...] = tuple(
+            sorted(hard_gen, key=lambda item: item[1])
+        )
+        hardware_lists: HardwareListsType = typing.cast(
+            HardwareListsType, tuple(zip(*sorted_hardware))
+        )
+        # logger.debug(hardware_lists)
+        self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.frames)
         self.init.SetValue(True)
-        self.widget_panel.update_task(self.task)
+        self.widget_panel.update_task(task)
         self.trial_panel = self.widget_panel.get_trial_panel()
-        self.trial_button = self.trial_panel.continue_button
-        try:
-            self.repeat_button = self.trial_panel.repeat_trial
-            self.repeat_button.Bind(wx.EVT_TOGGLEBUTTON, self.repeat_event)
-        except Exception as err:
-            logger.debug("Error binding toggle button: %s", err, exc_info=True)
-        self.trial_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
+        self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
+        self.trial_panel.repeat_trial.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
         self.initCams(event)
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
@@ -993,24 +1036,23 @@ class MainFrame(wx.Frame):
             self.task_button.Enable(False)
         else:
             self.task_button.Enable(True)
-        if self.video_start != None:
+        if self.video_start is not None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
             self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
-            if self.task == "diadochokinesis" or self.task == "vowel_space":
+            if isinstance(self.trial_panel, (DdkPanel, VowelSpacePanel)):
                 self.trial_panel.syllable_start_video_button.Bind(
                     wx.EVT_TOGGLEBUTTON, self.play_instructions
                 )
                 self.trial_panel.syllable_pause_video_button.Bind(
                     wx.EVT_TOGGLEBUTTON, self.pause_instructions
                 )
-            if self.task == "vowel_space":
+            if isinstance(self.trial_panel, VowelSpacePanel):
                 self.trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
         self.participant_monitor.update_screen()
         self.trial_panel.add_timer(self.stimulus_timer)
-        super().Show()
-        return True
+        self.Show()  # NB: we are in the method `def show(...)` : lower-case s
 
-    def disable_gui(self, event):
+    def disable_gui(self, event: wx.Event) -> None:
         handle = event.GetEventObject()
         if handle == self.task_button:
             self.Bind(wx.EVT_TIMER, self.run_task, self.disable_timer)
@@ -1021,10 +1063,10 @@ class MainFrame(wx.Frame):
         self.Disable()
         self.disable_timer.StartOnce(80)
 
-    def labjack_stream(self, event):
+    def labjack_stream(self, event: wx.Event) -> None:
         self.lj.labjack_stream(event)
         self.Enable()
 
-    def enable_group(self, buttons, value):
+    def enable_group(self, buttons: list[wx.ToggleButton], value: bool):
         for button in buttons:
             button.Enable(value)

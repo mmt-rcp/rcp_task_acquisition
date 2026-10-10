@@ -1,7 +1,9 @@
+import matplotlib.axes, matplotlib.text
 import wx
 import wx.lib.dialogs
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+from pyarrow.lib import Sequence
 
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -9,8 +11,9 @@ logger = get_logger(__name__)
 
 
 class ImagePanel(wx.Panel):
-    def __init__(self, parent, **kwargs):
-
+    def __init__(self, parent: wx.Window, **kwargs):
+        self.axes: list[matplotlib.axes.Axes] = []
+        self.texts: list[matplotlib.text.Text] = []
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
         self.figure = Figure()
         self.canvas = FigureCanvas(self, -1, self.figure)
@@ -19,7 +22,7 @@ class ImagePanel(wx.Panel):
         self.SetSizer(self.sizer)
         self.Fit()
 
-    def updateImage(self, gui_size, **kwargs):
+    def updateImage(self, gui_size, **kwargs) -> None:
         """
         Switching to a toggle method so there will always be only 2 cameras at a time
         """
@@ -38,7 +41,7 @@ class ImagePanel(wx.Panel):
         for c in range(int(column_count)):
             self.axes.append(self.figure.add_subplot(1, column_count, c + 1, frameon=True))
 
-            self.axes[c].set_position([row_pos, 0.005, 0.49, 0.99])
+            self.axes[c].set_position((row_pos, 0.005, 0.49, 0.99))
 
             row_pos += row_inc
             self.axes[c].xaxis.set_visible(False)
@@ -60,13 +63,13 @@ class ImagePanel(wx.Panel):
         self.Refresh()
         self.Update()
 
-    def getfigure(self):
+    def getfigure(self) -> tuple[Figure, list[matplotlib.axes.Axes], FigureCanvas]:
         """
         Returns the figure, axes and canvas
         """
-        return (self.figure, self.axes, self.canvas)
+        return self.figure, self.axes, self.canvas
 
-    def update_names(self, cam_name_list):
+    def update_names(self, cam_name_list: list[str]) -> None:
         for index, axis in enumerate(self.axes):
             self.texts[index].remove()
             props = {

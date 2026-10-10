@@ -12,7 +12,7 @@ class ParticipantDatabase:
         self.connection = None
         self.cursor = None
 
-    def connect(self, filepath, filename):
+    def connect(self, filepath: Path, filename):
         db_path = Path(filepath)
         db_path.mkdir(parents=True, exist_ok=True)
         file = os.path.join(db_path, filename)
@@ -49,6 +49,7 @@ class ParticipantDatabase:
         self.connection.commit()
 
     def get_participant(self, column, condition):
+        # unused
         select = f"SELECT * FROM Participants WHERE {column} = {condition};"
         participant = self.cursor.execute(select).fetchall()
         return participant

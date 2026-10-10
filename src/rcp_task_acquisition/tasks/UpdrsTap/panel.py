@@ -1,13 +1,13 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class FingerTapPanel(TrialPanel):
+class FingerTapPanel(TrialPanelWithInstructPlayback):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tap_hand = "left"

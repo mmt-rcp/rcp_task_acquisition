@@ -1,22 +1,20 @@
 import glob
 import os
-import platform
 import shutil
 from datetime import datetime
 from pathlib import Path, PurePath
 
-from rcp_task_acquisition.utils import win_os
+from rcp_task_acquisition.utils import config, win_os
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 import rcp_task_acquisition.utils.file_utils as fu
-from rcp_task_acquisition.utils.constants import CONFIG_FILE_PATH
 
 
 def set_all_times(path, dt):
     if win_os.win32con is None:
-        raise RuntimeError(f"Cannot yet use elsewhere than on Windows")
+        raise RuntimeError("Cannot yet use elsewhere than on Windows")
 
     pywintypes = win_os.pywintypes
     win32con = win_os.win32con
@@ -54,9 +52,9 @@ class SimpleLCG:
 
 
 class DateDeidentification:
-    def __init__(self, user_cfg):
+    def __init__(self, user_cfg: config.RcpUserConfig):
         self.config = user_cfg
-        self.raw_data_dir = Path(self.config["RawDataDir"])
+        self.raw_data_dir = Path(self.config.RawDataDir)
         self.deid_data_dir = os.path.join(
             os.path.split(self.raw_data_dir)[0], "DeidentifiedDataLocal"
         )
@@ -67,8 +65,7 @@ class DateDeidentification:
 
         self.deid_metadata = datetime(2000, 1, 1)
 
-    def deidentify_one_session(self, session_path):
-
+    def deidentify_one_session(self, session_path: Path):
         date_original = os.path.split(os.path.split(os.path.split(session_path)[0])[0])[1]
         date_ordinal = datetime.strptime(date_original, "%Y%m%d").date().toordinal()
         session = os.path.split(session_path)[1]
@@ -79,7 +76,7 @@ class DateDeidentification:
         rn = int("".join(map(str, datepad_list)))
         date_deided = str(f"{date_shift}{rn}")
 
-        unit_dirW = os.path.join(self.deid_data_dir, date_deided, self.config["unitRef"], session)
+        unit_dirW = os.path.join(self.deid_data_dir, date_deided, self.config.unitRef, session)
         if not os.path.exists(unit_dirW):
             os.makedirs(unit_dirW)
         unit_dest = os.path.split(unit_dirW)[0]
@@ -112,19 +109,16 @@ class DateDeidentification:
 
         prev_date_list = [name for name in os.listdir(self.raw_data_dir)]
         for d in prev_date_list:
-            unit_dirR = os.path.join(self.raw_data_dir, d, self.config["unitRef"])
+            unit_dirR = os.path.join(self.raw_data_dir, d, self.config.unitRef)
             if os.path.exists(unit_dirR):
                 prev_expt_list = [name for name in os.listdir(unit_dirR)]
                 for s in prev_expt_list:
                     dirlist.append(os.path.join(unit_dirR, s))
-                    session_path = os.path.join(unit_dirR, s)
+                    session_path = Path(unit_dirR, s)
                     self.deidentify_one_session(session_path)
 
 
-def run_all_dates():
-    config_path = os.path.join(CONFIG_FILE_PATH, "userdata.yaml")
-    config = fu.read_config(config_path)
-
-    deidentify = DateDeidentification(config)
+def run_all_dates(user_config: config.RcpUserConfig):
+    deidentify = DateDeidentification(user_config)
     deidentify.deidentify_all_data()
     logger.info("Data deidentification done!")

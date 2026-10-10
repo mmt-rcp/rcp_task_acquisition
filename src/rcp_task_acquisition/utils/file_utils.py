@@ -1,12 +1,12 @@
 import os
-import shutil
+from typing import Any
 
 import ruamel.yaml
 
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.constants import (
-    CONFIG_FILE_PATH,
+    CODE_CONFIG_DIR_PATH,
     SCREEN_CONFIG_FILE_NAME,
-    STIM_CONFIG_FILE_PATH,
 )
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 
 def get_screen_config():
-    userDataDir = os.path.realpath(CONFIG_FILE_PATH)
+    userDataDir = os.path.realpath(CODE_CONFIG_DIR_PATH)
     configPath = os.path.join(userDataDir, SCREEN_CONFIG_FILE_NAME)
     ruamelFile = ruamel.yaml.YAML()
 
@@ -27,54 +27,8 @@ def get_screen_config():
     return screen_config
 
 
-def get_stimulus_config(filename):
-    userDataDir = os.path.realpath(STIM_CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, filename)
-    ruamelFile = ruamel.yaml.YAML()
-
-    stimulusConfig = None
-    if os.path.exists(configPath):
-        with open(configPath, "r") as f:
-            stimulusConfig = ruamelFile.load(f)
-    if stimulusConfig is None:
-        return
-    return stimulusConfig
-
-
-def copy_file(sessionFolder, filename):
-    # Copy visual stimulus config file to session directory
-    userDataDir = os.path.realpath(STIM_CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, filename)
-    shutil.copy2(configPath, os.path.join(sessionFolder, filename))
-
-
-def get_stimulus_path():
-    return STIM_CONFIG_FILE_PATH
-
-
-def get_config_path():
-    return CONFIG_FILE_PATH
-
-
-def write_config(config_name, data):
-    config_path = os.path.join(CONFIG_FILE_PATH, config_name)
-    with open(config_path, "w") as config_file:
-        ruamelFile = ruamel.yaml.YAML()
-        ruamelFile.dump(data, config_file)
-
-
-def read_config(config_name):
-    config_path = os.path.join(CONFIG_FILE_PATH, config_name)
-    ruamelFile = ruamel.yaml.YAML()
-    if not (os.path.exists(config_path)):
-        return None
-
-    with open(config_path, "r") as config_file:
-        config = ruamelFile.load(config_file)
-    return config
-
-
-def write_metadata(data, file_path):
+def write_metadata(data: dict[str, Any], file_path):
+    data = config.to_raw_recursive(data)
     with open(file_path, "w") as metadata_file:
         ruamelFile = ruamel.yaml.YAML()
         ruamelFile.dump(data, metadata_file)
