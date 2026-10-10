@@ -64,6 +64,11 @@ cameras:
     assert isinstance(cfg, RcpUserConfig)
     assert len(cfg.cameras) == 1
     assert "leftCamTop" in cfg.cameras
+    for member in config.CameraItem:
+        if member == "leftCamTop":
+            assert member in cfg.cameras and member.value in cfg.cameras
+        else:
+            assert member not in cfg.cameras and member.value not in cfg.cameras
     left_cam_top = cfg.cameras["leftCamTop"]
     assert cfg.cameras.left_cam_top is left_cam_top
     assert left_cam_top.gamma == 0.333
