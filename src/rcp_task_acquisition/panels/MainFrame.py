@@ -665,14 +665,13 @@ class MainFrame(wx.Frame):
         # self.meta['screen_settings'] = self.user_cfg['screen_settings']
         meta_name = f"{date_string}_{user_cfg.unitRef}_{self.sess_string}_metadata.yaml"
         self.metapath = Path(self.sess_dir, meta_name)
-        cameras = {}
+        cameras_meta = {}
         meta["version"] = str(__version__)
         meta["actual_scan_rate"] = self.labjack_scan_rate
 
-        for ndx, s in enumerate(self.cams.cam_dict):
-            cam_d = self.cams.cam_dict[s]
+        for cam_d in self.cams.cam_dict.values():
             cfg = user_cfg.cameras[cam_d.name]
-            cameras[cam_d.name] = {
+            cameras_meta[cam_d.name] = {
                 "serial": cfg.serial,
                 "ismaster": cfg.ismaster,
                 "crop": cfg.crop,
@@ -681,7 +680,7 @@ class MainFrame(wx.Frame):
                 "actual_framerate": cam_d.actual_framerate,
                 "actual_exposure": cam_d.exposure,
             }
-        meta["cameras"] = cameras
+        meta["cameras"] = cameras_meta
         meta["unitRef"] = user_cfg.unitRef
         meta["Collection"] = "info"
         meta["hardware"] = config.to_raw_recursive(user_cfg.hardware)
@@ -693,9 +692,9 @@ class MainFrame(wx.Frame):
         meta["participant_details"] = self.launch_args["participant_detail"]
 
         meta["task"] = self.task
-        meta["task_settings"] = self._rcp_context.tasks_config[
-            self.task
-        ].settings  # self.task_cfg[self.task]["settings"]
+        meta["task_settings"] = list(
+            self._rcp_context.tasks_config[self.task].settings
+        )  # nb: use list to ensure if modified it won't modify the one in config.
 
         # if self.task == "verbal_fluency":
         #     self.meta["trial_data"]["categories"] = self.trial_panel.add_metadata()
