@@ -8,6 +8,7 @@ W Williamson, wallace.williamson@ucdenver.edu
 import ctypes
 import datetime
 import json
+import multiprocessing
 import os
 import shutil
 import queue
@@ -238,7 +239,7 @@ class MainFrame(wx.Frame):
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
-        self.msgq: queue.Queue[Any] = queue.Queue()
+        self.msgq: multiprocessing.Queue[Any] = multiprocessing.Queue()
         self.finish = Value(ctypes.c_byte, 0)
         self.resultsq: Queue[Any] = Queue()
         self.video_lock = Event()
@@ -831,7 +832,9 @@ class MainFrame(wx.Frame):
                 self.msgq.put(Msg.CLOSE_WINDOW)
                 self.thread.join()
             except Exception as err:
-                logger.debug("no current stimulus thread: %s", err, exc_info=True)
+                logger.error("Error request close_window to stimulus: %s", err)
+        else:
+            logger.debug("Stimulus not alive")
 
         try:
             self.widget_panel.Close(True)

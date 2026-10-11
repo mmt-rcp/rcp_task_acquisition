@@ -45,12 +45,12 @@ class Msg(str, Enum):
     SEND_METADATA = "send_metadata"
 
 
-class StimulusThread(threading.Thread):
+class StimulusThread(ProcessWithLogging):
     window: Window
 
     def __init__(
         self,
-        msgq: queue.Queue,
+        msgq: multiprocessing.Queue,
         finish: SharedInt,
         shared: SharedInt,
         frame: SharedInt,
