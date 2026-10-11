@@ -65,7 +65,7 @@ class StimulusThread(threading.Thread):
         *,
         rcp_context: RcpRunContext,
     ):
-        super().__init__()
+        super().__init__(name="StimulusThread")
         self._rcp_context = rcp_context
         self.msgq = msgq
         self.screenConfig = screen_config

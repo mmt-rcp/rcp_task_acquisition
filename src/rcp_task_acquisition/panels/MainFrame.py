@@ -826,11 +826,12 @@ class MainFrame(wx.Frame):
         """
         logger.info("Close event called")
         self.statusbar.SetStatusText("closing..")
-        try:
-            self.msgq.put(Msg.CLOSE_WINDOW)
-            self.thread.join()
-        except Exception as err:
-            logger.debug("no current stimulus thread: %s", err, exc_info=True)
+        if self.thread.is_alive():
+            try:
+                self.msgq.put(Msg.CLOSE_WINDOW)
+                self.thread.join()
+            except Exception as err:
+                logger.debug("no current stimulus thread: %s", err, exc_info=True)
 
         try:
             self.widget_panel.Close(True)
