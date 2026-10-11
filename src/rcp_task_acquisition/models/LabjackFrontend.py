@@ -286,7 +286,7 @@ class LabjackFrontend:
 
         for choice in self.labjack_choices:
             selection = choice.GetSelection()
-            if selection not in (0, 1):
+            if selection not in (-1, 0):
                 choices = choice.GetStrings()
                 selection = choices[selection]
                 original_selection = self.hardware.index(selection)
