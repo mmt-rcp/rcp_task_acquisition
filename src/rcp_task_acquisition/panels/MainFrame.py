@@ -445,15 +445,15 @@ class MainFrame(wx.Frame):
 
     def update_intertrial(self, event: wx.Event) -> None:
         logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
-        if self.video_status.value == VideoStatus.FINISHED.value:
+        if self.video_status.value == VideoStatus.FINISHED:
             logger.debug("in finish")
             self.trial_panel.stop_video()
-            self.video_status.value = VideoStatus.NOT_PLAYING.value
+            self.video_status.value = VideoStatus.NOT_PLAYING
             logger.debug("called stop_video")
             self.rest_timer.Stop()
-        elif self.video_status.value == VideoStatus.ERROR.value:
+        elif self.video_status.value == VideoStatus.ERROR:
             self.trial_panel.stop_video()
-            self.video_status.value = VideoStatus.NOT_PLAYING.value
+            self.video_status.value = VideoStatus.NOT_PLAYING
             self.warning.update_error(WarnCat.VIDEO).display()
         elif self.finish.value == 1 and (
             self.task != "naturalistic_speech" and self.task != "vowel_space"

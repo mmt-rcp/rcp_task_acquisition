@@ -107,7 +107,7 @@ BAUDRATE = 9600
 WRITE_TIMEOUT = 0.1
 
 
-class VideoStatus(Enum):
+class VideoStatus(int, Enum):
     NOT_PLAYING = 0
     PLAY = 1
     PAUSED = 2

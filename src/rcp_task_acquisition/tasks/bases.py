@@ -1,5 +1,6 @@
 import os
 import pathlib as pl
+import time
 from pathlib import Path
 from typing import Any
 
@@ -175,7 +176,8 @@ class StimulusBase:
         else:
             file = self.instructions_dict[trial_name]
         path = Path(user_cfg.VideoDir, str(file))
-        if not os.path.exists(path):
+        if not path.exists():
+            logger.error("video at %s does not exist", path)
             self.video_status.value = VideoStatus.ERROR.value
             return
 
@@ -192,13 +194,14 @@ class StimulusBase:
 
         video.play()
         while video.status != visual.FINISHED:
-            if self.video_status.value == VideoStatus.PAUSED.value:
+            vid_status = self.video_status.value  # read shared value once
+            if vid_status == VideoStatus.PAUSED:
                 video.pause()
-            elif self.video_status.value == VideoStatus.START_FROM_PAUSE.value:
+            elif vid_status == VideoStatus.START_FROM_PAUSE:
                 video.play()
-                self.video_status.value = VideoStatus.PLAY.value
-            elif self.video_status.value == VideoStatus.STOP.value:
-                self.video_status.value = VideoStatus.FINISHED.value
+                self.video_status.value = VideoStatus.PLAY
+            elif vid_status == VideoStatus.STOP:
+                self.video_status.value = VideoStatus.FINISHED
                 video.stop()
                 self.display.idle(time_list=[])
                 self.video_lock.set()
@@ -209,7 +212,7 @@ class StimulusBase:
                 video.draw()
                 self.display.flip()
 
-        self.video_status.value = VideoStatus.FINISHED.value
+        self.video_status.value = VideoStatus.FINISHED
         video.stop()
         self.display.idle(time_list=[])
 
