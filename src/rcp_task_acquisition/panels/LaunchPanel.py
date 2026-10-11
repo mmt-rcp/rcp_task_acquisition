@@ -295,12 +295,8 @@ class LaunchPanel:
         logger.debug("LaunchPanel exit")
         self.panel.Close(True)
         self.participant_panel.dialog.Close(True)
+        self.hardware_panel.Close(True)
         self.dialog.Close(True)
-        logger.verbose("about to exit")
-        wx.Exit()  # really makes wx main loop to exit,
-        ## required at the moment, there are still events/timers registered which can otherwise be executed
-        # on already closed resources, leading to user after free exception.
-        # And also: some other event handlers are making the task/protocol frame/window to be launched..
 
     def add_participant(self, event):
         self.ignore_pop_up = True

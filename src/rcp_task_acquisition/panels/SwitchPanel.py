@@ -35,17 +35,13 @@ class SwitchPanel:
         self.launch_panel.protocol_button.Bind(wx.EVT_BUTTON, self.disable_panel)
         self.launch_panel.exit_button.Bind(wx.EVT_BUTTON, self.exit_event)
         self.launch_panel.dialog.Bind(wx.EVT_CLOSE, self.exit_event)
-        self.launch_panel.panel.Bind(
-            wx.EVT_TIMER, lambda e: self.switch_panel(e, source="launch_panel"), self.disable_timer
-        )
-        self.task_frame.Bind(
-            wx.EVT_TIMER, lambda e: self.switch_panel(e, source="task_frame"), self.disable_timer
-        )
+        self.launch_panel.panel.Bind(wx.EVT_TIMER, self.switch_panel, self.disable_timer)
+        self.task_frame.Bind(wx.EVT_TIMER, self.switch_panel, self.disable_timer)
         self.launch_panel.panel.SetFocus()
 
-    def switch_panel(self, event: wx.Event, *, source: str = "NA") -> None:
+    def switch_panel(self, event: wx.Event) -> None:
         # if launch panel showing, switching to show task panel & vice versa
-        logger.verbose("switch_panel: event: %s ; source=%s", event, source)
+        logger.verbose("switch_panel: event: %s ; from=%s", event, event.GetEventObject())
         if self.active_panel == ActivePanel.LAUNCH.value:
             self.task_frame.Enable()
             self.task_frame.quit.SetLabel("Exit to Launch Menu")
@@ -65,14 +61,19 @@ class SwitchPanel:
         """
         Disable the current shown panel while enabling other panel
         """
+        logger.debug("disable_panel: event=%s ; from=%s", event, event.GetEventObject())
         if self.active_panel == ActivePanel.LAUNCH.value:
             self.launch_panel.protocol_button.SetLabel("Loading...")
             self.launch_panel.enable_gui(False)
-
         else:
             self.task_frame.quit.SetLabel("Loading...")
             self.task_frame.Disable()
-
+        if isinstance(event, wx.CloseEvent) and event.GetEventObject() == self.launch_panel.dialog:
+            # if close of main launch panel, then don't switch panels.
+            return
+        if 0:
+            self.switch_panel(event)  # tried this, which is indirectly called by the disable_timer,
+        # but for some reason don't get the same visual result.
         self.disable_timer.StartOnce(200)
 
     def exit_event(self, event: wx.Event) -> None:
@@ -82,3 +83,8 @@ class SwitchPanel:
         self.launch_panel.dialog.Unbind(wx.EVT_CLOSE)
         # given launch_panel Close is also bound to this exit_event.
         self.launch_panel.exit_event()
+        logger.verbose("about to exit")
+        wx.Exit()  # really makes wx main loop to exit,
+        ## required at the moment, there are still events/timers registered which can otherwise be executed
+        # on already closed resources, leading to use after free exception.
+        # And also: some other event handlers are making the task/protocol frame/window to be launched: fixed now.
