@@ -719,10 +719,8 @@ class MainFrame(wx.Frame):
                 metadata = yaml.load(file)
 
             metadata["actual_scan_rate"] = self.labjack_scan_rate
-
-            for data in metadata_panel.metadata:
-                metadata[data] = metadata_panel.metadata[data]
-                logger.debug(data)
+            for key, value in metadata_panel.metadata.items():
+                metadata[key] = value
             metadata["EndTime_Local"] = self.end_time
             metadata["EndTime_UTC"] = self.end_time_utc
             if isinstance(self.trial_panel, SaraPanel):

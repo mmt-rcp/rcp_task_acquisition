@@ -27,7 +27,8 @@ def get_screen_config():
     return screen_config
 
 
-def write_metadata(data: dict[str, Any], file_path):
+def write_metadata(data: dict[str, Any], file_path) -> None:
+    logger.info("writing metadata to %s", file_path)
     data = config.to_raw_recursive(data)
     with open(file_path, "w") as metadata_file:
         ruamelFile = ruamel.yaml.YAML()
@@ -75,10 +76,6 @@ def metadata_template():
     version:
     \n
     
-# Cameras
-    cameras:
-    \n
-
 # Experiment
     Designer:
     administrator_id:
@@ -96,6 +93,12 @@ def metadata_template():
     participant_id:
     participant_details:
     \n
+
+# Task
+    task:
+    task_settings:
+    trial_data:
+    task_notes:
     
 # Screen Config
     screen_settings:
@@ -106,11 +109,9 @@ def metadata_template():
     hardware:
     \n
 
-# Task
-    task:
-    task_settings:
-    trial_data:
-    task_notes:
+# Cameras
+    cameras:
+    \n
     """
 
     ruamelFile = ruamel.yaml.YAML()
