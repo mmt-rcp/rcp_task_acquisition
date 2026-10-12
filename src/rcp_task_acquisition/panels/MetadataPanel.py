@@ -35,7 +35,7 @@ class MetadataPanel:
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         self.panel.SetSizerAndFit(vertical_sizer)
 
-    def _setup_metadata(self):
+    def _setup_metadata(self) -> wx.GridBagSizer:
         notes_text = wx.StaticText(self.panel, label="Trial Notes:")
         self._metadata_wx_objects["task_notes"] = WxObject(
             object=wx.TextCtrl(
@@ -57,7 +57,7 @@ class MetadataPanel:
         )
         return grid_sizer
 
-    def _setup_buttons(self):
+    def _setup_buttons(self) -> wx.GridBagSizer:
         save = "\u2714"
         self.continue_button = wx.Button(self.panel, label=f"{save}  Save and Exit")
         self.continue_button.Bind(wx.EVT_BUTTON, self.continue_event)
@@ -90,13 +90,12 @@ class MetadataPanel:
         logger.debug("metadata: %s", data)
         return data
 
-    def continue_event(self, event):
+    def continue_event(self, event: wx.Event) -> None:
         logger.debug("Continue Pressed")
-        self.get_metadata()
         self.metadata = self.get_metadata()
         self.dialog.EndModal(wx.ID_OK)
 
-    def cancel_event(self, event):
+    def cancel_event(self, event: wx.Event) -> None:
         logger.debug("Cancel Pressed")
         dlg = wx.MessageDialog(
             None, "Are you sure you want to delete this session?", "", wx.YES_NO | wx.ICON_QUESTION
@@ -105,7 +104,7 @@ class MetadataPanel:
             return
         self.dialog.EndModal(wx.CANCEL)
 
-    def show(self):
+    def show(self) -> int:
         return self.dialog.ShowModal()
 
 
