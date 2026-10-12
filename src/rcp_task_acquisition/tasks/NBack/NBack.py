@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 import random
 import time
@@ -14,7 +15,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.constants import CODE_DIR
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import SharedBool, TaskMetaData
+from rcp_task_acquisition.utils.typing import SharedBool, TaskMetaData, SharedInt
 
 logger = get_logger(__name__)
 
@@ -295,6 +296,8 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
 
 
 class N_back(bases.StimulusBase):
+    finish: SharedInt  # always passed via base_vars
+
     def __init__(self, base_vars: dict[str, Any], button: SharedBool):
         super().__init__(**base_vars)
         self.button = button
@@ -315,6 +318,7 @@ class N_back(bases.StimulusBase):
             "T": visual.TextStim(self.display, text="T", name="trial", pos=(-100, 0), height=1000),
             "V": visual.TextStim(self.display, text="V", name="trial", pos=(-100, 0), height=1000),
         }
+        self._params: dict[str, Any] = copy.deepcopy(PARAMS)
 
     # Sets up display window, fixation cross, text pages and image stimuli
     def setupWinStims(self, imdir):
@@ -435,13 +439,12 @@ class N_back(bases.StimulusBase):
                 trial_list.append(trials)
                 answer_list.append(answers)
 
-        PARAMS[f"trial_{self.trial}"] = {
+        self._params[f"trial_{self.trial}"] = {
             "trials": list(trial_list),
             "reps_per_trial": len(list(trial_list)),
             "n_back_type": self.type,
             "real": self.is_real,
         }
-        self.trial_list = trial_list
         for index, _ in enumerate(text):
             while not self.button.value:
                 if self.finish.value == 2:
@@ -460,7 +463,7 @@ class N_back(bases.StimulusBase):
         self.play_tone()
         core.wait(0.05)
         timeData, fixFlipTime = self.showAndLog(
-            self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown"
+            self.display, timeData, 0, fixation, self._params["ISITime"], "Initial_Fixation_Shown"
         )
 
         for index, trial_set in enumerate(trial_list):
@@ -473,10 +476,21 @@ class N_back(bases.StimulusBase):
                 trial_vis = self.letters[trial]
                 self.button_press = False
                 timeData, fixFlipTime = self.showAndLog(
-                    self.display, timeData, 0, trial_vis, PARAMS["stimTime"], "Trial_Shown", True
+                    self.display,
+                    timeData,
+                    0,
+                    trial_vis,
+                    self._params["stimTime"],
+                    "Trial_Shown",
+                    True,
                 )
                 timeData, fixFlipTime = self.showAndLog(
-                    self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown"
+                    self.display,
+                    timeData,
+                    0,
+                    fixation,
+                    self._params["ISITime"],
+                    "Initial_Fixation_Shown",
                 )
                 if not self.is_real:
                     if self.button.value:
@@ -524,7 +538,12 @@ class N_back(bases.StimulusBase):
                 self.play_tone()
                 core.wait(0.05)
                 timeData, fixFlipTime = self.showAndLog(
-                    self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown"
+                    self.display,
+                    timeData,
+                    0,
+                    fixation,
+                    self._params["ISITime"],
+                    "Initial_Fixation_Shown",
                 )
 
         timeData, _fixFlipTime = self.showAndLog(
@@ -532,18 +551,18 @@ class N_back(bases.StimulusBase):
         )
         self.is_real = None
         self.button_press = False
-        logger.debug(f"RUN PARAMS: {PARAMS}")
+        logger.debug(f"RUN PARAMS: {self._params}")
 
     def saveMetadata(self) -> TaskMetaData:
-        logger.debug(f"PARAMS: {PARAMS}")
-        return PARAMS
+        logger.debug(f"PARAMS: {self._params}")
+        return self._params
 
     def update_data(self, selections):
         self.is_real = selections[0] == "real"
         self.type = 1 if selections[1] == "1-back" else 2
 
-        # PARAMS["n_back_type"] = self.type
-        # PARAMS["real"] = self.is_real
+        # self._params["n_back_type"] = self.type
+        # self._params["real"] = self.is_real
 
     def intertrial_instructions(self):
         texts = []
