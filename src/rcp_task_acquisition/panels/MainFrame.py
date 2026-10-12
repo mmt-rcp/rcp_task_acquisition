@@ -53,6 +53,7 @@ class MainFrame(wx.Frame):
 
     base_dir: Path
     metapath: Path
+    sess_dir: Path
     sess_string: str
     session: int
     path_base: str
@@ -278,6 +279,7 @@ class MainFrame(wx.Frame):
         # pass
 
     def run_task(self, event: wx.Event) -> None:
+        logger.verbose("run_task called task_but=%s", self.task_button.GetValue())
         self.Enable()
         if self.task_button.GetValue():
             self.task_active = True
@@ -661,6 +663,7 @@ class MainFrame(wx.Frame):
             self.task_button.Enable(True)
 
     def create_metadata(self) -> None:
+        logger.verbose("create_metadata called")
         user_cfg = self._rcp_context.user_config
         meta, _ruamelFile = file_utils.metadata_template()
         date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
@@ -745,11 +748,12 @@ class MainFrame(wx.Frame):
         logger.debug("%s yaml loaded: %r", self.metapath, metadata)
         metadata["trial_data"] = params
         self.trial_panel.populate_metadata(metadata)
-
+        logger.info("saving metadata to %s", self.metapath)
         with self.metapath.open("w", encoding="utf-8") as f:
             yaml.dump(metadata, f)
 
     def create_file(self) -> None:
+        logger.verbose("create_file called")
         ctx = self._rcp_context
         user_cfg = ctx.user_config
         unit_ref = user_cfg.unitRef
