@@ -126,7 +126,7 @@ class StimulusThread(ProcessWithLogging):
     def _handle_run_task(self) -> None:
         self.shared.value = 0
         # Main loop for presenting stimuli
-        tStart = time.time()
+        tStart = time.perf_counter()
         logger.info(f"Presenting {self.task}")
         if self.shared.value == -1:
             self.alive = False
@@ -142,7 +142,7 @@ class StimulusThread(ProcessWithLogging):
         self.totalStimFrames += self.window.stimulus_frame
         self.window.reset_stimulus_frame()
 
-        tEnd = time.time()
+        tEnd = time.perf_counter()
         tElapsed = tEnd - tStart
         minutes = math.floor(tElapsed / 60)
         seconds = tElapsed % 60
