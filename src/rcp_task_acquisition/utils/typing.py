@@ -23,3 +23,6 @@ HardwareListsType: typing.TypeAlias = tuple[
     tuple[str, ...],  # min max
     tuple[tuple[float, float], ...],  # voltage range
 ]
+
+
+TaskMetaData: typing.TypeAlias = dict[str, typing.Any]

@@ -14,7 +14,7 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.constants import CODE_DIR
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import SharedBool
+from rcp_task_acquisition.utils.typing import SharedBool, TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -533,7 +533,7 @@ class N_back(bases.StimulusBase):
         self.button_press = False
         logger.debug(f"RUN PARAMS: {PARAMS}")
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         logger.debug(f"PARAMS: {PARAMS}")
         return PARAMS
 

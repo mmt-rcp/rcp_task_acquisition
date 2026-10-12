@@ -1,4 +1,5 @@
 import time
+from typing import Literal
 
 import numpy as np
 from psychopy.visual import Window as PsychoPyWindow
@@ -89,7 +90,7 @@ class Window(PsychoPyWindow):
         self.flip()
         time.sleep(length)
 
-    def flip(self, prev_time=None, **kwargs):
+    def flip(self, prev_time=None, **kwargs) -> tuple[float, float]:
         """
         #"""
         # self.winHandle.maximize()
@@ -103,24 +104,27 @@ class Window(PsychoPyWindow):
 
         # self._patch_is_light = not self._patch_is_light
         flip_time = super().flip(**kwargs)
-        flip_diff = (flip_time - prev_time) if prev_time != None else -1
+        flip_diff = (flip_time - prev_time) if prev_time is not None else -1
         self.stimulus_frame += 1
+        logger.verbose("Window.flip: time=%s diff=%s", flip_time, flip_diff)
         return flip_time, flip_diff
 
     def idle(
         self,
-        duration=1,
+        duration: int = 1,
         prev_time=None,
         time_list=None,
-        units="seconds",
+        units: Literal["seconds"] | Literal["frames"] = "seconds",
         returnFirstTimestamp=False,
     ):
         """ """
         if units == "frames":
             frameCount = int(duration)
-        elif units == "seconds":
+        else:
+            assert units == "seconds"
             frameCount = round(self.fps * duration)
 
+        timestamp = 0
         for frameIndex in range(frameCount):
             self._background.draw()
 

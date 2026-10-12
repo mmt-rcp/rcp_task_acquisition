@@ -1,4 +1,5 @@
 import time
+from typing import Any
 
 import numpy as np
 import pyaudio
@@ -12,6 +13,7 @@ from rcp_task_acquisition.tasks.ToneTaps.constants import (
 )
 from rcp_task_acquisition.utils.constants import GLOBAL_CLOCK
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -146,7 +148,7 @@ class ToneTapsClosed(bases.StimulusBase):
         stream.close()
         p.terminate()
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         # sessionFolderPath = pl.Path(sessionFolder)
         # if sessionFolderPath.exists() == False:
         #     return

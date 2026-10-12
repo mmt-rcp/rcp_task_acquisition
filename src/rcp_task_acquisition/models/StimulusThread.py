@@ -265,9 +265,9 @@ class StimulusThread(ProcessWithLogging):
         if stimuli is None:
             logger.warning("No stimuli received")
             return
-        ctx = self._rcp_context
-        task_cfg = ctx.tasks_config[self.task]
-        results = stimuli.saveMetadata(task_cfg, None)  # TODO: not sure what's going on
+        # ctx = self._rcp_context
+        # task_cfg = ctx.tasks_config[self.task]
+        results = stimuli.saveMetadata()  # TODO: not sure what's going on
         json_str = json.dumps(results)
         logger.debug(f"jsonstr: {json_str}")
         self.resultsq.put(json_str)

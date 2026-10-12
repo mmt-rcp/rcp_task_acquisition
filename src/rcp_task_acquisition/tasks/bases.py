@@ -2,7 +2,7 @@ import os
 import pathlib as pl
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,7 @@ from rcp_task_acquisition.utils.constants import (
 from rcp_task_acquisition.utils.displays import Window
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
-from rcp_task_acquisition.utils.typing import SharedEvent, SharedInt
+from rcp_task_acquisition.utils.typing import SharedEvent, SharedInt, TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -49,21 +49,22 @@ class StimulusBase:
         self._rcp_context = rcp_context
         self.display = display
         self.frame = frame
-        self.prev_flip_time = None
-        self.metadata = None
-        self.header = None
-        self.total_time = None
-        self.flip_interval_arr = None
+        self.prev_flip_time: float | None = None
+        self.metadata = None  # unused
+        self.header = None  # unused
+        self.total_time = None  # unused
+        self.flip_interval_arr = None  # unused but in unused func
         self.instructions_dict: dict[str, str] = {}
-        self.current_trial = None
+        self.current_trial: str | None = None
         self.video_status = video_status
         self.timer = timer
-        self.start_test = False
+        self.start_test = False  # unused
         self.finish = finish
         self.trial = 0
         self.video_lock = video_lock
+        self.first_frame = -1
 
-    def present(self):
+    def present(self) -> None:
         self.timer.value = 0
         self.trial += 1
         self.play_tone()
@@ -83,6 +84,7 @@ class StimulusBase:
 
     def prepareMetadataStream(self, sessionFolder, filename, header):
         """ """
+        # unused
         headerBreakLine = "-" * 40 + "\n"
 
         if self.metadata is None:
@@ -116,23 +118,31 @@ class StimulusBase:
         return stream
 
     def get_time_diff_arr(self, total_time, fps):
+        # unused
         self.flip_interval_arr = np.zeros(int((total_time + 5) * fps))
 
-    def _time_flip(self):
-        self.prev_flip_time, flip_int = self.display.flip(self.prev_flip_time)
+    def _time_flip(self) -> float:
+        new_flip_time, flip_int = self.display.flip(self.prev_flip_time)
+        self.prev_flip_time = new_flip_time
         if self.flip_interval_arr is not None and self.display.stimulus_frame <= len(
             self.flip_interval_arr
         ):
             self.flip_interval_arr[self.display.stimulus_frame - 1] = flip_int
-        return self.prev_flip_time
+        return new_flip_time
 
-    def _time_idle(self, duration=1, units="seconds", returnFirstTimestamp=False):
+    def _time_idle(
+        self,
+        duration=1,
+        units: Literal["seconds"] | Literal["frames"] = "seconds",
+        returnFirstTimestamp=False,
+    ) -> float:
+        # unused
         timestamp, self.flip_interval_arr, self.prev_flip_time = self.display.idle(
             duration, self.prev_flip_time, self.flip_interval_arr, units, returnFirstTimestamp
         )
         return timestamp
 
-    def create_csv(self, name, sessionFolder, metadata, start_frame, columns=None):
+    def create_csv(self, name, sessionFolder, metadata, start_frame, columns=None) -> None:
         sessionFolderPath = pl.Path(sessionFolder)
         if sessionFolderPath.exists() == False:
             return
@@ -143,10 +153,12 @@ class StimulusBase:
             data.columns = columns
         data.to_csv(csv_name, index=False)
 
-    def set_first_frame(self, frame):
+    def set_first_frame(self, frame: int) -> None:
         self.first_frame = frame
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
+        """Returns the stimulus current metadata"""
+        return {}
         if self.flip_interval_arr is not None:
             sessionFolderPath = pl.Path(sessionFolder)
             flip_updated = np.trim_zeros(self.flip_interval_arr, trim="b")

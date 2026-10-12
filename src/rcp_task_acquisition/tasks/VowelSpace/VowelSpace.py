@@ -5,6 +5,7 @@ import numpy as np
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.VowelSpace import constants as c
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -67,7 +68,7 @@ class VowelSpace(bases.StimulusBase):
         self.generated_trials = new_trials.tolist()
         logger.debug(f"trial: {self.generated_trials}")
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         metadata = {
             "trial_list": self.generated_trials,
             "trial_number": c.VS_NUM_TRIALS,

@@ -45,6 +45,3 @@ class HardwareTest(bases.StimulusBase):
             self.display.switch_patch()
             clock.reset()
             time.sleep(0.05)
-
-    def saveMetadata(self, name, sessionFolder):
-        pass
