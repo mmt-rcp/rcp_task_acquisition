@@ -711,7 +711,9 @@ class MainFrame(wx.Frame):
     def finalize_metadata(self) -> None:
         metadata_panel = MetadataPanel()
         user_cfg = self._rcp_context.user_config
-        if metadata_panel.show() == wx.ID_OK:
+        res = metadata_panel.show()
+        metadata_panel.dialog.Close()
+        if res == wx.ID_OK:
             yaml = YAML()
             with self.metapath.open("r", encoding="utf-8") as file:
                 metadata = yaml.load(file)
