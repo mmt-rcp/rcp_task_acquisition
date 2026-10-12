@@ -106,6 +106,8 @@ def _create_deterministic_sequence(
         Tuple containing stimulus paths and corresponding answer sequence
     """
     all_paths = _all_stimuli_paths()
+    stimulus_paths: list[str] = []
+    answers: list[Answer] = []
 
     while True:  # Keep generating until valid sequence found
         # Step 1: Generate random sequence using available stimuli (1-10)
@@ -139,11 +141,9 @@ def _create_deterministic_sequence(
             continue  # Regenerate if too many consecutive repeats
 
         # Step 5: Valid sequence found - convert to paths and generate answers
-        stimulus_paths = [
+        stimulus_paths.extend(
             all_paths[num - 1] for num in sequence_numbers
-        ]  # Convert 1-based to 0-based indexing
-
-        answers: list[Answer] = []
+        )  # Convert 1-based to 0-based indexing
 
         for pos in range(len(sequence_numbers)):
             if pos < n_back_level:
@@ -155,7 +155,8 @@ def _create_deterministic_sequence(
         logger.info(
             f"Generated deterministic {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
         )
-        return stimulus_paths, answers
+        break
+    return stimulus_paths, answers
 
 
 def _create_practice_sequence(
