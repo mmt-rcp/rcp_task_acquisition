@@ -393,19 +393,22 @@ class Camera:
 
     def deinitThreads(self) -> None:
         logger.verbose("deinitThreads started")
-        for cam in self.cam_dict.values():
+        for cam in self._cam_by_idx:
             cam.camq.put(CameraCommand.RELEASE)
+        for cam in self._cam_by_idx:
             try:
                 cam.camq_p2read.get(timeout=3)
             except queue.Empty:
                 logger.warning("timeout get from p2read")
             cam.camq.close()
             cam.camq_p2read.close()
+        for cam in self._cam_by_idx:
             multi_cam = self.multi_cameras[cam.serial]
             multi_cam.terminate()
             # multi_cam.join()  # todo, should
         self.cam_dict.clear()
         self.multi_cameras.clear()
+        self._cam_by_idx.clear()
 
     def startAq(self) -> None:
         logger.verbose("startAq started")
