@@ -106,7 +106,6 @@ class Window(PsychoPyWindow):
         flip_time = super().flip(**kwargs)
         flip_diff = (flip_time - prev_time) if prev_time is not None else -1
         self.stimulus_frame += 1
-        logger.verbose("Window.flip: time=%s diff=%s", flip_time, flip_diff)
         return flip_time, flip_diff
 
     def idle(
@@ -114,7 +113,7 @@ class Window(PsychoPyWindow):
         duration: int = 1,
         prev_time=None,
         time_list=None,
-        units: Literal["seconds"] | Literal["frames"] = "seconds",
+        units: Literal["seconds", "frames"] = "seconds",
         returnFirstTimestamp=False,
     ):
         """ """

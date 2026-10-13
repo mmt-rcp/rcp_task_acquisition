@@ -122,6 +122,7 @@ class StimulusBase:
         self.flip_interval_arr = np.zeros(int((total_time + 5) * fps))
 
     def _time_flip(self) -> float:
+        # unused
         new_flip_time, flip_int = self.display.flip(self.prev_flip_time)
         self.prev_flip_time = new_flip_time
         if self.flip_interval_arr is not None and self.display.stimulus_frame <= len(

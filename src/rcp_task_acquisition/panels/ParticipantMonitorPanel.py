@@ -61,7 +61,6 @@ class MonitorPanel(wx.Panel):
             wx_image = wx_image.Scale(self.display_size[0], self.display_size[1])
             bitmap = wx_image.ConvertToBitmap()
             self.prev_arr = img
-            logger.verbose("MonitorPanel: bitmap: %s", bitmap)
             self.monitor_bitmap.SetBitmap(bitmap)
         self.parent.Layout()
 
