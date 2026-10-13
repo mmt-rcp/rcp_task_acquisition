@@ -1,6 +1,7 @@
 import wx
 import wx.lib.scrolledpanel as scrolled
 
+from rcp_task_acquisition.models.participant import Participant
 from rcp_task_acquisition.panels.HardwarePanel import HardwarePanel
 from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
 from rcp_task_acquisition.utils.logger import get_logger
@@ -47,15 +48,9 @@ class LaunchPanel:
         # Basic panel set up. 3 different steps (Protocol, metadata and buttons) to help with
         # organization and padding between sections
         self.participant_panel = ParticipantPanel(None, rcp_context=self._rcp_context)
-        self.participant_list: list[str] = []
-        self.participant_tuple: list[
-            tuple[
-                str,  # id
-                str,  # first name
-                str,  # last name
-            ]
-        ] = []
-        self.current_list: list[str] = []
+        self.participant_id_show_list: list[str] = []
+        self.participants_list: list[Participant] = []
+        self.current_list: list[Participant] = []
         button_width = wx.Size(220, -1)
         self.update_list_bool = True
         self.ignore_pop_up = False
@@ -70,20 +65,18 @@ class LaunchPanel:
         self.hardware_panel.Hide()
         vertical_sizer = self._vert_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_metadata(button_width), 0, wx.EXPAND | wx.ALL, 10)
-        vertical_sizer.Add(
-            self._setup_buttons(button_width), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30
-        )
+        vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         vertical_sizer.Add(self.hardware_panel, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         self._resize_dialog()
 
-    def get_participants(self, event):
-        self.participant_list, self.participant_tuple = (
+    def get_participants(self) -> None:
+        self.participant_id_show_list, self.participants_list = (
             self.participant_panel.get_all_participants()
         )
-        logger.info(f"list: {self.participant_list}, tuple: {self.participant_tuple}")
-        self.participant_id.SetItems(self.participant_list)
+        logger.info(f"show_id: {self.participant_id_show_list}, list: {self.participants_list}")
+        self._set_participants_in_combo(self.participants_list)
 
-    def _setup_metadata(self, button_width):
+    def _setup_metadata(self, button_width: wx.Size) -> wx.GridBagSizer:
         box = self.panel  # wx.StaticBox(self.panel)
         self.protocol_text = wx.StaticText(box, label="Protocol:")
         self.protocol_choice = wx.Choice(box, id=wx.ID_ANY, choices=self.task_list, size=(220, -1))
@@ -96,17 +89,30 @@ class LaunchPanel:
         self.administrator_id = wx.TextCtrl(box, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
 
         self.participant_id_text = wx.StaticText(box, label="Participant:")
-        self.participant_id = wx.ComboBox(
+        combo = self.participant_id = wx.ComboBox(
             box, size=wx.Size(450, -1), style=wx.CB_DROPDOWN, choices=[]
         )
-        self.get_participants(None)
-        self.participant_id.Bind(wx.EVT_TEXT, self.update_list)
-        self.participant_id.Bind(wx.EVT_TEXT_ENTER, self.on_enter)
+        self.get_participants()
+
+        # combo.Bind(wx.EVT_TEXT, self.update_list)
+        # combo.Bind(wx.EVT_TEXT_ENTER, self.on_enter)
+        # combo.Bind(wx.EVT_COMBOBOX, )
+        combo.Bind(wx.EVT_COMBOBOX, self._participant_id_combo_event)
+        # # combo.Bind(wx.EVT_CHAR, combo_char)
+        # def combo_change(v, orig=combo.ChangeValue):
+        #     logger.debug("in combo change")
+        #     orig(v)
+        #     combo.SetInsertionPointEnd()
+        #     combo.GetParent().SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+        #     combo.SetFocus()
+        #
+        # combo.ChangeValue = combo_change
+
         # self.participant_id.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.on_dropdown)
         self.participant_remove = wx.Button(box, size=button_width, label="Remove Participant")
         self.participant_add = wx.Button(box, size=button_width, label="Add New Participant")
         self.participant_add.Bind(wx.EVT_BUTTON, self.add_participant)
-        self.participant_remove.Bind(wx.EVT_BUTTON, self.remove_participants)
+        self.participant_remove.Bind(wx.EVT_BUTTON, self.remove_participant)
         self.participant_detail_text = wx.StaticText(box, label="Participant Details:")
         self.participant_detail = wx.TextCtrl(
             box, size=wx.Size(450, 70), style=wx.TE_MULTILINE | wx.TE_LEFT, value=""
@@ -193,7 +199,21 @@ class LaunchPanel:
         )
         return grid_sizer
 
-    def _setup_buttons(self, button_width):
+    def _participant_id_combo_event(self, event):
+        return
+        # TODO
+        # combo = self.participant_id
+        # idx = combo.GetSelection()
+        # if idx < 0:
+        #     part = None
+        # else:
+        #     part: Participant = combo.GetClientData(idx)
+        # with wx.EventBlocker(combo):
+        #     combo.SetLabelText("" if part is None else f"ParticipantId: {part.id}")
+        #     # NB: this also reset the current Selection..
+        # self._selected_participant = part
+
+    def _setup_buttons(self) -> wx.BoxSizer:
         button_width = wx.Size(200, -1)
         box = self.panel  # wx.StaticBox(self.panel)
         self.hardware_button = wx.ToggleButton(box, size=button_width, label="Update Hardware")
@@ -210,67 +230,93 @@ class LaunchPanel:
         row_sizer.Add(self.exit_button, 0, wx.ALIGN_CENTER_VERTICAL)
         return row_sizer
 
-    def _resize_dialog(self):
+    def _resize_dialog(self) -> None:
         self.panel.SetSizerAndFit(self._vert_sizer)
         self.hardware_panel.Fit()
         self.panel.Fit()
         self.dialog.Fit()
 
-    def update_list(self, event):
-        if self.ignore_pop_up:
-            self.ignore_pop_up = False
-            return
-
-        if self.update_list_bool:
-            self.update_list_bool = False
-            current_text = self.participant_id.GetValue()
-
-            logger.info(f"current_text: {current_text}")
-            test_text = current_text.replace(" ", "").lower()
-            if test_text == "":
-                current_text = test_text
-            self.current_list = [
-                item for item in self.participant_list if test_text in item.lower().replace(" ", "")
+    def _set_participants_in_combo(
+        self, participants: list[Participant], participants_display: list[str] | None = None
+    ) -> None:
+        if participants_display is None:
+            participants_display = [
+                f"Id: {part.id}, Name: Last: {part.last_name}, First: {part.first_name}"
+                for part in participants
             ]
-            if len(self.current_list) <= 1 and "Id:" in current_text:
-                current_text = current_text.split(",", 1)[0].replace("Id:", "").strip()
-                self.current_list = [current_text]
-            # self.participant_id.Clear()
-            self.participant_id.SetItems(self.current_list)
-            self.participant_id.ChangeValue(current_text)
-            self.participant_id.Popup()
-            self.participant_id.SetInsertionPointEnd()
-            self.update_list_bool = True
+        combo = self.participant_id
+        with wx.EventBlocker(combo):
+            combo.Clear()
+            for part_disp, part in zip(participants_display, participants):
+                combo.Append(part_disp, clientData=part)
 
-    def on_enter(self, event):
-        pass
+    def update_list(self, event: wx.Event) -> None:
+        combo = self.participant_id
+        current_text = combo.GetValue()
+        insertion_point = combo.GetInsertionPoint()
+        logger.info("current_text: %s - %s", current_text, combo.GetSelection())
+        self.current_list = [
+            part
+            for part_display, part in zip(self.participant_id_show_list, self.participants_list)
+            if current_text in part_display.lower()
+        ]
+        combo.Freeze()
+        try:
+            self._set_participants_in_combo(self.current_list)
+            with wx.EventBlocker(combo):
+                if len(self.current_list) == 1:
+                    combo.SetSelection(0)
+                else:
+                    combo.Popup()
+                    combo.SetValue(current_text)
+        finally:
+            combo.Thaw()
 
-    def remove_participants(self, event):
-        self.ignore_pop_up = True
-        user_string, user_index = "", -1
+        def after():
+            logger.debug("after: %s %s", combo.GetValue(), combo.GetSelection())
+            combo.SetFocus()
+            # combo.GetParent().SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+            # combo.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+            # # combo.SetInsertionPoint(insertion_point)
+            # # combo.SetFocus()
+            # # combo.GetParent().SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+            # # combo.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+            # act = wx.UIActionSimulator()
+            # # with wx.EventBlocker(combo):
+            # act.MouseClick()
+            # act.KeyDown(wx.WXK_END)
+            # act.KeyUp(wx.WXK_END)
+            # key_e = wx.KeyEvent(wx.wxEVT_KEY_DOWN)
+            # key_e.SetKeyCode(wx.WXK_END)
+            # combo.ProcessEvent(key_e)
+            # key_e = wx.KeyEvent(wx.wxEVT_KEY_UP)
+            # key_e.SetKeyCode(wx.WXK_END)
+            # combo.ProcessEvent(key_e)
+            # combo.Refresh()
 
-        id_string = self.current_list[self.participant_id.GetSelection()]
-        for user_index, user_string in enumerate(self.participant_list):
-            if user_string == id_string:
-                user = user_string
-                index = user_index
-                break
-        # user = self.participant_list[index]
-        if index == -1:
+        wx.CallAfter(after)
+
+    def on_enter(self, event: wx.Event) -> None:
+        logger.verbose("on_enter: %s", event.GetEventObject())
+
+    def remove_participant(self, event: wx.Event) -> None:
+        combo = self.participant_id
+        idx = combo.GetSelection()
+        if idx < 0:
             return
-        id_to_delete = self.participant_tuple[index][0]
+        part = combo.GetClientData(idx)
         dlg = wx.MessageDialog(
             None,
-            f"Are you sure you want to delete {user}?",
+            f"Are you sure you want to delete {part.id}?",
             "Warning",
             wx.YES_NO | wx.ICON_QUESTION,
         )
         if dlg.ShowModal() == wx.ID_NO:
             return
-
-        self.participant_panel.remove_participant(id_to_delete)
-        self.participant_id.SetSelection(-1)
-        self.get_participants(None)
+        self.participant_panel.remove_participant(part.id)
+        with wx.EventBlocker(combo):
+            combo.SetSelection(-1)
+            self.get_participants()
 
     def enable_gui(self, is_enabled) -> None:
         self.hardware_button.Enable(is_enabled)
@@ -298,19 +344,17 @@ class LaunchPanel:
         self.hardware_panel.Close(True)
         self.dialog.Close(True)
 
-    def add_participant(self, event):
-        self.ignore_pop_up = True
+    def add_participant(self, event: wx.Event) -> None:
         self.participant_panel.show()
-
         participant_id = self.participant_panel.participant_id
-        # self.update_list_bool = False
         new_index = -1
-        self.get_participants(None)
-        for index, current_id in enumerate(self.participant_tuple):
-            logger.info(f"here: {index}, {current_id}")
-            if current_id[0] == participant_id:
+        self.get_participants()
+        for index, participant in enumerate(self.participants_list):
+            if participant_id == participant.id:
                 new_index = index
-        self.participant_id.SetSelection(new_index)
+                break
+        with wx.EventBlocker(self.participant_id):
+            self.participant_id.SetSelection(new_index)
 
     def hardware_event(self, event):
         """
@@ -337,15 +381,25 @@ class LaunchPanel:
         return self.dialog.Show()
 
     def get_metadata(self) -> None:
-        participant_id = self.participant_id.GetValue()
+        combo = self.participant_id
+        idx = combo.GetSelection()
+        if idx < 0:
+            return
+        part = combo.GetClientData(idx)
+        for participant in self.participants_list:
+            if participant.id == part.id:
+                break
+        else:
+            # not supposed to happen
+            return
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
-        logger.info(f"participant panel: {self.participant_tuple}")
+        logger.info(f"participant panel: {self.participants_list}")
         self.hardware_button.Enable(False)
         self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue()
-        self.metadata["participant_id"] = participant_id
+        self.metadata["participant_id"] = part.id
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
         self._resize_dialog()
 

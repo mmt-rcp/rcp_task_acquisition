@@ -4,6 +4,7 @@ import wx
 import wx.lib.scrolledpanel as scrolled
 
 from rcp_task_acquisition.models.ParticipantDatabase import ParticipantDatabase
+from rcp_task_acquisition.models.participant import Participant, ParticipantIdType
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 
@@ -26,7 +27,7 @@ class ParticipantPanel:
         vertical_sizer.Add(self._setup_data(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 15)
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 15)
         self.panel.SetSizerAndFit(vertical_sizer)
-        self.participant_id: str | None = None
+        self.participant_id: ParticipantIdType = ""
 
     @property
     def database_path(self) -> Path:
@@ -107,15 +108,13 @@ class ParticipantPanel:
         error.ShowModal()
         error.Close()
 
-    def add_event(self, event):
-        participantDB = ParticipantDatabase()
-        participantDB.connect(self.database_path, "participants.db")
-
+    def add_event(self, event: wx.Event) -> None:
         participant_id = self.id_box.GetValue()
         if participant_id == "":
             self.show_error()
-            participantDB.close()
             return
+        participantDB = ParticipantDatabase()
+        participantDB.connect(self.database_path, "participants.db")
         first_name = self.first_name_box.GetValue()
         last_name = self.last_name_box.GetValue()
         age = self.age_box.GetValue()
@@ -123,6 +122,7 @@ class ParticipantPanel:
         add_success, participant_id = participantDB.add_participant(
             participant_id, first_name, last_name, age, diagnosis
         )
+        participantDB.close()
 
         if not add_success:
             logger.debug("Error adding participant")
@@ -140,31 +140,30 @@ class ParticipantPanel:
             self.age_box.SetValue("")
             self.diagnosis_box.SetValue("")
             self.id_box.SetValue("")
-        participantDB.close()
 
     def show(self):
         self.dialog.ShowModal()
 
-    def get_all_participants(self):
-        participantDB = ParticipantDatabase()
-        participantDB.connect(self.database_path, "participants.db")
-        participant_list = participantDB.get_display_list()
-        participantDB.close()
-        tuple_list = []
+    def get_all_participants(self) -> tuple[list[str], list[Participant]]:
+        db = ParticipantDatabase()
+        db.connect(self.database_path, "participants.db")
+        participant_list = db.get_participants_list()
+        db.close()
         display_list = []
-        for item in participant_list:
-            id_str = f" Id: {item[0]}"
-            if item[1] != None:
-                id_str += f", First Name: {item[1]}"
-            if item[2] != None:
-                id_str += f", Last Name: {item[2]}"
-            tuple_list.append((item[0], item[1], item[2]))
+        for participant in participant_list:
+            id_str = f"Id: {participant.id}"
+            first = participant.first_name
+            if first is not None:
+                id_str += f", First Name: {first}"
+            last = participant.last_name
+            if last is not None:
+                id_str += f", Last Name: {last}"
             display_list.append(id_str)
+        return display_list, participant_list
 
-        return display_list, tuple_list
-
-    def remove_participant(self, participant_id):
-        participantDB = ParticipantDatabase()
-        participantDB.connect(self.database_path, "participants.db")
-        participantDB.remove_participant(participant_id)
-        participantDB.close()
+    def remove_participant(self, participant_id: ParticipantIdType) -> None:
+        logger.debug("removing participant %r", participant_id)
+        db = ParticipantDatabase()
+        db.connect(self.database_path, "participants.db")
+        db.remove_participant(participant_id)
+        db.close()

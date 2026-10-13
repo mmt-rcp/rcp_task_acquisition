@@ -2,22 +2,25 @@ import os
 import sqlite3
 from pathlib import Path
 
+from rcp_task_acquisition.models.participant import Participant, ParticipantIdType
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class ParticipantDatabase:
+    cursor: sqlite3.Cursor  # forcing as present for now.
+
     def __init__(self):
-        self.connection = None
-        self.cursor = None
+        self.connection: sqlite3.Connection | None = None
+        self.cursor: sqlite3.Cursor = None  # type: ignore
 
     def connect(self, filepath: Path, filename):
         db_path = Path(filepath)
         db_path.mkdir(parents=True, exist_ok=True)
         file = os.path.join(db_path, filename)
-        self.connection = sqlite3.connect(file)
-        self.cursor = self.connection.cursor()
+        conn = self.connection = sqlite3.connect(file)
+        self.cursor = conn.cursor()
 
         # if table doesn't exist, create it
         create_table = """
@@ -30,29 +33,22 @@ class ParticipantDatabase:
             );
         """
         self.cursor.execute(create_table)
-        self.connection.commit()
+        conn.commit()
 
-    def get_all_rows(self):
-        select = "SELECT * FROM Participants;"
-        participants = self.cursor.execute(select).fetchall()
+    def get_participants_list(self) -> list[Participant]:
+        select = "SELECT ParticipantId AS id, FirstName AS first_name, LastName AS last_name FROM Participants;"
+        query = self.cursor.execute(select)
+        col_names = [d[0] for d in query.description]
+        participants = [
+            Participant(**dict((col_names[i], r[i]) for i in range(len(col_names))))
+            for r in query.fetchall()
+        ]
         return participants
 
-    def get_display_list(self):
-        select = "SELECT ParticipantId, FirstName, LastName FROM Participants;"
-        participants = self.cursor.execute(select).fetchall()
-        # self.connection.commit()
-        return participants
-
-    def remove_participant(self, participant_id):
-        remove = f"DELETE FROM Participants WHERE ParticipantId = '{participant_id}';"
-        self.cursor.execute(remove)
+    def remove_participant(self, participant_id: ParticipantIdType) -> None:
+        remove = f"DELETE FROM Participants WHERE ParticipantId = ?;"
+        self.cursor.execute(remove, (participant_id,))
         self.connection.commit()
-
-    def get_participant(self, column, condition):
-        # unused
-        select = f"SELECT * FROM Participants WHERE {column} = {condition};"
-        participant = self.cursor.execute(select).fetchall()
-        return participant
 
     def add_participant(self, participant_id, first_name, last_name, age, diagnosis):
         row_str = ""

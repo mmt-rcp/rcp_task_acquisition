@@ -2,6 +2,7 @@ from enum import Enum
 
 import wx
 
+from rcp_task_acquisition.models import participant
 from rcp_task_acquisition.models.Warnings import WarningHandler
 from rcp_task_acquisition.panels.LaunchPanel import LaunchPanel
 from rcp_task_acquisition.panels.MainFrame import MainFrame
@@ -61,7 +62,14 @@ class SwitchPanel:
         """
         Disable the current shown panel while enabling other panel
         """
-        logger.debug("disable_panel: event=%s ; from=%s", event, event.GetEventObject())
+        part_idx = self.launch_panel.participant_id.GetSelection()
+        if part_idx == wx.NOT_FOUND or part_idx < 0:
+            part = None
+        else:
+            part = self.launch_panel.participant_id.GetClientPart(part_idx)
+        logger.verbose(
+            "disable_panel: event=%s ; from=%s participant=%s", event, event.GetEventObject(), part
+        )
         if self.active_panel == ActivePanel.LAUNCH.value:
             self.launch_panel.protocol_button.SetLabel("Loading...")
             self.launch_panel.enable_gui(False)
