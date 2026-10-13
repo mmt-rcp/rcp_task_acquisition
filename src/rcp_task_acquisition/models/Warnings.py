@@ -55,7 +55,7 @@ class WarningHandler:
             style=wx.OK | wx.ICON_EXCLAMATION | wx.STAY_ON_TOP,
         )
         warning_box.ShowModal()
-        warning_box.Destroy()
+        warning_box.Close()
 
     def update_error(self, error: WarnCat, info: str | None = None) -> Self:
         self.msg = self._get_error(error, info)

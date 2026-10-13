@@ -86,9 +86,10 @@ class SaraPanel(TrialPanel):
     def add_metadata(self):
         return self.actual_assesments
 
-    def reset_assesment(self, event):
-
-        button, text = self.scoring_panel.Destroy()
+    def reset_assesment(self, event: wx.Event) -> None:
+        logger.verbose("in reset_assesment: event=%s", event)
+        button, text = self.scoring_panel.get_result()
+        self.scoring_panel.Close()
         logger.debug(f"button: {button}, text: {text}")
         assesment_dict = {
             "type": self.current_assesment,
@@ -172,7 +173,7 @@ class AssesmentPanel(wx.Dialog):
         self.vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         self.border = 7
         self.left_radio = None
-        self.button_list = {}
+        self.button_list: dict[str, wx.RadioButton] = {}
         self.vertical_sizer.Add(
             self._create_assesment_score(current_assesment, args),
             0,
@@ -270,13 +271,11 @@ class AssesmentPanel(wx.Dialog):
         )
         return grid_sizer
 
-    def Destroy(self):
+    def get_result(self) -> tuple[str | None, str]:
         text = self.notes.GetValue()
-
         button_used = None
         for button in self.button_list:
             if self.button_list[button].GetValue():
                 button_used = button
         logger.debug(f"button used: {button_used}")
-        super().Destroy()
         return button_used, text

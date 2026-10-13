@@ -528,7 +528,7 @@ class HardwarePanel(wx.Panel):
             None, "Hardware settings saved!", "Notification", wx.OK | wx.ICON_INFORMATION
         )
         dlg.ShowModal()
-        dlg.Destroy()
+        dlg.Close()
 
     def _create_hardware_config(self) -> config.HardwareDictConfig | None:
         cfg = config.HardwareDictConfig()

@@ -101,12 +101,11 @@ class ParticipantPanel:
 
     def cancel_event(self, event):
         self.dialog.Close()
-        # self.dialog.Destroy()
 
     def show_error(self):
         error = wx.MessageDialog(None, "Participant ID Required", "Error", wx.OK | wx.ICON_WARNING)
         error.ShowModal()
-        error.Destroy()
+        error.Close()
 
     def add_event(self, event):
         participantDB = ParticipantDatabase()
@@ -131,7 +130,7 @@ class ParticipantPanel:
                 None, "Participant ID in use, please use different ID", "", wx.OK | wx.ICON_WARNING
             )
             error.ShowModal()
-            error.Destroy()
+            error.Close()
 
         else:
             self.participant_id = participant_id
