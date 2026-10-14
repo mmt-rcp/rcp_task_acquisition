@@ -81,7 +81,6 @@ class LabJackDataStream(ProcessWithLogging):
         self.button_list = button_list
         self.constants = constants
         self.extended = False
-        self.voltage_ranges = []
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
         if self.digital_inputs or self.extended_inputs:
             aScanList.append(2580)
@@ -138,11 +137,16 @@ class LabJackDataStream(ProcessWithLogging):
             #     ljm.eStreamStop(self.handle)
         self._disconnect()
         ljm.closeAll()
+        time.sleep(3)
         self.__attempt_connect(scan_list)
 
     def __attempt_connect(self, scan_list):
         numAddresses = len(scan_list)
         self.handle = ljm.openS("ANY", "ANY", "ANY")
+        try:
+            ljm.eStreamStop(self.handle)
+        except ljm.ljm.LJMError as err:
+            logger.verbose("eStreamStop before connect: %s ; but continuing", err)
         # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
         # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 0)
         ljm_buff_sz = ljm.readLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE")
