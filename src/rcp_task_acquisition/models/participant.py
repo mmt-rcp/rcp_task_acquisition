@@ -10,3 +10,6 @@ class Participant:
     id: ParticipantIdType = ""
     first_name: str = ""
     last_name: str = ""
+
+
+no_participant = Participant(id="no_participant")

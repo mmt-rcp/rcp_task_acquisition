@@ -28,6 +28,7 @@ from rcp_task_acquisition.models.LabjackFrontend import LabjackFrontend
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
 from rcp_task_acquisition.models.StimulusThread import Msg, StimulusThread
 from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
+from rcp_task_acquisition.models.participant import Participant, no_participant
 from rcp_task_acquisition.panels.ControlsPanel import ControlsPanel
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
@@ -728,7 +729,7 @@ class MainFrame(wx.Frame):
                 yaml.dump(metadata, f)
 
             deidentify = DateDeidentification(user_cfg)
-            deidentify.deidentify_one_session(self.sess_dir)
+            deidentify.deidentify_one_session(self.sess_dir, self.date_string)
         else:
             # remove entire directory
             logger.debug(self.sess_dir)
@@ -756,9 +757,11 @@ class MainFrame(wx.Frame):
         user_cfg = ctx.user_config
         unit_ref = user_cfg.unitRef
         date_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
+        self.date_string = date_string
         part = self.launch_args["participant"]
         if part is None:
-            return
+            part = no_participant
+            # what todo ?
         base_dir = self.base_dir = Path(ctx.user_config.RawDataDir, part.id, date_string)
         if not base_dir.exists():
             base_dir.mkdir(parents=True, exist_ok=True)
@@ -771,7 +774,6 @@ class MainFrame(wx.Frame):
         if not self.sess_dir.exists():
             self.sess_dir.mkdir(parents=True, exist_ok=True)
         self.path_base = f"{part.id}_{date_string}_{self.sess_string}_{unit_ref}"
-        # msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
 
     def initCams(self) -> bool:  # NB: but return value unused/unchecked in all callers
         if self.init.GetValue():

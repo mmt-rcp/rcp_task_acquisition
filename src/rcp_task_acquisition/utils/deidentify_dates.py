@@ -65,8 +65,8 @@ class DateDeidentification:
 
         self.deid_metadata = datetime(2000, 1, 1)
 
-    def deidentify_one_session(self, session_path: Path):
-        date_original = os.path.split(os.path.split(os.path.split(session_path)[0])[0])[1]
+    def deidentify_one_session(self, session_path: Path, date_original):
+        # date_original = os.path.split(os.path.split(os.path.split(session_path)[0])[0])[1]
         date_ordinal = datetime.strptime(date_original, "%Y%m%d").date().toordinal()
         session = os.path.split(session_path)[1]
 
@@ -106,7 +106,6 @@ class DateDeidentification:
 
     def deidentify_all_data(self):
         dirlist = []
-
         prev_date_list = [name for name in os.listdir(self.raw_data_dir)]
         for d in prev_date_list:
             unit_dirR = os.path.join(self.raw_data_dir, d, self.config.unitRef)
