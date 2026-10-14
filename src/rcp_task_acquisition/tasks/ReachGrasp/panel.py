@@ -1,9 +1,15 @@
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.ReachGrasp.ReachGrasp import ReachGrasp
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 
 
 class ReachGraspPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig(
+        "reach_grasp", "Reach Grasp", "reachgrasp", ReachGrasp
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.reach_hand = "Left"

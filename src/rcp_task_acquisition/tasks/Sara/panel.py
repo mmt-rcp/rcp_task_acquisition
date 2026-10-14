@@ -2,13 +2,17 @@ import wx
 import wx.grid
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.Sara.Sara import Sara
 from rcp_task_acquisition.tasks.Sara.constants import ASSESMENTS
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class SaraPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig("sara", "SARA", "sara", Sara)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_assesment = None

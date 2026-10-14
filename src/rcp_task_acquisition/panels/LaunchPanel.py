@@ -1,3 +1,5 @@
+from typing import Any
+
 import wx
 import wx.lib.scrolledpanel as scrolled
 
@@ -39,7 +41,7 @@ class LaunchPanel:
         self.task_list = list(tasks_config.keys())
         self.task_list.append("all_hardware")
         self.protocol_choice: wx.Choice
-        self.metadata = {
+        self.metadata: dict[str, Any] = {
             "task": "",
             "administrator_id": None,
             "participant_id": None,
@@ -382,16 +384,15 @@ class LaunchPanel:
 
     def get_metadata(self) -> None:
         combo = self.participant_id
+        participant_id = None
+        participant = None
         idx = combo.GetSelection()
-        if idx < 0:
-            return
-        part = combo.GetClientData(idx)
-        for participant in self.participants_list:
-            if participant.id == part.id:
-                break
-        else:
-            # not supposed to happen
-            return
+        if idx >= 0:
+            part = combo.GetClientData(idx)
+            for participant in self.participants_list:
+                if participant.id == part.id:
+                    participant_id = part.id
+                    break
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
         logger.info(f"participant panel: {self.participants_list}")
@@ -399,7 +400,8 @@ class LaunchPanel:
         self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue()
-        self.metadata["participant_id"] = part.id
+        self.metadata["participant_id"] = participant_id
+        self.metadata["participant"] = participant
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
         self._resize_dialog()
 

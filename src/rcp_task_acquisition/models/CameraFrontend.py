@@ -199,25 +199,25 @@ class Camera:
         )
         self.image_panel.draw()
 
-    def initialize(self, event: wx.Event) -> bool:
+    def initialize(self) -> bool:
         self.serial.init_serial()
         self.initThreads()
         try:
-            self.updateSettings(event)
+            self.updateSettings()
         except Exception as err:
             logger.exception("Error updating settings: %s", err)
             logger.info("Trying to fix cameras. Please wait...")
             self.deinitThreads()
-            self.camReset(event)
+            self.camReset()
             self.initThreads()
 
             try:
-                self.updateSettings(event)
+                self.updateSettings()
             except Exception as err:
                 logger.exception("Error reupdating settings: %s", err)
                 return False
-        self.get_exposure(event)
-        self.updateSettings(event)
+        self.get_exposure()
+        self.updateSettings()
         self.camaq.value = 1
         self.startAq()
         time.sleep(0.5)
@@ -260,7 +260,7 @@ class Camera:
 
         self.deinitThreads()
 
-    def camReset(self, event: wx.Event) -> None:
+    def camReset(self) -> None:
         self.initThreads()
         self.camaq.value = 2
         self.startAq()
@@ -336,9 +336,7 @@ class Camera:
             for cam in self._cam_by_idx:
                 cam.cam_tests = np.full(shape=30 * 2, fill_value=np.nan)
 
-    def start_recording(
-        self, event: wx.Event, base_dir: Path, sess_dir: Path, path_base: str, count: int
-    ) -> None:
+    def start_recording(self, base_dir: Path, sess_dir: Path, path_base: str, count: int) -> None:
         totTime = 20  # int(self.secRec.GetValue())+int(self.minRec.GetValue())*60
         spaceneeded = 0
         freespace = shutil.disk_usage(base_dir)[2]
@@ -457,7 +455,7 @@ class Camera:
         if error != "":
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
-    def updateSettings(self, event: wx.Event) -> None:
+    def updateSettings(self) -> None:
         self.aqW = []
         self.aqH = []
         # self.recSet = []
@@ -473,7 +471,7 @@ class Camera:
             self.aqW.append(cam_d.camq_p2read.get())
             self.aqH.append(cam_d.camq_p2read.get())
 
-    def get_exposure(self, event: wx.Event) -> None:
+    def get_exposure(self) -> None:
         for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.SET_EXPOSURE)
         self.startAq()

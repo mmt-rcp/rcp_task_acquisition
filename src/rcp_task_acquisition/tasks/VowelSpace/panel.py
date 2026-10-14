@@ -1,14 +1,20 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.VowelSpace.VowelSpace import VowelSpace
 from rcp_task_acquisition.tasks.VowelSpace.constants import VIDEO_PATHS
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class VowelSpacePanel(TrialPanelWithInstructPlayback):
-    def __init__(self, parent=None):
+    task_trial_item_config = TaskTrialClassConfig(
+        "vowel_space", "Vowel Space", "vowelspacearea", VowelSpace
+    )
+
+    def __init__(self, parent: wx.Panel):
         super().__init__(parent)
         self.tap_hand = None
         self.repeat = True
@@ -30,7 +36,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.start_video_button.Enable(True)
         self.new_trial = False
 
-    def _setup_vs(self):
+    def _setup_vs(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         self.current_text = wx.StaticText(self, label="")
         self.current_text.Wrap(299)
@@ -97,7 +103,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
         return static_box_sizer
 
-    def continue_event(self, event):
+    def continue_event(self, event: wx.Event) -> None:
         self.rest_timer.Stop()
         self.continue_button.SetValue(True)
         # self.repeat_trial.Enable(False)

@@ -3,6 +3,7 @@ import json
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.VerbalFluency.VerbalFluency import VerbalFluency
 from rcp_task_acquisition.tasks.VerbalFluency.constants import (
     PHONEMIC_LIST,
     PHONEMIC_PHRASE,
@@ -10,12 +11,17 @@ from rcp_task_acquisition.tasks.VerbalFluency.constants import (
     SEMANTIC_PHRASE,
     TRIAL_TIME,
 )
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
+    task_trial_item_config = TaskTrialClassConfig(
+        "verbal_fluency", "Verbal Fluency", "verbalfluency", VerbalFluency
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.prompt = None

@@ -4,12 +4,18 @@ import wx
 
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.VerbGeneration.VerbGeneration import VerbGeneration
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class VerbGenerationPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig(
+        "verb_generation", "Verb Generation", "verbgeneration", VerbGeneration
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.seconds = 0

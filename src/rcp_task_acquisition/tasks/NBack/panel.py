@@ -3,13 +3,17 @@ from datetime import datetime
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.NBack.NBack import N_back
 from rcp_task_acquisition.tasks.NBack.configs import NBACK_TYPES
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class NbackPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.trial_type = "real"

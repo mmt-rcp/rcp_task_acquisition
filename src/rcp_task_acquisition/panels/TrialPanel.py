@@ -10,6 +10,8 @@ logger = get_logger(__name__)
 
 
 class TrialPanel(wx.Panel):
+    task_trial_item_config: "TaskTrialClassConfig | None" = None
+
     def __init__(self, parent: wx.Panel):
         super().__init__(parent)
         self.seconds = 0
@@ -202,3 +204,7 @@ class TrialPanelWithInstructPlayback(TrialPanel):
     def resume_video(self):
         self.pause_video_button.SetLabel("Pause Video")
         super().resume_video()
+
+
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
+# on purpose at the end. prevent import loop cycle.

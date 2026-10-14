@@ -1,6 +1,4 @@
-import os
 import pathlib as pl
-import time
 from pathlib import Path
 from typing import Any, Literal
 
@@ -10,7 +8,6 @@ import pyaudio
 from psychopy import core, visual
 from psychopy.visual.vlcmoviestim import VlcMovieStim
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.utils.constants import (
     DURATION,
     FREQUENCY,
@@ -29,8 +26,6 @@ _registered_stimuli_classes: list[type["StimulusBase"]] = []
 
 
 class StimulusBase:
-    panel_cls: type[TrialPanel] = TrialPanel
-
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
         _registered_stimuli_classes.append(cls)

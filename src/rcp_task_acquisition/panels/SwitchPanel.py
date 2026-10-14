@@ -2,7 +2,6 @@ from enum import Enum
 
 import wx
 
-from rcp_task_acquisition.models import participant
 from rcp_task_acquisition.models.Warnings import WarningHandler
 from rcp_task_acquisition.panels.LaunchPanel import LaunchPanel
 from rcp_task_acquisition.panels.MainFrame import MainFrame
@@ -47,7 +46,7 @@ class SwitchPanel:
             self.task_frame.Enable()
             self.task_frame.quit.SetLabel("Exit to Launch Menu")
             self.launch_panel.get_metadata()
-            self.task_frame.show(self.launch_panel.metadata, event)
+            self.task_frame.show(self.launch_panel.metadata)
             self.launch_panel.Hide()
 
         else:
@@ -66,7 +65,7 @@ class SwitchPanel:
         if part_idx == wx.NOT_FOUND or part_idx < 0:
             part = None
         else:
-            part = self.launch_panel.participant_id.GetClientPart(part_idx)
+            part = self.launch_panel.participant_id.GetClientData(part_idx)
         logger.verbose(
             "disable_panel: event=%s ; from=%s participant=%s", event, event.GetEventObject(), part
         )

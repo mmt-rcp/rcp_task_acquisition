@@ -51,7 +51,7 @@ logger = get_logger(__name__)
 class MainFrame(wx.Frame):
     """Contains the main GUI and button boxes"""
 
-    base_dir: Path
+    base_dir: Path  # RawData/participant_id/YYYYMMDD/
     metapath: Path
     sess_dir: Path
     sess_string: str
@@ -182,12 +182,12 @@ class MainFrame(wx.Frame):
             rcp_context=rcp_context,
         )
 
-        self.init.Bind(wx.EVT_TOGGLEBUTTON, self.initCams)
-        self.update_settings.Bind(wx.EVT_BUTTON, self.cams.updateSettings)
+        self.init.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.initCams())
+        self.update_settings.Bind(wx.EVT_BUTTON, lambda _: self.cams.updateSettings())
         self.play.Bind(wx.EVT_TOGGLEBUTTON, self.liveFeed)
         self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
         self.rec.Bind(wx.EVT_TOGGLEBUTTON, self.recordCam)
-        self.exposure_button.Bind(wx.EVT_BUTTON, self.cams.get_exposure)
+        self.exposure_button.Bind(wx.EVT_BUTTON, lambda _: self.cams.get_exposure())
         self.task_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
         self.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
         self.cam_test = Value(ctypes.c_bool, False)
@@ -387,9 +387,7 @@ class MainFrame(wx.Frame):
 
             self.trial_panel.run_trial(self.count)
             self.trial_button.SetLabel("Stop Trial")
-            self.cams.start_recording(
-                event, self.base_dir, self.sess_dir, self.path_base, self.count
-            )
+            self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.liveTimer.Start(150)
             self.msgq.put(Msg.RUN_TASK)
         else:
@@ -757,27 +755,27 @@ class MainFrame(wx.Frame):
         ctx = self._rcp_context
         user_cfg = ctx.user_config
         unit_ref = user_cfg.unitRef
-        date_string = datetime.datetime.now().strftime("%Y%m%d")
-        base_dir = Path(ctx.user_config.RawDataDir).joinpath(date_string, unit_ref)
-        self.base_dir = base_dir
+        date_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
+        part = self.launch_args["participant"]
+        if part is None:
+            return
+        base_dir = self.base_dir = Path(ctx.user_config.RawDataDir, part.id, date_string)
         if not base_dir.exists():
             base_dir.mkdir(parents=True, exist_ok=True)
-        prev_expt_list = [v.name for v in base_dir.glob("session*")]
+        task_item_cfg = self.widget_panel.task_panel.task_trial_item_config
+        prev_expt_list = [v.name for v in base_dir.glob(f"{task_item_cfg.path_part}*")]
         file_count = len(prev_expt_list) + 1
         self.session = file_count
-        self.sess_string = "%s%03d" % ("session", file_count)
-        self.sess_dir = Path(self.base_dir, self.sess_string)
+        self.sess_string = f"{task_item_cfg.path_part}{file_count:03d}"
+        self.sess_dir = Path(base_dir, self.sess_string)
         if not self.sess_dir.exists():
             self.sess_dir.mkdir(parents=True, exist_ok=True)
-        self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
-        self.path_base = f"{self.date_string}_{unit_ref}_{self.sess_string}"
+        self.path_base = f"{part.id}_{date_string}_{self.sess_string}_{unit_ref}"
         # msg = f"P{self.date_string}_{self.user_cfg['unitRef']}_{self.sess_string}x"
 
-    def initCams(
-        self, event: wx.Event
-    ) -> bool:  # NB: but return value unused/unchecked in all callers
+    def initCams(self) -> bool:  # NB: but return value unused/unchecked in all callers
         if self.init.GetValue():
-            success = self.cams.initialize(event)
+            success = self.cams.initialize()
             if not success:
                 return False
             self.init.SetLabel("Release")
@@ -871,7 +869,7 @@ class MainFrame(wx.Frame):
             self.run_task(event)
         if self.init.GetValue():
             self.init.SetValue(False)
-            self.initCams(event)
+            self.initCams()
         self.Hide()
 
     def update_crop(self, event):
@@ -909,9 +907,7 @@ class MainFrame(wx.Frame):
                 self.trial_panel.show()
             else:
                 self.create_file()
-            self.cams.start_recording(
-                event, self.base_dir, self.sess_dir, self.path_base, self.count
-            )
+            self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.set_crop.Enable(False)
             self.minRec.Enable(False)
             self.secRec.Enable(False)
@@ -982,15 +978,15 @@ class MainFrame(wx.Frame):
         else:
             event.Skip()
 
-    def show(self, launch_args: dict[str, Any], event: wx.Event) -> None:
+    def show(self, launch_args: dict[str, Any]) -> None:
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
         self.cam_test.value = False
+        self.launch_args = launch_args
         task = self.task = launch_args["task"].strip()
         self.msgq.put(Msg.UPDATE_TASK)
         self.msgq.put(task)
-        self.launch_args = launch_args
         self.video_status.value = VideoStatus.NOT_PLAYING.value
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
@@ -1030,7 +1026,7 @@ class MainFrame(wx.Frame):
         self.trial_panel = self.widget_panel.get_trial_panel()
         self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
         self.trial_panel.repeat_trial.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
-        self.initCams(event)
+        self.initCams()
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
         self.video_start, self.video_pause = self.trial_panel.get_video_buttons()
