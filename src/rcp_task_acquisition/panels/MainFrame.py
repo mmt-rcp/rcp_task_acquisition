@@ -756,7 +756,7 @@ class MainFrame(wx.Frame):
         base_dir = self.base_dir = Path(ctx.user_config.RawDataDir, part.id, date_string)
         if not base_dir.exists():
             base_dir.mkdir(parents=True, exist_ok=True)
-        prev_expt_list = [v.name for v in base_dir.glob(f"{task_item_cfg.path_part}*")]
+        prev_expt_list = [v for v in base_dir.glob("*") if v.is_dir()]
         file_count = len(prev_expt_list) + 1
         self.session = file_count
         self.sess_string = f"{task_item_cfg.path_part}{file_count:03d}"
