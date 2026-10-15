@@ -93,6 +93,9 @@ class SaraPanel(TrialPanel):
     def reset_assesment(self, event: wx.Event) -> None:
         logger.verbose("in reset_assesment: event=%s", event)
         button, text = self.scoring_panel.get_result()
+        # need to unbind to prevent infinite recursion,
+        self.scoring_panel.Unbind(wx.EVT_CLOSE, handler=self.reset_assesment)
+        # with this following Close:
         self.scoring_panel.Close()
         logger.debug(f"button: {button}, text: {text}")
         assesment_dict = {
