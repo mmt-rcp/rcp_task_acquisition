@@ -791,11 +791,9 @@ class MainFrame(wx.Frame):
             #     self.ser.close()
             if self.rec.GetValue():
                 self.rec.SetValue(False)
-                # self.cams.recordCam(event)
                 self.recordCam()
             if self.play.GetValue():
                 self.play.SetValue(False)
-                # self.cams.liveFeed(event)
                 self.liveFeed()
             if self.set_crop.GetValue():
                 self.set_crop.SetValue(False)
@@ -1024,7 +1022,7 @@ class MainFrame(wx.Frame):
         self.video_start, self.video_pause = self.trial_panel.get_video_buttons()
         if "calibrate" in self.task:
             self.calibrate = True
-            self.task_button.Bind(wx.EVT_TOGGLEBUTTON, self.recordCam)
+            self.task_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
             self.task_button.SetLabel("Record Cameras")
         else:
             self.calibrate = False
