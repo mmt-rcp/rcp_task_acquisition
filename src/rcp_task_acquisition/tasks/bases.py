@@ -1,4 +1,4 @@
-import pathlib as pl
+import functools
 from pathlib import Path
 from typing import Any, Literal
 
@@ -85,8 +85,8 @@ class StimulusBase:
         if self.metadata is None:
             return
 
-        sessionFolderPath = pl.Path(sessionFolder)
-        if sessionFolderPath.exists() == False:
+        sessionFolderPath = Path(sessionFolder)
+        if not sessionFolderPath.exists():
             sessionFolderPath.mkdir()
 
         fullFilePath = sessionFolderPath.joinpath(f"{filename}.txt")
@@ -139,7 +139,7 @@ class StimulusBase:
         return timestamp
 
     def create_csv(self, name, sessionFolder, metadata, start_frame, columns=None) -> None:
-        sessionFolderPath = pl.Path(sessionFolder)
+        sessionFolderPath = Path(sessionFolder)
         if sessionFolderPath.exists() == False:
             return
         csv_name = sessionFolderPath.joinpath(f"{name}-{int(start_frame)}.csv")
@@ -155,16 +155,6 @@ class StimulusBase:
     def saveMetadata(self) -> TaskMetaData:
         """Returns the stimulus current metadata"""
         return {}
-        if self.flip_interval_arr is not None:
-            sessionFolderPath = pl.Path(sessionFolder)
-            flip_updated = np.trim_zeros(self.flip_interval_arr, trim="b")
-            if sessionFolderPath.exists() == False:
-                return
-            csv_name = sessionFolderPath.joinpath(
-                f"{name}-{int(self.first_frame)}-flip_interval.csv"
-            )
-            data = pd.DataFrame(flip_updated)
-            data.to_csv(csv_name)
 
     def play_tone(self):
         # winsound.Beep(int(FREQUENCY), DURATION)
@@ -240,31 +230,32 @@ class StimulusBase:
     def update_data(self, data):
         pass
 
+    @staticmethod
+    @functools.lru_cache(maxsize=64)
+    def _make_audio_data(frequency=440, duration=1.0, sample_rate=44100) -> bytes:
+        # Generate time values
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
+        # Generate sine wave
+        tone = np.sin(frequency * t * 2 * np.pi)
+        # Normalize to 16-bit range
+        audio = ((tone * 32767) * 0.1).astype(np.int16)
+        return audio.tobytes()
+
     def play_stone(self, frequency=440, duration=1.0, sample_rate=44100):
         """
         Generates and plays a sine wave tone.
         """
         try:
-            # Generate time values
-            t = np.linspace(0, duration, int(sample_rate * duration), False)
-
-            # Generate sine wave
-            tone = np.sin(frequency * t * 2 * np.pi)
-
-            # Normalize to 16-bit range
-            audio = ((tone * 32767) * 0.1).astype(np.int16)
-
+            data = self._make_audio_data(frequency, duration, sample_rate)
             p = pyaudio.PyAudio()
             stream = p.open(format=pyaudio.paInt16, channels=1, rate=sample_rate, output=True)
             # Play audio
-            stream.write(audio.tobytes())
-
+            stream.write(data)
             # 5. Clean up
             stream.stop_stream()
             stream.close()
             p.terminate()
             # play_obj = sima.play_buffer(audio, 1, 2, sample_rate)
             # play_obj.wait_done()
-
-        except Exception as e:
-            logger.error(f"Error generating tone: {e}")
+        except Exception as err:
+            logger.exception("Error generating tone: %s", err, stacklevel=3)
