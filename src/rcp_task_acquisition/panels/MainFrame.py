@@ -413,7 +413,6 @@ class MainFrame(wx.Frame):
                 self.liveTimer.Stop()
                 # self.rest_timer.Stop()
                 self.trial_panel.next_button.Enable(True)
-                self.msgq.put(Msg.SEND_METADATA)
                 self.update_task_metadata()
                 return
             self.participant_monitor.update_screen()
@@ -422,10 +421,7 @@ class MainFrame(wx.Frame):
             self.trial_panel.reset(self.count)
             self.trial_panel.end_trial()
             self.liveTimer.Stop()
-
-            self.msgq.put(Msg.SEND_METADATA)
             self.update_task_metadata()
-
             logger.debug("ending entire trial")
 
     def next_trial(self, event: wx.Event) -> None:
@@ -472,7 +468,6 @@ class MainFrame(wx.Frame):
             self.trial_panel.update_values()
             self.trial_button.SetLabel("Start Trial")
             self.rest_timer.Stop()
-            self.msgq.put(Msg.SEND_METADATA)
             self.update_task_metadata()
 
     def play_instructions(self, event: wx.Event) -> None:
@@ -724,20 +719,19 @@ class MainFrame(wx.Frame):
             deidentify.deidentify_one_session(self.sess_dir, self.date_string)
         else:
             # remove entire directory
-            logger.debug(self.sess_dir)
-            shutil.rmtree(self.sess_dir)
+            logger.verbose("removing session dir %s", self.sess_dir)
+            shutil.rmtree(self.sess_dir, ignore_errors=True)
 
     def update_task_metadata(self) -> None:
-        yaml = YAML()
-        params = None
+        self.msgq.put(Msg.SEND_METADATA)
         try:
-            params = json.loads(self.resultsq.get())
-        except Exception as e:
-            logger.error(f"update task metadata error: {e}")
-        with self.metapath.open("r", encoding="utf-8") as file:
-            metadata = yaml.load(file)
+            trial_data = json.loads(self.resultsq.get())
+        except Exception as err:
+            logger.error("update task metadata error: %s", err)
+            trial_data = None
+        metadata = file_utils.read_metadata(self.metapath)
         logger.debug("%s yaml loaded sections: %r", self.metapath, tuple(metadata))
-        metadata["trial_data"] = params
+        metadata["trial_data"] = trial_data
         self.trial_panel.populate_metadata(metadata)
         file_utils.write_metadata(metadata, self.metapath)
 
