@@ -76,7 +76,7 @@ class NbackPanel(TrialPanel):
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.nback_choice.Enable(False)
         self.practice.Enable(False)
 

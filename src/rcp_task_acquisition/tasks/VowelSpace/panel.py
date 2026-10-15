@@ -132,7 +132,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
     def reset(self, number):
         self.timestamps = {}
 
-    def run_trial(self, count):
+    def run_trial(self, count: int) -> None:
         # self.repeat = False
         self.repeat = True
         self.continue_button.SetLabel("Stop Trial")

@@ -101,7 +101,7 @@ class ReachGraspPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
         self.left_radio.Enable(False)
         self.right_radio.Enable(False)
@@ -109,7 +109,7 @@ class ReachGraspPanel(TrialPanel):
         self.object_text.Enable(False)
         self.large_object_radio.Enable(False)
         self.precision_object_radio.Enable(False)
-        self.trial_text.SetLabel(f"Trial # {number}")
+        self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
 
     def continue_event(self, event):

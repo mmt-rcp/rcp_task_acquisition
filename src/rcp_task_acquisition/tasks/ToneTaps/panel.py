@@ -77,13 +77,13 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
         self.trial_is_active = True
         self.left_radio.Enable(False)
         self.right_radio.Enable(False)
         self.hand_text.Enable(False)
-        self.trial_text.SetLabel(f"Trial # {number}")
+        self.trial_text.SetLabel(f"Trial # {count}")
 
     def update_trial(self, number):
         self.trial_text.SetLabel(f"Trial # {number}")

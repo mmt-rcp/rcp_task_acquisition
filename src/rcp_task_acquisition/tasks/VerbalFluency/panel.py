@@ -189,7 +189,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {TRIAL_TIME - self.timer.value} secs")
 
-    def run_trial(self, count):
+    def run_trial(self, count: int) -> None:
         self.seconds = 60
         self.start_trial()
 

@@ -100,7 +100,7 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         # self.seconds = 10
         self.trial_is_active = True
         self.left_radio.Enable(False)

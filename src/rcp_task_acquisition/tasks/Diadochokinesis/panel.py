@@ -164,7 +164,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             value = "introduction"
         return value
 
-    def run_trial(self, count):
+    def run_trial(self, count: int) -> None:
         self.seconds = DDK_TRIAL_TIME
         self.trial_is_active = True
         self.continue_button.SetLabel("Stop Trial")

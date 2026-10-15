@@ -82,9 +82,9 @@ class VerbGenerationPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
         self.trial_is_active = True
         self.noun_choice.Enable(False)
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")

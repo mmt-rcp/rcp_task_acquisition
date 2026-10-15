@@ -130,7 +130,7 @@ class SaraPanel(TrialPanel):
     def cancel_event(self, event):
         self.cancel = True
 
-    def run_trial(self, event):
+    def run_trial(self, count: int) -> None:
         self.trial_number += 1
         logger.debug(f"trial Number: {self.trial_number}")
         self.trial_is_active = True
