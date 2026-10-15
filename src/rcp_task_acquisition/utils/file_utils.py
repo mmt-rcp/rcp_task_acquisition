@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any
 
 import ruamel.yaml
@@ -13,15 +14,15 @@ from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def write_metadata(data: dict[str, Any], file_path) -> None:
+def write_metadata(data: dict[str, Any], file_path: str | Path) -> None:
+    file_path = Path(file_path)
     logger.info("writing metadata to %s", file_path)
-    data = config.to_raw_recursive(data)
-    with open(file_path, "w") as metadata_file:
-        ruamelFile = ruamel.yaml.YAML()
-        ruamelFile.dump(data, metadata_file)
+    with file_path.open("w") as fh:
+        dumper = ruamel.yaml.YAML()
+        dumper.dump(data, fh)
 
 
-def metadata_template():
+def metadata_template() -> ruamel.yaml.CommentedMap:
     """
     Creates a template for config.yaml file. This specific order is preserved while saving as yaml file.
     """
@@ -48,34 +49,34 @@ def metadata_template():
     participant_details:
     \n
 
-# Task
-    task:
-    trial_data:
-    task_notes:
-    task_settings:
-    
 # Screen Config
     screen_settings:
+    \n
+
+# Task
+    task:
+    task_settings:
+    trial_data:
+    task_notes:
+    \n
+
+# Cameras
+    cameras:
     \n
 
 # Labjack Settings
     actual_scan_rate:
     hardware:
     \n
-
-# Cameras
-    cameras:
-    \n
-    """
+"""
 
     ruamelFile = ruamel.yaml.YAML()
-    cfg_file = ruamelFile.load(yaml_str)
-    return cfg_file, ruamelFile
+    meta_cfg = ruamelFile.load(yaml_str)
+    return meta_cfg
 
 
-def read_metadata(path):
-    ruamelFile = ruamel.yaml.YAML()
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            cfg = ruamelFile.load(f)
+def read_metadata(path: Path):
+    loader = ruamel.yaml.YAML()
+    with path.open("r") as f:
+        cfg = loader.load(f)
     return cfg

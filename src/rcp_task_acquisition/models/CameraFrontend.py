@@ -357,7 +357,7 @@ class Camera:
         self.camaq.value = 1
         self.startAq()
 
-    def stop_recording(self, event: wx.Event) -> None:
+    def stop_recording(self) -> None:
         self.shared.value = -1
         self.stopAq()
         time.sleep(2)

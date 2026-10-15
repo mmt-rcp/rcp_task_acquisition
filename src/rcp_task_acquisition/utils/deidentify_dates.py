@@ -90,7 +90,7 @@ class DateDeidentification:
                 shutil.copyfile(m, mdest)
 
             if "metadata.yaml" in mdest:
-                metadata = fu.read_metadata(mdest)
+                metadata = fu.read_metadata(Path(mdest))
                 fields = list(metadata.keys())
                 for f in fields:
                     if "Time" in f:

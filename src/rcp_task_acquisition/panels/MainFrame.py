@@ -169,8 +169,8 @@ class MainFrame(wx.Frame):
         (self.contrast_test, self.focus_test, self.hardware_test_panel) = (
             self.ctrl_panel.get_hardware_handles()
         )
-        self.focus_test.Bind(wx.EVT_TOGGLEBUTTON, self.set_focus)
-        self.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, self.set_contrast)
+        self.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
+        self.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
 
         self.participant_monitor = self.widget_panel.get_monitor()
         self.cams = Camera(
@@ -185,9 +185,9 @@ class MainFrame(wx.Frame):
 
         self.init.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.initCams())
         self.update_settings.Bind(wx.EVT_BUTTON, lambda _: self.cams.updateSettings())
-        self.play.Bind(wx.EVT_TOGGLEBUTTON, self.liveFeed)
+        self.play.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.liveFeed())
         self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
-        self.rec.Bind(wx.EVT_TOGGLEBUTTON, self.recordCam)
+        self.rec.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
         self.exposure_button.Bind(wx.EVT_BUTTON, lambda _: self.cams.get_exposure())
         self.task_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
         self.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
@@ -326,7 +326,7 @@ class MainFrame(wx.Frame):
                 self.trial_button.SetValue(False)
                 self.trial_event(event)
             if self.recording:
-                self.cams.stop_recording(event)
+                self.cams.stop_recording()
             self.video_status.value = VideoStatus.STOP.value
             self.task_button.SetLabel("Start Task")
             self.hardware_button.Enable(True)
@@ -405,7 +405,7 @@ class MainFrame(wx.Frame):
                 self.trial_panel.repeat_trial.Enable(True)
                 self.trial_button.SetLabel("Repeat Trial")
                 self.trial_panel.repeat_trial.SetValue(False)
-                self.cams.stop_recording(event)
+                self.cams.stop_recording()
                 self.liveTimer.Stop()
                 # self.rest_timer.Stop()
                 self.trial_panel.next_button.Enable(True)
@@ -413,7 +413,7 @@ class MainFrame(wx.Frame):
                 self.update_task_metadata()
                 return
             self.participant_monitor.update_screen()
-            self.cams.stop_recording(event)
+            self.cams.stop_recording()
             self.trial_button.SetLabel("Begin Trial")
             self.trial_panel.reset(self.count)
             self.trial_panel.end_trial()
@@ -461,7 +461,7 @@ class MainFrame(wx.Frame):
         ):
             logger.debug("in intertrial")
             self.participant_monitor.update_screen()
-            self.cams.stop_recording(event)
+            self.cams.stop_recording()
             self.trial_panel.reset(self.count)
             self.trial_panel.end_trial()
             self.stimulus_panel.value = False
@@ -506,7 +506,7 @@ class MainFrame(wx.Frame):
             self.video_status.value = VideoStatus.START_FROM_PAUSE.value
             self.trial_panel.resume_video()
 
-    def set_focus(self, event: wx.Event) -> None:
+    def set_focus(self) -> None:
         if self.focus_test.GetValue():
             self.contrast_test.Enable(False)
             self.cam_test.value = True
@@ -518,7 +518,7 @@ class MainFrame(wx.Frame):
             self.cams.update_focus(False)
             self.cam_test.value = False
 
-    def set_contrast(self, event: wx.Event) -> None:
+    def set_contrast(self) -> None:
         if self.contrast_test.GetValue():
             self.focus_test.Enable(False)
             self.cam_test.value = True
@@ -530,13 +530,11 @@ class MainFrame(wx.Frame):
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
-    def liveFeed(self, event: wx.Event) -> None:
-        geo = event.GetEventObject()
-        assert isinstance(geo, wx.ToggleButton)
-        button_label = geo.GetLabel()
+    def liveFeed(self) -> None:
+        button_label = self.play.GetLabel()
         if button_label == "Abort":
             self.rec.SetValue(False)
-            self.recordCam(event)
+            self.recordCam()
             if wx.MessageBox(
                 "Are you sure?", caption="Abort", style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
             ):
@@ -585,8 +583,8 @@ class MainFrame(wx.Frame):
                 self.focus_test.SetValue(False)
                 self.contrast_test.SetValue(False)
                 self.contrast_test.Enable(True)
-                self.set_focus(event)
-                self.set_contrast(event)
+                self.set_focus()
+                self.set_contrast()
                 self.finish.value = 2
                 self.hardware_test_panel.Hide()
                 self.hardware_test = False
@@ -642,8 +640,8 @@ class MainFrame(wx.Frame):
                 self.focus_test.SetValue(False)
                 self.contrast_test.SetValue(False)
                 self.contrast_test.Enable(True)
-                self.set_focus(event)
-                self.set_contrast(event)
+                self.set_focus()
+                self.set_contrast()
                 self.finish.value = 2
                 self.hardware_test_panel.Hide()
                 self.hardware_test = False
@@ -664,7 +662,7 @@ class MainFrame(wx.Frame):
     def create_metadata(self) -> None:
         logger.verbose("create_metadata called")
         user_cfg = self._rcp_context.user_config
-        meta, _ruamelFile = file_utils.metadata_template()
+        meta = file_utils.metadata_template()
         date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
         # self.meta['screen_settings'] = self.user_cfg['screen_settings']
         meta_name = f"{date_string}_{user_cfg.unitRef}_{self.sess_string}_metadata.yaml"
@@ -684,7 +682,7 @@ class MainFrame(wx.Frame):
                 "actual_framerate": cam_d.actual_framerate,
                 "actual_exposure": cam_d.exposure,
             }
-        meta["cameras"] = cameras_meta
+        meta["cameras"] = config.to_raw_recursive(cameras_meta)
         meta["unitRef"] = user_cfg.unitRef
         meta["Collection"] = "info"
         meta["hardware"] = config.to_raw_recursive(user_cfg.hardware)
@@ -696,9 +694,7 @@ class MainFrame(wx.Frame):
         meta["participant_details"] = self.launch_args["participant_detail"]
 
         meta["task"] = self.task
-        meta["task_settings"] = list(
-            self._rcp_context.tasks_config[self.task].settings
-        )  # nb: use list to ensure if modified it won't modify the one in config.
+        meta["task_settings"] = self._rcp_context.tasks_config[self.task].settings
 
         # if self.task == "verbal_fluency":
         #     self.meta["trial_data"]["categories"] = self.trial_panel.add_metadata()
@@ -708,15 +704,13 @@ class MainFrame(wx.Frame):
         file_utils.write_metadata(meta, self.metapath)
 
     def finalize_metadata(self) -> None:
+        logger.verbose("finalize_metadata called")
         metadata_panel = MetadataPanel()
         user_cfg = self._rcp_context.user_config
         res = metadata_panel.show()
         metadata_panel.dialog.Close()
         if res == wx.ID_OK:
-            yaml = YAML()
-            with self.metapath.open("r", encoding="utf-8") as file:
-                metadata = yaml.load(file)
-
+            metadata = file_utils.read_metadata(self.metapath)
             metadata["actual_scan_rate"] = self.labjack_scan_rate
             for key, value in metadata_panel.metadata.items():
                 metadata[key] = value
@@ -725,8 +719,7 @@ class MainFrame(wx.Frame):
             if isinstance(self.trial_panel, SaraPanel):
                 metadata["trial_data"] = self.trial_panel.add_metadata()
 
-            with self.metapath.open("w", encoding="utf-8") as f:
-                yaml.dump(metadata, f)
+            file_utils.write_metadata(metadata, self.metapath)
 
             deidentify = DateDeidentification(user_cfg)
             deidentify.deidentify_one_session(self.sess_dir, self.date_string)
@@ -744,12 +737,10 @@ class MainFrame(wx.Frame):
             logger.error(f"update task metadata error: {e}")
         with self.metapath.open("r", encoding="utf-8") as file:
             metadata = yaml.load(file)
-        logger.debug("%s yaml loaded: %r", self.metapath, metadata)
+        logger.debug("%s yaml loaded sections: %r", self.metapath, tuple(metadata))
         metadata["trial_data"] = params
         self.trial_panel.populate_metadata(metadata)
-        logger.info("saving metadata to %s", self.metapath)
-        with self.metapath.open("w", encoding="utf-8") as f:
-            yaml.dump(metadata, f)
+        file_utils.write_metadata(metadata, self.metapath)
 
     def create_file(self) -> None:
         logger.verbose("create_file called")
@@ -802,11 +793,11 @@ class MainFrame(wx.Frame):
             if self.rec.GetValue():
                 self.rec.SetValue(False)
                 # self.cams.recordCam(event)
-                self.recordCam(event)
+                self.recordCam()
             if self.play.GetValue():
                 self.play.SetValue(False)
                 # self.cams.liveFeed(event)
-                self.liveFeed(event)
+                self.liveFeed()
             if self.set_crop.GetValue():
                 self.set_crop.SetValue(False)
 
@@ -855,17 +846,17 @@ class MainFrame(wx.Frame):
         self.rest_timer.Stop()
         self.video_status.value = VideoStatus.STOP.value
         if self.recording:
-            self.cams.stop_recording(event)
+            self.cams.stop_recording()
         if self.play.GetValue():
             self.play.SetValue(False)
-            self.liveFeed(event)
+            self.liveFeed()
         if self.rec.GetValue():
             self.rec.SetValue(False)
-            self.recordCam(event)
+            self.recordCam()
         # If running a task
         if self.hardware_button.GetValue():
             self.hardware_button.SetValue(False)
-            self.liveFeed(event)
+            self.liveFeed()
         if self.task_button.GetValue():
             self.task_button.SetValue(False)
             self.run_task(event)
@@ -878,7 +869,7 @@ class MainFrame(wx.Frame):
         value = bool(self.crop.GetValue())
         self.cams.update_crop(value)
 
-    def recordCam(self, event: wx.Event) -> None:
+    def recordCam(self) -> None:
         ctx = self._rcp_context
         user_cfg = ctx.user_config
         if self.rec.GetValue() or self.task_button.GetValue():
@@ -922,7 +913,7 @@ class MainFrame(wx.Frame):
             if not self.recording:
                 return
             self.recording = False
-            self.cams.stop_recording(event)
+            self.cams.stop_recording()
             self.rec.SetLabel("Record")
             self.play.SetLabel("Live")
             self.liveTimer.Stop()
