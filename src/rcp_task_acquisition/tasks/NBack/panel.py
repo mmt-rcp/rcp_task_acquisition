@@ -61,17 +61,6 @@ class NbackPanel(TrialPanel):
         )
         return grid_sizer
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-        self.selections = {
-            "type": NBACK_TYPES[self.nback_choice.GetSelection()],
-            "trial": self.trial_type,
-        }
-        self.timestamps[f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z"] = "next_trial_selected"
-
-    def update_trial(self, number):
-        self.trial_text.SetLabel(f"Selection for Trial # {number}")
-
     def get_result(self):
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
@@ -79,10 +68,6 @@ class NbackPanel(TrialPanel):
     def run_trial(self, count: int) -> None:
         self.nback_choice.Enable(False)
         self.practice.Enable(False)
-
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
 
     def reset(self, number):
         self.nback_choice.Enable(True)

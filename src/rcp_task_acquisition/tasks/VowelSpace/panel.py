@@ -102,15 +102,8 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
         return static_box_sizer
 
-    def continue_event(self, event: wx.Event) -> None:
-        self.rest_timer.Stop()
-        self.continue_button.SetValue(True)
-        # self.repeat_trial.Enable(False)
-
     def is_finish(self):
-        # self.finish_text.SetLabel("Task Finished! Press End Task.")
         self.finish_text.SetLabel("Task Finished! Press 'End Task' to save data.")
-        # self.seconds_text.SetLabel("")
         self.current_text.SetLabel("")
         self.trial_text.SetLabel("")
         self.continue_button.Enable(False)

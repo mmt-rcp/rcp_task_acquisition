@@ -45,10 +45,6 @@ class StimulusBase:
         self.display = display
         self.frame = frame
         self.prev_flip_time: float | None = None
-        self.metadata = None  # unused
-        self.header = None  # unused
-        self.total_time = None  # unused
-        self.flip_interval_arr = None  # unused but in unused func
         self.instructions_dict: dict[str, str] = {}
         self.current_trial: str | None = None
         self.video_status = video_status
@@ -76,67 +72,6 @@ class StimulusBase:
         self.display.switch_patch()
         self.display.draw_patch()
         self.play_tone()
-
-    def prepareMetadataStream(self, sessionFolder, filename, header):
-        """ """
-        # unused
-        headerBreakLine = "-" * 40 + "\n"
-
-        if self.metadata is None:
-            return
-
-        sessionFolderPath = Path(sessionFolder)
-        if not sessionFolderPath.exists():
-            sessionFolderPath.mkdir()
-
-        fullFilePath = sessionFolderPath.joinpath(f"{filename}.txt")
-
-        data = None
-        if fullFilePath.exists():
-            with open(fullFilePath, "r") as stream:
-                lines = stream.readlines()
-            if len(lines) == 0:
-                pass
-            else:
-                for lineIndex, line in enumerate(lines):
-                    if line == headerBreakLine:
-                        break
-                data = lines[lineIndex + 1 :]
-
-        stream = open(fullFilePath, "w")
-        stream.writelines(f"{key}: {value}\n" for key, value in header.items())
-        stream.write(headerBreakLine)
-
-        if data is not None:
-            stream.writelines(data)
-
-        return stream
-
-    def get_time_diff_arr(self, total_time, fps):
-        # unused
-        self.flip_interval_arr = np.zeros(int((total_time + 5) * fps))
-
-    def _time_flip(self) -> float:
-        # unused
-        new_flip_time, flip_int = self.display.flip(self.prev_flip_time)
-        self.prev_flip_time = new_flip_time
-        if self.flip_interval_arr is not None and self.display.stimulus_frame <= len(
-            self.flip_interval_arr
-        ):
-            self.flip_interval_arr[self.display.stimulus_frame - 1] = flip_int
-        return new_flip_time
-
-    def _time_idle(
-        self,
-        duration=1,
-        units: Literal["seconds"] | Literal["frames"] = "seconds",
-        returnFirstTimestamp=False,
-    ) -> float:
-        # unused
-        timestamp, self.flip_interval_arr, self.prev_flip_time = self.display.idle(
-            duration, self.prev_flip_time, self.flip_interval_arr, units, returnFirstTimestamp
-        )
-        return timestamp
 
     def create_csv(self, name, sessionFolder, metadata, start_frame, columns=None) -> None:
         sessionFolderPath = Path(sessionFolder)

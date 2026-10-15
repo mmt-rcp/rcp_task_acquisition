@@ -112,18 +112,11 @@ class ReachGraspPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-
     def get_result(self):
         # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
         self.grasp_object = "Large" if self.large_object_radio.GetValue() else "Precision"
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
         return self.reach_hand, self.grasp_object  # , self.pace
-
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
 
     def reset(self, number):
         self.seconds = 5

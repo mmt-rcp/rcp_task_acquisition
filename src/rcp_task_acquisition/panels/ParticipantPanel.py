@@ -100,7 +100,7 @@ class ParticipantPanel:
         )
         return row_sizer
 
-    def cancel_event(self, event):
+    def cancel_event(self, event: wx.Event) -> None:
         self.dialog.Close()
 
     def show_error(self):
