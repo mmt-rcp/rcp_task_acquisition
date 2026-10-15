@@ -296,8 +296,6 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
 
 
 class N_back(bases.StimulusBase):
-    finish: SharedInt  # always passed via base_vars
-
     def __init__(self, base_vars: dict[str, Any], button: SharedBool):
         super().__init__(**base_vars)
         self.button = button

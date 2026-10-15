@@ -37,8 +37,8 @@ class StimulusBase:
         timer: SharedInt,
         video_lock: SharedEvent,
         *,
-        video_status: SharedInt | None = None,
-        finish: SharedInt | None = None,
+        video_status: SharedInt,
+        finish: SharedInt,
         rcp_context: RcpRunContext,
     ):
         self._rcp_context = rcp_context
