@@ -14,6 +14,7 @@ import shutil
 import queue
 import time
 import typing
+import warnings
 from multiprocessing import Event, Queue, Value
 from pathlib import Path
 from typing import Any
@@ -744,6 +745,14 @@ class MainFrame(wx.Frame):
 
     def create_file(self) -> None:
         logger.verbose("create_file called")
+        task_panel = self.widget_panel.task_panel
+        task_item_cfg = task_panel.task_trial_item_config
+        if task_item_cfg is None:
+            warnings.warn(
+                f"unexpected trial panel with None task_trial_item_config: {task_panel}",
+                UserWarning,
+            )
+            return
         ctx = self._rcp_context
         user_cfg = ctx.user_config
         unit_ref = user_cfg.unitRef
@@ -756,7 +765,6 @@ class MainFrame(wx.Frame):
         base_dir = self.base_dir = Path(ctx.user_config.RawDataDir, part.id, date_string)
         if not base_dir.exists():
             base_dir.mkdir(parents=True, exist_ok=True)
-        task_item_cfg = self.widget_panel.task_panel.task_trial_item_config
         prev_expt_list = [v.name for v in base_dir.glob(f"{task_item_cfg.path_part}*")]
         file_count = len(prev_expt_list) + 1
         self.session = file_count
