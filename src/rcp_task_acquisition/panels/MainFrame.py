@@ -657,9 +657,8 @@ class MainFrame(wx.Frame):
         logger.verbose("create_metadata called")
         user_cfg = self._rcp_context.user_config
         meta = file_utils.metadata_template()
-        date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
         # self.meta['screen_settings'] = self.user_cfg['screen_settings']
-        meta_name = f"{date_string}_{user_cfg.unitRef}_{self.sess_string}_metadata.yaml"
+        meta_name = f"{self.path_base}_metadata.yaml"
         self.metapath = Path(self.sess_dir, meta_name)
         cameras_meta = {}
         meta["version"] = str(__version__)
