@@ -82,7 +82,7 @@ class DateDeidentification:
                 del metadata[f]
         after_fields = list(metadata)
         logger.debug("removed fields: %s", sorted(set(before_fields) - set(after_fields)))
-        part_id = metadata.get("participant_id")
+        part_id = metadata.get("participant_id") or ""
         task_part = session_path.parts[-1]
         date_shift = self.date_offset - date_ordinal
         rng = SimpleLCG(seed=date_shift)

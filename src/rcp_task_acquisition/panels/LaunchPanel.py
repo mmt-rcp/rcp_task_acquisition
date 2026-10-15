@@ -33,6 +33,7 @@ class LaunchPanel:
     """
 
     def __init__(self, parent=None, *, rcp_context: RcpRunContext):
+        self._selected_participant: Participant | None = None
         self._rcp_context = rcp_context
         self.args = None
         self.task: str = ""
@@ -201,19 +202,25 @@ class LaunchPanel:
         )
         return grid_sizer
 
-    def _participant_id_combo_event(self, event):
-        return
-        # TODO
-        # combo = self.participant_id
-        # idx = combo.GetSelection()
-        # if idx < 0:
-        #     part = None
-        # else:
-        #     part: Participant = combo.GetClientData(idx)
-        # with wx.EventBlocker(combo):
-        #     combo.SetLabelText("" if part is None else f"ParticipantId: {part.id}")
-        #     # NB: this also reset the current Selection..
-        # self._selected_participant = part
+    def _participant_id_combo_event(self, event: wx.Event) -> None:
+        combo = self.participant_id
+        idx = combo.GetSelection()
+        if idx < 0:
+            part = None
+        else:
+            part: Participant = combo.GetClientData(idx)
+        logger.info("selected participant: %s", part)
+
+        def doit():
+            # for some reason on Windows the SetValue has to be done outside this event handler,
+            # so use wx.CallAfter below.
+            with wx.EventBlocker(combo):
+                combo.SetValue("" if part is None else f"{part.id}")
+            # NB: this also reset the current Selection...
+
+        # so we store the selected one in:
+        self._selected_participant = part
+        wx.CallAfter(doit)
 
     def _setup_buttons(self) -> wx.BoxSizer:
         button_width = wx.Size(200, -1)
@@ -252,73 +259,28 @@ class LaunchPanel:
             for part_disp, part in zip(participants_display, participants):
                 combo.Append(part_disp, clientData=part)
 
-    def update_list(self, event: wx.Event) -> None:
-        combo = self.participant_id
-        current_text = combo.GetValue()
-        insertion_point = combo.GetInsertionPoint()
-        logger.info("current_text: %s - %s", current_text, combo.GetSelection())
-        self.current_list = [
-            part
-            for part_display, part in zip(self.participant_id_show_list, self.participants_list)
-            if current_text in part_display.lower()
-        ]
-        combo.Freeze()
-        try:
-            self._set_participants_in_combo(self.current_list)
-            with wx.EventBlocker(combo):
-                if len(self.current_list) == 1:
-                    combo.SetSelection(0)
-                else:
-                    combo.Popup()
-                    combo.SetValue(current_text)
-        finally:
-            combo.Thaw()
-
-        def after():
-            logger.debug("after: %s %s", combo.GetValue(), combo.GetSelection())
-            combo.SetFocus()
-            # combo.GetParent().SetCursor(wx.Cursor(wx.CURSOR_ARROW))
-            # combo.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
-            # # combo.SetInsertionPoint(insertion_point)
-            # # combo.SetFocus()
-            # # combo.GetParent().SetCursor(wx.Cursor(wx.CURSOR_ARROW))
-            # # combo.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
-            # act = wx.UIActionSimulator()
-            # # with wx.EventBlocker(combo):
-            # act.MouseClick()
-            # act.KeyDown(wx.WXK_END)
-            # act.KeyUp(wx.WXK_END)
-            # key_e = wx.KeyEvent(wx.wxEVT_KEY_DOWN)
-            # key_e.SetKeyCode(wx.WXK_END)
-            # combo.ProcessEvent(key_e)
-            # key_e = wx.KeyEvent(wx.wxEVT_KEY_UP)
-            # key_e.SetKeyCode(wx.WXK_END)
-            # combo.ProcessEvent(key_e)
-            # combo.Refresh()
-
-        wx.CallAfter(after)
-
     def on_enter(self, event: wx.Event) -> None:
         logger.verbose("on_enter: %s", event.GetEventObject())
 
     def remove_participant(self, event: wx.Event) -> None:
-        combo = self.participant_id
-        idx = combo.GetSelection()
-        if idx < 0:
+        part = self._selected_participant
+        if part is None:
             return
-        part = combo.GetClientData(idx)
         dlg = wx.MessageDialog(
             None,
-            f"Are you sure you want to delete {part.id}?",
+            f"Are you sure you want to delete {part.id} ({part.last_name}) ?",
             "Warning",
             wx.YES_NO | wx.ICON_QUESTION,
         )
         if dlg.ShowModal() == wx.ID_NO:
             return
-        self.participant_panel.remove_participant(part.id)
+        self._selected_participant = None
+        combo = self.participant_id
         with wx.EventBlocker(combo):
             combo.SetSelection(-1)
-            self.get_participants()
+            combo.SetValue("")
+        self.participant_panel.remove_participant(part.id)
+        self.get_participants()
 
     def enable_gui(self, is_enabled) -> None:
         self.hardware_button.Enable(is_enabled)
@@ -355,8 +317,11 @@ class LaunchPanel:
             if participant_id == participant.id:
                 new_index = index
                 break
-        with wx.EventBlocker(self.participant_id):
-            self.participant_id.SetSelection(new_index)
+        # NB: not blocking signal for setSelection on purpose:
+        self.participant_id.SetSelection(new_index)
+        # given we have a required slot/callback handler on it.
+        self._participant_id_combo_event(event)  # but still need call it explicitly...
+        # EONB.
 
     def hardware_event(self, event):
         """
@@ -383,16 +348,7 @@ class LaunchPanel:
         return self.dialog.Show()
 
     def get_metadata(self) -> None:
-        combo = self.participant_id
-        participant_id = None
-        participant = None
-        idx = combo.GetSelection()
-        if idx >= 0:
-            part = combo.GetClientData(idx)
-            for participant in self.participants_list:
-                if participant.id == part.id:
-                    participant_id = part.id
-                    break
+        participant = self._selected_participant
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
         logger.info(f"participant panel: {self.participants_list}")
@@ -400,7 +356,7 @@ class LaunchPanel:
         self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue()
-        self.metadata["participant_id"] = participant_id
+        self.metadata["participant_id"] = "" if participant is None else participant.id
         self.metadata["participant"] = participant
         self.metadata["participant_detail"] = self.participant_detail.GetValue()
         self._resize_dialog()

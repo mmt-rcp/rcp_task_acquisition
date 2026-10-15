@@ -969,6 +969,7 @@ class MainFrame(wx.Frame):
             event.Skip()
 
     def show(self, launch_args: dict[str, Any]) -> None:
+        logger.debug("show(): launch_args=%s", launch_args)
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False

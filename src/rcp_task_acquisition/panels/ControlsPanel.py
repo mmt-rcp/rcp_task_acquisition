@@ -3,7 +3,7 @@ import wx
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ParticipantMonitorPanel import MonitorPanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
-from rcp_task_acquisition.tasks.Calibration.panel import Calibration
+from rcp_task_acquisition.tasks.Calibration.panel import CalibrationPanel
 from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
 from rcp_task_acquisition.tasks.NBack.panel import NbackPanel
@@ -39,7 +39,7 @@ class ControlsPanel(wx.Panel):
         self.task_panel: TrialPanel = self.get_task_panel(task)
         self.task_panel.Enable(False)
         vertical_spacer.Add(
-            self._set_up_tasks(task, button_width),
+            self._set_up_task(task, button_width),
             pos=(vertical_position, 0),
             span=(0, 5),
             flag=wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.BOTTOM,
@@ -80,7 +80,7 @@ class ControlsPanel(wx.Panel):
     def hide_cams(self):
         return self.cam_panel.Hide()
 
-    def _set_up_tasks(self, task, button_width):
+    def _set_up_task(self, task: str, button_width: int):
         vertical_position = 0
         white_space = 10
         self.task_sizer = wx.GridBagSizer(6, 5)
@@ -233,7 +233,7 @@ class ControlsPanel(wx.Panel):
         elif task == "verb_generation":
             return VerbGenerationPanel(self)
         elif "calibrate" in task:
-            return Calibration(self)
+            return CalibrationPanel(self)
         else:
             basic_panel = TrialPanel(self)
             basic_panel.continue_button.Show()

@@ -113,7 +113,7 @@ class TrialPanel(wx.Panel):
         warnings.warn(f"{self.__class__.__name__}.get_result() not implemented", UserWarning)
         return None
 
-    def on_timer(self, event) -> None:
+    def on_timer(self, event: wx.Event) -> None:
         pass
 
     def start_new_trial(self) -> None:

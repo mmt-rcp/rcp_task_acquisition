@@ -32,7 +32,7 @@ class StimulusBase:
 
     def __init__(
         self,
-        display: Window,
+        display: Window,  # this is the patient monitor window
         frame: SharedInt,
         timer: SharedInt,
         video_lock: SharedEvent,

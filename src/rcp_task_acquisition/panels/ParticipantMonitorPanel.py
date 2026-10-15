@@ -26,7 +26,7 @@ class MonitorPanel(wx.Panel):
         self.display_size = get_proportions(display_size, max_gui_image_size[0])
         self.prev_arr: np.ndarray | None = None
 
-    def create_panel(self):
+    def create_panel(self) -> wx.GridBagSizer:
         title = wx.StaticText(self.parent, label="Participant Monitor:")
         font = wx.Font(wx.FontInfo(8).Bold())
         title.SetFont(font)

@@ -46,7 +46,7 @@ class Msg(str, Enum):
 
 
 class StimulusThread(ProcessWithLogging):
-    window: Window
+    window: Window  # NB: this is the patient monitor window
 
     def __init__(
         self,
@@ -195,11 +195,7 @@ class StimulusThread(ProcessWithLogging):
         self.close_window()
 
     def run(self) -> None:
-        try:  # temporary try
-            self.window = Window(screen=self.screenConfig, fullScreen=True)
-        except Exception as err:
-            logger.exception("Could not create window: %s", err)
-            # self.window = None
+        self.window = Window(screen=self.screenConfig, fullScreen=True)
 
         logger.info("entering main loop")
         while self.alive:
