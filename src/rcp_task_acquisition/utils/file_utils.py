@@ -50,9 +50,9 @@ def metadata_template():
 
 # Task
     task:
-    task_settings:
     trial_data:
     task_notes:
+    task_settings:
     
 # Screen Config
     screen_settings:
