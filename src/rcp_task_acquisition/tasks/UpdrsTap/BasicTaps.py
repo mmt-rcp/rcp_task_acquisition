@@ -1,7 +1,7 @@
 from psychopy import core
 
 from rcp_task_acquisition.tasks import bases
-from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
+from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.typing import TaskMetaData
 
@@ -16,7 +16,7 @@ class BasicTaps(bases.StimulusBase):
         self.hand = None
         self.type = None
         self.hand_used = {}
-        self.instructions_dict = BASIC_TAPS_PATH
+        self.instructions_dict = BASIC_TAPS_PATHS
 
     def present(self):
         self.trial_count += 1

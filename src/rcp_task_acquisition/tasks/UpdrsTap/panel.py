@@ -2,7 +2,7 @@ import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.ToneTaps.ToneTaps import ToneTapsClosed
-from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
+from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
 from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -24,7 +24,7 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
-        self.instruction_paths = BASIC_TAPS_PATH
+        self.instruction_paths = BASIC_TAPS_PATHS
         self.start_video_button.Enable(True)
         self.SetSizer(vertical_sizer)
 

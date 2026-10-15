@@ -7,13 +7,13 @@ from psychopy import core, visual
 
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.ToneTaps.constants import (
-    IVRY_TAPS_VIDEO_PATH,
+    IVRY_TAPS_VIDEO_PATHS,
     TAP_DURATION,
     TAP_FREQUENCY,
 )
 from rcp_task_acquisition.utils.constants import GLOBAL_CLOCK
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import TaskMetaData
+from rcp_task_acquisition.utils.typing import TaskMetaData, SharedInt
 
 logger = get_logger(__name__)
 
@@ -33,14 +33,14 @@ PARAMS = {
 
 
 class ToneTapsClosed(bases.StimulusBase):
-    def __init__(self, base_vars, press_count):
+    def __init__(self, base_vars: dict, press_count: SharedInt) -> None:
         super().__init__(**base_vars)
         self.hand_list = []
         self.hand = None
         self.trial_count = 0
         self.first_tap = True
         self.press_count = press_count
-        self.instructions_dict = IVRY_TAPS_VIDEO_PATH
+        self.instructions_dict = IVRY_TAPS_VIDEO_PATHS
 
     def present(self, test=True):
         # Initialize the message text

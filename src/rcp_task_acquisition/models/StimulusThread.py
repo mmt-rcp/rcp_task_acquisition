@@ -171,7 +171,7 @@ class StimulusThread(ProcessWithLogging):
 
     def _handle_play_instructions(self) -> None:
         msg = self.msgq.get()
-        logger.debug("play instructions: %s", msg)
+        logger.debug("play instructions: %r", msg)
         self.play_video(msg)
 
     def _handle_add_instructions(self) -> None:

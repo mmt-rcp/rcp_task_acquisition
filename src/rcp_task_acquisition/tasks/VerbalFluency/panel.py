@@ -27,11 +27,11 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.prompt = None
         self.type = None
         self.first = True
-        self.value = None
+        self.value: str = ""
         self.trial_num = 0
         self.actual_list = []
-        self.phonemic_list = None
-        self.initial_list = None
+        self.phonemic_list: list[str] = []  # list of 1 char strings
+        self.initial_list = PHONEMIC_LIST
         self.semantic = None
         self.trial_is_active = False
 
@@ -47,7 +47,6 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
 
     def _setup_panel(self):
         self.phonemic_task = wx.StaticText(self, label="Choose Phonemic Category:")
-        self.initial_list = PHONEMIC_LIST
         self.phonemic_choice = wx.Choice(
             self, id=wx.ID_ANY, choices=self.initial_list, size=(200, -1)
         )
@@ -156,7 +155,6 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self.prompt_text.Wrap(299)
         else:
             self.prompt_text.SetLabel("Task Finished!\n Press 'End Task' button to save data.")
-            self.selections = 0
             self.first = True
             self.seconds_text.SetLabel(" ")
             self.continue_button.Enable(False)
@@ -172,11 +170,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def get_result(self):
         return self.value
 
-    def get_instruction(self, count):
+    def get_instruction(self, count: int) -> str:
         return self.value
-
-    def cancel_event(self, event):
-        self.cancel = True
 
     def reset(self, trial):
         super().reset(trial)
@@ -193,7 +188,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.seconds = 60
         self.start_trial()
 
-    def get_trials(self):
+    def get_trials(self) -> tuple[str]:
         logger.debug(f"get_trials: {'.'.join(self.phonemic_list)}, {self.semantic}, {self.value}")
         return ".".join(self.phonemic_list), self.semantic, self.value
 

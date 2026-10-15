@@ -332,7 +332,7 @@ class MainFrame(wx.Frame):
                 self.trial_event()
             if self.recording:
                 self.cams.stop_recording()
-            self.video_status.value = VideoStatus.STOP.value
+            self.video_status.value = VideoStatus.STOP
             self.task_button.SetLabel("Start Task")
             self.hardware_button.Enable(True)
             self.trial_panel.hide()
@@ -360,12 +360,12 @@ class MainFrame(wx.Frame):
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
-            if self.video_status.value == VideoStatus.PAUSED.value:
-                self.video_status.value = VideoStatus.STOP.value
+            if self.video_status.value == VideoStatus.PAUSED:
+                self.video_status.value = VideoStatus.STOP
                 self.video_lock.wait()
-            if self.video_status.value == VideoStatus.FINISHED.value:
+            if self.video_status.value == VideoStatus.FINISHED:
                 logger.debug("ending video")
-                self.video_status.value = VideoStatus.NOT_PLAYING.value
+                self.video_status.value = VideoStatus.NOT_PLAYING
                 self.trial_panel.stop_video()
 
             if not self.rest_timer.IsRunning():
@@ -483,21 +483,18 @@ class MainFrame(wx.Frame):
         geo = event.GetEventObject()
         assert isinstance(geo, wx.ToggleButton)
         if geo.GetValue():
-            instructs = self.trial_panel.get_instructions()
-            if isinstance(instructs, str):
-                result = ""
-            else:
-                # NB: get_instruction***s*** (above) vs get_instruction here:
-                result = self.trial_panel.get_instruction(self.count)
+            result = self.trial_panel.get_instruction(self.count)
+            logger.debug("putting PLAY_INSTRUCTIONS %r to process", result)
+            # self.thread.play_video()
             self.msgq.put(Msg.PLAY_INSTRUCTIONS)
             self.msgq.put(result)
-            self.video_status.value = VideoStatus.PLAY.value
+            self.video_status.value = VideoStatus.PLAY
             self.trial_panel.start_video()
             if not self.rest_timer.IsRunning():
                 self.rest_timer.Start(800)
         else:
             logger.debug("stopping_video")
-            self.video_status.value = VideoStatus.STOP.value
+            self.video_status.value = VideoStatus.STOP
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
             logger.debug(f"done stopping: {self.video_status.value}")
@@ -506,10 +503,10 @@ class MainFrame(wx.Frame):
         geo = event.GetEventObject()
         assert isinstance(geo, wx.ToggleButton)
         if geo.GetValue():
-            self.video_status.value = VideoStatus.PAUSED.value
+            self.video_status.value = VideoStatus.PAUSED
             self.trial_panel.pause_video()
         else:
-            self.video_status.value = VideoStatus.START_FROM_PAUSE.value
+            self.video_status.value = VideoStatus.START_FROM_PAUSE
             self.trial_panel.resume_video()
 
     def set_focus(self) -> None:
@@ -857,7 +854,7 @@ class MainFrame(wx.Frame):
         self.lj.stop_labjack()
 
         self.rest_timer.Stop()
-        self.video_status.value = VideoStatus.STOP.value
+        self.video_status.value = VideoStatus.STOP
         if self.recording:
             self.cams.stop_recording()
         if self.play.GetValue():
@@ -993,7 +990,7 @@ class MainFrame(wx.Frame):
         task = self.task = launch_args["task"].strip()
         self.msgq.put(Msg.UPDATE_TASK)
         self.msgq.put(task)
-        self.video_status.value = VideoStatus.NOT_PLAYING.value
+        self.video_status.value = VideoStatus.NOT_PLAYING
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
         cams_cfg = user_cfg.cameras

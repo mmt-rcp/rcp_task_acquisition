@@ -165,21 +165,15 @@ class StimulusBase:
         pass
 
     def play_instructional_video(self, trial_name: str):
-        assert self.video_status is not None
         user_cfg = self._rcp_context.user_config
-        logger.debug(f"Trial name: {trial_name}")
-        file: Any
-        if trial_name == "":
-            file = self.instructions_dict
-        else:
-            file = self.instructions_dict[trial_name]
-        path = Path(user_cfg.VideoDir, str(file))
+        logger.debug("play_instructional_video: trial name: %r", trial_name)
+        file = self.instructions_dict[trial_name]
+        path = Path(user_cfg.VideoDir, file)
         if not path.exists():
             logger.error("video at %s does not exist", path)
-            self.video_status.value = VideoStatus.ERROR.value
+            self.video_status.value = VideoStatus.ERROR
             return
-
-        logger.debug(path)
+        logger.debug("playing %s", path)
         video = VlcMovieStim(
             self.display,
             path.as_posix(),

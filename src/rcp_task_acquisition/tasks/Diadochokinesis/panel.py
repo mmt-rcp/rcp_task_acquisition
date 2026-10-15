@@ -156,7 +156,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
     def get_result(self):
         return self.syllable
 
-    def get_instruction(self, count):
+    def get_instruction(self, count: int) -> str:
         if self.syllable_start_video_button.GetValue():
             key_end = "_1" if self.trial_number_ % 3 == 1 else ""
             value = f"{self.syllable}{key_end}"

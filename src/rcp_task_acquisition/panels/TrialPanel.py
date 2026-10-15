@@ -20,10 +20,8 @@ class TrialPanel(wx.Panel):
         self.button_width = 76
         self.border = 5
         self.trial_is_active = False
-        self.instruction_paths: str | dict[str, str] = {}
-        # str for ToneTaps and FingerTap
+        self.instruction_paths: dict[str, str] = {}  # now currently unused
 
-        # so there is no error for tasks without videos
         self.start_video_button: wx.ToggleButton | None = None
         self.pause_video_button: wx.ToggleButton | None = None
         self.video_title: wx.StaticText | None = None
@@ -45,11 +43,9 @@ class TrialPanel(wx.Panel):
     def populate_metadata(self, metadata: dict):
         """For task metadata. NB: The full global metadata dict is passed."""
 
-    def get_instruction(self, count: int):
+    def get_instruction(self, count: int) -> str:
         """Get instruction for play trial. count is trial number"""
-        warnings.warn(
-            f"get_instruction() unexpectedly called on {self.__class__}", UserWarning, stacklevel=3
-        )
+        return ""
 
     def _setup_buttons(self):
         self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
@@ -118,9 +114,6 @@ class TrialPanel(wx.Panel):
     def on_timer(self, event) -> None:
         pass
 
-    def get_instructions(self):
-        return self.instruction_paths
-
     def start_new_trial(self) -> None:
         self.trial_number = 0
 
@@ -135,6 +128,9 @@ class TrialPanelWithInstructPlayback(TrialPanel):
     video_title: wx.StaticText
     start_video_button: wx.ToggleButton
     pause_video_button: wx.ToggleButton
+
+    video_buttons: list[wx.ToggleButton]
+    other_buttons: list[wx.ToggleButton]
 
     def setup_instruction_playback(self):
         vid_title = self.video_title = wx.StaticText(self, label="")

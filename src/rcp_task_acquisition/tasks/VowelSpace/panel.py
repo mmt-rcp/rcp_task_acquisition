@@ -147,20 +147,20 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.trial_number = int(trial)
         self.syllable_video_title.SetLabel(f"Phrase Instructions: {self.current_syllable}")
 
-    def get_instruction(self, count):
+    def get_instruction(self, count: int) -> str:
         if self.syllable_start_video_button.GetValue():
             value = self.current_syllable
         else:
             value = "introduction"
         return value
 
-    def start_new_trial(self):
+    def start_new_trial(self) -> None:
         self.repeat = True
         # self.repeat_trial.Enable(False)
         self.continue_button.Enable(True)
         self.finish_text.SetLabel("")
 
-    def get_buttons(self):
+    def get_buttons(self) -> None:
         if self.syllable_start_video_button.GetValue():
             self.video_buttons = [
                 self.syllable_start_video_button,
