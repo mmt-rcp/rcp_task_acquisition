@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 class ParticipantDatabase:
     cursor: sqlite3.Cursor  # forcing as present for now.
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.connection: sqlite3.Connection | None = None
         self.cursor: sqlite3.Cursor = None  # type: ignore
 
@@ -46,11 +46,13 @@ class ParticipantDatabase:
         return participants
 
     def remove_participant(self, participant_id: ParticipantIdType) -> None:
+        assert self.connection is not None
         remove = f"DELETE FROM Participants WHERE ParticipantId = ?;"
         self.cursor.execute(remove, (participant_id,))
         self.connection.commit()
 
     def add_participant(self, participant_id, first_name, last_name, age, diagnosis):
+        assert self.connection is not None
         row_str = ""
         col_str = "ParticipantId"
         row_str += "'" + participant_id + "'"
@@ -81,4 +83,6 @@ class ParticipantDatabase:
 
     def close(self):
         self.cursor.close()
-        self.connection.close()
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None

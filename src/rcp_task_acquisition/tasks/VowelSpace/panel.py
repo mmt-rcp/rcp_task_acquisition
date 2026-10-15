@@ -20,7 +20,6 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.repeat = True
         self.seconds = 0
         self.trial_number = 0
-        self.timestamps = {}
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         static_box_sizer = self.setup_instruction_playback()
         vertical_sizer.Add(self._setup_vs(), 0, wx.ALIGN_LEFT | wx.ALL, 10)
@@ -119,11 +118,10 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.syllable_video_title.SetLabel("Phrase Instructions:")
         self.syllable_start_video_button.Enable(False)
 
-    def repeat_event(self):
+    def repeat_event(self) -> None:
         self.repeat = True
         self.rest_timer.Stop()
         self.continue_button.SetValue(True)
-
         # self.repeat_trial.Enable(False)
 
     def get_result(self):

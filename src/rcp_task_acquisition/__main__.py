@@ -155,7 +155,9 @@ def run_app():
         # save_err = err
         user_cfg_data = tasks_cfg_data = None
         logger.error("Could not load config from %s: %s", cfg_dir, err)
-        user_cfg = config.RcpUserConfig(unitRef="unitME", RawDataDir=constants.DEFAULT_RAW_DATA_DIR)
+        user_cfg = config.RcpUserConfig(
+            unitRef="unitME", RawDataDir=str(constants.DEFAULT_RAW_DATA_DIR)
+        )
 
     log_file_path = trial.get_new_log_file(
         base_dir=user_cfg.RawDataDir,

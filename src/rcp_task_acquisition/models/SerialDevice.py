@@ -7,7 +7,7 @@ logger = get_logger(__name__)
 
 
 class SerialDevice:
-    def __init__(self):
+    def __init__(self) -> None:
         self.serSuccess = False
         self.ser: serial.Serial | None = None
 

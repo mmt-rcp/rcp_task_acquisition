@@ -72,6 +72,7 @@ class MainFrame(wx.Frame):
         self.launch_args: dict[str, Any] = {}
         self.button_pressed = Value(ctypes.c_bool, False)
         self.recording = False
+        self.calibrate = False
         self.press_count = Value(ctypes.c_int, 0)
         self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
@@ -115,6 +116,9 @@ class MainFrame(wx.Frame):
             pos=wx.DefaultPosition,
             style=wx.RESIZE_BORDER | wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL,
         )
+
+        self.video_start: wx.ToggleButton | None = None
+        self.video_pause: wx.ToggleButton | None = None
 
         # self.Maximize(True)
         self.statusbar = self.CreateStatusBar()
@@ -280,7 +284,7 @@ class MainFrame(wx.Frame):
         event.Skip()
         # pass
 
-    def run_task(self, event: wx.Event) -> None:
+    def run_task(self) -> None:
         logger.verbose("run_task called task_but=%s", self.task_button.GetValue())
         self.Enable()
         if self.task_button.GetValue():
@@ -325,7 +329,7 @@ class MainFrame(wx.Frame):
             time.sleep(3)
             if self.trial_button.GetValue():
                 self.trial_button.SetValue(False)
-                self.trial_event(event)
+                self.trial_event()
             if self.recording:
                 self.cams.stop_recording()
             self.video_status.value = VideoStatus.STOP.value
@@ -348,7 +352,7 @@ class MainFrame(wx.Frame):
             self.labjack_timer.Start(200)
             self.rest_timer.Stop()
 
-    def trial_event(self, event: wx.Event) -> None:
+    def trial_event(self) -> None:
         logger.debug(f"in trial_event: {self.video_status.value}")
         if self.trial_button.GetValue():
             logger.debug("in trial button")
@@ -441,9 +445,10 @@ class MainFrame(wx.Frame):
             self.trial_panel.is_finish()
 
     def repeat_event(self, event: wx.Event) -> None:
+        # looks unused
         assert isinstance(self.trial_panel, VowelSpacePanel)
         self.trial_panel.repeat_event()
-        self.trial_event(event)
+        self.trial_event()
 
     def update_intertrial(self, event: wx.Event) -> None:
         logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
@@ -824,7 +829,7 @@ class MainFrame(wx.Frame):
     def tens_pulse(self, event: wx.Event) -> None:
         self.serial_device.write("A")
 
-    def quitButton(self, event: wx.Event) -> None:
+    def quitButton(self) -> None:
         """
         Quits the GUI
         """
@@ -847,7 +852,7 @@ class MainFrame(wx.Frame):
         self.statusbar.SetStatusText("")
         self.Close()
 
-    def HideWithEvent(self, event: wx.Event) -> None:
+    def Hide(self) -> bool:
         self.is_hidden = True
         self.lj.stop_labjack()
 
@@ -867,11 +872,11 @@ class MainFrame(wx.Frame):
             self.liveFeed()
         if self.task_button.GetValue():
             self.task_button.SetValue(False)
-            self.run_task(event)
+            self.run_task()
         if self.init.GetValue():
             self.init.SetValue(False)
             self.initCams()
-        self.Hide()
+        return super().Hide()
 
     def update_crop(self, event):
         value = bool(self.crop.GetValue())
@@ -1025,8 +1030,8 @@ class MainFrame(wx.Frame):
         self.init.SetValue(True)
         self.widget_panel.update_task(task)
         self.trial_panel = self.widget_panel.get_trial_panel()
-        self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
-        self.trial_panel.repeat_trial.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
+        self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
+        self.trial_panel.repeat_trial.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         self.initCams()
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
@@ -1037,7 +1042,7 @@ class MainFrame(wx.Frame):
             self.task_button.SetLabel("Record Cameras")
         else:
             self.calibrate = False
-            self.task_button.Bind(wx.EVT_TOGGLEBUTTON, self.run_task)
+            self.task_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
             self.task_button.SetLabel("Start Task")
         if self.task == "all_hardware":
             self.task_button.Enable(False)
@@ -1062,7 +1067,7 @@ class MainFrame(wx.Frame):
     def disable_gui(self, event: wx.Event) -> None:
         handle = event.GetEventObject()
         if handle == self.task_button:
-            self.Bind(wx.EVT_TIMER, self.run_task, self.disable_timer)
+            self.Bind(wx.EVT_TIMER, lambda _: self.run_task(), self.disable_timer)
         if handle == self.hardware_button:
             self.Bind(wx.EVT_TIMER, self.hardwareFeed, self.disable_timer)
         if handle == self.labjack_stream_button:

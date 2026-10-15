@@ -11,17 +11,17 @@ logger = get_logger(__name__)
 
 
 class VowelSpace(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
-        self.generated_trials = None
-        self.completed_trials_dict = {}
+        self.generated_trials: list[str] = []
+        self.completed_trials_dict: dict[str, str] = {}
         self.create_trial_data()
         self.repeat_num = 0
         self.is_finished = False
         self.actual_trials = 0
         self.instructions_dict = c.VIDEO_PATHS
 
-    def present(self):
+    def present(self) -> None:
         self.current_trial = str(self.generated_trials[self.trial])
         self.actual_trials += 1
         self.completed_trials_dict[f"trial_{self.actual_trials}"] = str(self.current_trial)
@@ -38,7 +38,7 @@ class VowelSpace(bases.StimulusBase):
 
         self.trial_bookends()
 
-    def get_trial(self):
+    def get_trial(self) -> str:
         logger.debug(self.trial)
         logger.debug(self.generated_trials)
         logger.debug(len(self.generated_trials))
@@ -61,7 +61,7 @@ class VowelSpace(bases.StimulusBase):
             if self.trial >= len(self.generated_trials):
                 self.is_finished = True
 
-    def create_trial_data(self):
+    def create_trial_data(self) -> None:
         num_repeats = int(c.VS_NUM_TRIALS / len(c.PHRASE_LIST))
         new_trials = np.tile(c.PHRASE_LIST, num_repeats)
         np.random.shuffle(new_trials)
@@ -76,13 +76,13 @@ class VowelSpace(bases.StimulusBase):
         }
         return metadata
 
-    def reset_task(self):
+    def reset_task(self) -> None:
         self.trial = 0
         self.repeat_num = 0
         self.is_finished = False
         self.create_trial_data()
 
-    def play_vowel_phrase(self, trial):
+    def play_vowel_phrase(self, trial: str) -> None:
         """
         set up and play the files for the current phrase.
         one con of this method is there is no way (I know of) to stop in the

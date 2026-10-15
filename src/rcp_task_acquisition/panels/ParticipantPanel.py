@@ -113,12 +113,13 @@ class ParticipantPanel:
         if participant_id == "":
             self.show_error()
             return
-        participantDB = ParticipantDatabase()
-        participantDB.connect(self.database_path, "participants.db")
         first_name = self.first_name_box.GetValue()
         last_name = self.last_name_box.GetValue()
         age = self.age_box.GetValue()
         diagnosis = self.diagnosis_box.GetValue()
+
+        participantDB = ParticipantDatabase()
+        participantDB.connect(self.database_path, "participants.db")
         add_success, participant_id = participantDB.add_participant(
             participant_id, first_name, last_name, age, diagnosis
         )

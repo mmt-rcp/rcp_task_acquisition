@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 
 class Crop:
-    def __init__(self):
+    def __init__(self) -> None:
         self.croprec: list[matplotlib.patches.Rectangle] = []
         self.croproi: list[CropTupleType] = []
         self.set_crop = None

@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class NaturalisticSpeech(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
         self.photo = None
         self.photo_dict: dict[str, Any] = {}

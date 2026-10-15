@@ -27,7 +27,7 @@ class DictConfig(dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, Di
     def __new__(cls, arg0=None, **kwargs):
         if arg0 is not None and len(kwargs) > 0:
             raise TypeError("Do not support both arg and kwargs")
-        dct = {}
+        dct: dict[str, DictDataType] = {}
         if arg0 is not None:
             kwargs.update(arg0)
         _load_enum_to_dct_class_items(kwargs, dct, cls.item_cls, cls.enum_cls)  # noqa
@@ -122,7 +122,13 @@ class CameraConfig:
     in_use: bool = True
 
     def __post_init__(self):
-        self.crop = tuple(self.crop)
+        n0, n1, n2, n3 = self.crop
+        self.crop = (
+            n0,
+            n1,
+            n2,
+            n3,
+        )  # ensure it's a tuple, in case a list is passed, or other non-tuple.
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -133,7 +139,8 @@ class HardwareItemConfig:
     graph: str = ""
 
     def __post_init__(self):
-        self.voltage_range = tuple(self.voltage_range)
+        v0, v1 = self.voltage_range
+        self.voltage_range = (v0, v1)  # ensure tuple
 
 
 class HardwareItem(str, enum.Enum):

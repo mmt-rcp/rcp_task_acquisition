@@ -390,7 +390,7 @@ def stop_multiproc_logging():
         _already_setup
 
     # always:
-    logging.Logger.setLevel = _orig_logger_set_level
+    logging.Logger.setLevel = _orig_logger_set_level  # type: ignore
 
     mp_log_queue = _multiprocess_log_queue
     q_listener = _queue_listener

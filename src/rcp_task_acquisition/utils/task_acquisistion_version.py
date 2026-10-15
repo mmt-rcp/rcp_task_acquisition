@@ -12,8 +12,8 @@ top_dir = Path(__file__).parent.parent.resolve()
 
 
 def _get_from_setuptools_scm():
-    out = subprocess.check_output([sys.executable, "-m", "setuptools_scm"], cwd=top_dir)
-    out = out.decode().strip()
+    bin_out = subprocess.check_output([sys.executable, "-m", "setuptools_scm"], cwd=top_dir)
+    out = bin_out.decode().strip()
     return out if len(out) > 0 else None
 
 

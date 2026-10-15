@@ -98,7 +98,7 @@ class ProcessWithLogging(Process):
             target = self._orig_run
             # def run(self): takes no arg/kwarg, so need:
             args = ()
-            kwargs = None
+            kwargs = None  # type: ignore
             # before call it.
         # logger.info("target: %s", target)
         # logger.debug("args=%s, kwargs=%s")
