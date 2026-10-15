@@ -36,6 +36,7 @@ from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
+from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
@@ -313,9 +314,7 @@ class MainFrame(wx.Frame):
             if isinstance(self.trial_panel, VowelSpacePanel):
                 self.msgq.put(Msg.VOWEL_SPACE)
                 trial_info = self.resultsq.get()
-                trial, syllable, finish = trial_info.split(",")
-                trial = int(trial)
-                finish = str(finish) == "True"
+                trial, syllable, finish = trial_info
                 self.trial_panel.repeat = True
                 self.trial_panel.update_trial(trial, syllable)
             self.trial_panel.start_new_trial()
@@ -432,14 +431,11 @@ class MainFrame(wx.Frame):
     def next_trial(self, event: wx.Event) -> None:
         assert isinstance(self.trial_panel, VowelSpacePanel)
         self.msgq.put(Msg.UPDATE_DATA)
-        str(self.trial_panel.get_result())
         self.msgq.put("False")  ## ??
         self.msgq.put(Msg.VOWEL_SPACE)
         trial_info = self.resultsq.get()
-        trial, syllable, finish = trial_info.split(",")
+        trial, syllable, finish = trial_info
         self.trial_button.SetLabel("Begin Trial")
-        trial = int(trial)
-        finish = str(finish) == "True"
         self.trial_panel.update_trial(trial, syllable)
         if finish:
             self.trial_panel.is_finish()
@@ -451,7 +447,7 @@ class MainFrame(wx.Frame):
         self.trial_event()
 
     def update_intertrial(self, event: wx.Event) -> None:
-        logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
+        # logger.debug(f"update_intertrial called: {self.finish.value}, video: {self.video_status.value}")
         if self.video_status.value == VideoStatus.FINISHED:
             logger.debug("in finish")
             self.trial_panel.stop_video()
@@ -462,10 +458,10 @@ class MainFrame(wx.Frame):
             self.trial_panel.stop_video()
             self.video_status.value = VideoStatus.NOT_PLAYING
             self.warning.update_error(WarnCat.VIDEO).display()
-        elif self.finish.value == 1 and (
-            self.task != "naturalistic_speech" and self.task != "vowel_space"
+        elif self.finish.value == 1 and not isinstance(
+            self.widget_panel.task_panel, (NaturalisticSpeechPanel, VowelSpacePanel)
         ):
-            logger.debug("in intertrial")
+            # logger.debug("in intertrial")
             self.participant_monitor.update_screen()
             self.cams.stop_recording()
             self.trial_panel.reset(self.count)

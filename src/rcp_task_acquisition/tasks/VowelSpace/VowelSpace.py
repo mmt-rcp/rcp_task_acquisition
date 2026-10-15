@@ -38,15 +38,13 @@ class VowelSpace(bases.StimulusBase):
 
         self.trial_bookends()
 
-    def get_trial(self) -> str:
-        logger.debug(self.trial)
-        logger.debug(self.generated_trials)
-        logger.debug(len(self.generated_trials))
-        if self.trial > (len(self.generated_trials)):
+    def get_trial(self):
+        logger.debug("get_trial: trial=%s generated=%s", self.trial, self.generated_trials)
+        if self.trial > len(self.generated_trials):
             self.is_finished = True
         if self.is_finished:
-            return f"-1,-1,{self.is_finished}"
-        return f"{self.trial},{self.generated_trials[self.trial]},{self.is_finished}"
+            return -1, -1, True
+        return self.trial, self.generated_trials[self.trial], False
 
     def update_data(self, is_repeated):
         logger.debug(f"is_repeated: {is_repeated}")

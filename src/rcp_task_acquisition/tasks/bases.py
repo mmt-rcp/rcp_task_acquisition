@@ -55,7 +55,7 @@ class StimulusBase:
         self.timer = timer
         self.start_test = False  # unused
         self.finish = finish
-        self.trial = 0
+        self.trial = 0  # current trial nbr
         self.video_lock = video_lock
         self.first_frame = -1
 

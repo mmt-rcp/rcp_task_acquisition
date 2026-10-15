@@ -136,15 +136,15 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.continue_button.SetLabel("Stop Trial")
         self.next_button.Enable(False)
 
-    def update_trial(self, trial, syllable):
+    def update_trial(self, trial: int, syllable: str):
         """
         Updating with the current syllable
         Trials are 0-indexed so we add 1 here to be in a better format for showing
         """
         self.current_text.SetLabel(f"Say {syllable} again")
-        self.trial_text.SetLabel(f"Trial # {int(trial) + 1}")
+        self.trial_text.SetLabel(f"Trial # {trial + 1}")
         self.current_syllable = syllable
-        self.trial_number = int(trial)
+        self.trial_number = trial
         self.syllable_video_title.SetLabel(f"Phrase Instructions: {self.current_syllable}")
 
     def get_instruction(self, count: int) -> str:

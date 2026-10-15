@@ -1,6 +1,7 @@
 import warnings
 from logging import warning
 from multiprocessing import sharedctypes
+from typing import Any
 
 import wx
 
@@ -108,7 +109,8 @@ class TrialPanel(wx.Panel):
     def run_trial(self, count) -> None:
         self.start_trial()
 
-    def get_result(self):
+    def get_result(self) -> Any:
+        warnings.warn(f"{self.__class__.__name__}.get_result() not implemented", UserWarning)
         return None
 
     def on_timer(self, event) -> None:
