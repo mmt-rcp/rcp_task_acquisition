@@ -29,7 +29,7 @@ class LabJackDataStream(ProcessWithLogging):
         graph_indices: tuple[SharedInt, SharedInt, SharedInt],
         button_pressed: SharedBool,
         inputs: tuple[list[str], list[int], list[int]],
-        button_list: list[int | tuple[int, str]],
+        button_list: list[tuple[int, str]],
         press_counter: SharedInt,
         constants: list[int],
         voltage_ranges: tuple[tuple[float, float], ...],
@@ -64,8 +64,8 @@ class LabJackDataStream(ProcessWithLogging):
         self.scan_num = len(self.scan_list)
         if self.digital_inputs:
             self.scan_num += 1
-        logger.debug(self.extended_inputs)
-        logger.debug(self.digital_inputs)
+        logger.debug("extended_inputs: %s", self.extended_inputs)
+        logger.debug("digital_inputs: %s", self.digital_inputs)
         self.graph_arr = labjack_arr
         self.numpy_arr = np.empty((6, self.attemptedscanRate * 2))
         self.numpy_arr.fill(np.nan)
@@ -226,17 +226,17 @@ class LabJackDataStream(ProcessWithLogging):
                 16, SCANS_PER_READ, order="F"
             )  # [::-1]
 
-            if self.button_list:
-                for button in self.button_list:
-                    reshape_list = new_list
+            for button in self.button_list:
+                reshape_list = new_list
 
-                    self.button_pressed.value = not np.all(reshape_list[button[0]])
-                    if debounce == 0 and self.button_pressed.value:
-                        self.press_counter.value += 1
-                        logger.debug(f"press#: {self.press_counter.value}")
-                        debounce = 1
-                    if np.all(reshape_list[button[0]][-min_off_samples:]):
-                        debounce = 0
+                self.button_pressed.value = not np.all(reshape_list[button[0]])
+                if debounce == 0 and self.button_pressed.value:
+                    self.press_counter.value += 1
+                    logger.debug(f"press#: {self.press_counter.value}")
+                    debounce = 1
+                if np.all(reshape_list[button[0]][-min_off_samples:]):
+                    debounce = 0
+
             if write_to_csv:
                 self.write_csv(results, first_write)
                 first_write = False

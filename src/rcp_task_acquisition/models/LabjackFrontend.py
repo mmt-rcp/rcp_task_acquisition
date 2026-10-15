@@ -35,13 +35,9 @@ class LabjackFrontend:
         self._serial_dev: SerialDevice | None = None
         self.constants: list[str] = []
         self.constant_index: list[int] = []
-        self.button_pressed = button_pressed  # Value(ctypes.c_bool, False)
+        self.button_pressed = button_pressed
         self.labjack_list: list[str] = []
-        #     item for item in list(args[1]) if item not in self.constants
-        # ]  # list(args[1])
         self.hardware: list[str] = []
-        #     item for item in list(args[0]) if item not in PLOT_CONSTANTS
-        # ]  # list(args[0])
         self.voltage_ranges: tuple[tuple[float, float], ...] = ()
         self.hardware_indices = (
             Value(ctypes.c_int, -1),
@@ -51,17 +47,9 @@ class LabjackFrontend:
         self.prev_graph_list = [-1, -1, -1]
         self.digital_list: list[int] = []
         self.analog_list: list[str] = []
-        self.button_list: list[int | tuple[int, str]] = []
+        self.button_list: list[tuple[int, str]] = []
         self.extended_list: list[int] = []
         self.array_length: int = array_length
-        for index, item in enumerate(self.labjack_list):
-            if "F" in item:
-                self.digital_list.append(int(item[-1]))
-                logger.debug(f"hardware: {self.hardware[index]}")
-                if "Accessory" in self.hardware[index]:
-                    self.button_list.append(int(item[-1]))
-            else:
-                self.analog_list.append(item)
         self.inputs_list: tuple[list[str], list[int], list[int]] = (
             self.analog_list,
             self.digital_list,
