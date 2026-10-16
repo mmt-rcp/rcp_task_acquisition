@@ -46,6 +46,8 @@ class ControlsPanel(wx.Panel):
             border=5,
         )
         vertical_position += 1
+        self._psychopy_monitor = psychopy_monitor
+        self._psychopy_size = monitor_size
         self.monitor = MonitorPanel(self, psychopy_monitor, monitor_size)
         vertical_spacer.Add(
             self.monitor.create_panel(),
@@ -71,16 +73,16 @@ class ControlsPanel(wx.Panel):
     def get_trial_panel(self) -> TrialPanel:
         return self.task_panel
 
-    def show_cams(self):
+    def show_cams(self) -> bool:
         return self.cam_panel.Show()
 
-    def get_monitor(self):
+    def get_monitor(self) -> MonitorPanel:
         return self.monitor
 
-    def hide_cams(self):
+    def hide_cams(self) -> bool:
         return self.cam_panel.Hide()
 
-    def _set_up_task(self, task: str, button_width: int):
+    def _set_up_task(self, task: str, button_width: int) -> wx.GridBagSizer:
         vertical_position = 0
         white_space = 10
         self.task_sizer = wx.GridBagSizer(6, 5)
@@ -194,7 +196,7 @@ class ControlsPanel(wx.Panel):
 
         # self.task_sizer.Remove(self._task_panel_sizer_index)
         self.task_panel.Destroy()  # Close() is making following sizer.Add to error
-        # self.task_panel.Close(force=True)
+        #
 
         self.task_panel = self.get_task_panel(task)
         self.task_sizer.Add(
@@ -233,7 +235,7 @@ class ControlsPanel(wx.Panel):
         elif task == "verb_generation":
             return VerbGenerationPanel(self)
         elif "calibrate" in task:
-            return CalibrationPanel(self)
+            return CalibrationPanel(self, psychopy_monitor=self._psychopy_monitor)
         else:
             basic_panel = TrialPanel(self)
             basic_panel.continue_button.Show()

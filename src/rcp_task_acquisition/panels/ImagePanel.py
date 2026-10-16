@@ -22,7 +22,7 @@ class ImagePanel(wx.Panel):
         self.SetSizer(self.sizer)
         self.Fit()
 
-    def updateImage(self, gui_size, **kwargs) -> None:
+    def updateImage(self) -> None:
         """
         Switching to a toggle method so there will always be only 2 cameras at a time
         """

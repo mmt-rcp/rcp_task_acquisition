@@ -3,8 +3,10 @@ from logging import warning
 from multiprocessing import sharedctypes
 from typing import Any
 
+import numpy as np
 import wx
 
+from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,13 +42,6 @@ class TrialPanel(wx.Panel):
         ret = self.Unbind(wx.EVT_TIMER, self.rest_timer)
         logger.debug("%s.Close(): unbind timer=%s", self.__class__, ret)
         return super().Close(force=force)
-
-    def populate_metadata(self, metadata: dict):
-        """For task metadata. NB: The full global metadata dict is passed."""
-
-    def get_instruction(self, count: int) -> str:
-        """Get instruction for play trial. count is trial number"""
-        return ""
 
     def _setup_buttons(self):
         self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
@@ -124,6 +119,22 @@ class TrialPanel(wx.Panel):
 
     def add_timer(self, timer: sharedctypes.Synchronized) -> None:
         self.timer = timer
+
+    def on_camera_frame_update(self, index: int, frame: np.ndarray):
+        """Allow a panel to intercept camera frame read from shared array, for display purpose"""
+
+    def populate_metadata(self, metadata: dict):
+        """For task metadata. NB: The full global metadata dict is passed."""
+
+    def get_instruction(self, count: int) -> str:
+        """Get instruction for play trial. count is trial number"""
+        return ""
+
+    def prepare_cams(self, cams: list[CamSettings]):
+        pass
+
+    def update_cams_viewed(self, cams: list[CamSettings]):
+        pass
 
 
 class TrialPanelWithInstructPlayback(TrialPanel):

@@ -11,7 +11,6 @@ import json
 import multiprocessing
 import os
 import shutil
-import queue
 import time
 import typing
 import warnings
@@ -21,7 +20,8 @@ from typing import Any
 
 import wx
 import wx.lib.dialogs
-from ruamel.yaml import YAML
+import numpy as np
+import cv2
 
 from rcp_task_acquisition.models.CameraFrontend import Camera
 from rcp_task_acquisition.models.Crop import Crop
@@ -132,7 +132,7 @@ class MainFrame(wx.Frame):
         topSplitter = wx.SplitterWindow(self)
         vSplitter = wx.SplitterWindow(topSplitter)
         self.image_panel = ImagePanel(vSplitter)
-        self.image_panel.updateImage(self.gui_size)
+        self.image_panel.updateImage()
         self.ctrl_panel = GraphPanel(vSplitter, self.gui_size)
         self.widget_panel = ControlsPanel(
             topSplitter, self.ctrl_panel, psychopy_monitor, screenSizes[psychopy_monitor]
@@ -243,7 +243,13 @@ class MainFrame(wx.Frame):
         self.video_timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_TIMER, self.participant_monitor.update_screen_event, self.video_timer)
 
-        self.camera_toggle.Bind(wx.EVT_BUTTON, self.cams.update_cameras_viewed)
+        def on_update_cameras_viewed(evt: wx.Event) -> None:
+            self.cams.update_cameras_viewed(evt)
+            ptr = self.cams.cam_pointer
+            cam0, cam1 = self.cams.camera_settings[ptr : ptr + 2]
+            self.trial_panel.update_cams_viewed([cam0, cam1])
+
+        self.camera_toggle.Bind(wx.EVT_BUTTON, on_update_cameras_viewed)
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
@@ -270,11 +276,34 @@ class MainFrame(wx.Frame):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
         self.Bind(wx.EVT_TIMER, self.cams.vidPlayer, self.liveTimer)
+        self.Bind(wx.EVT_TIMER, self._cams_update, self.liveTimer)
         self.thread.start()
         self.task_active = False
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
-
         self.Bind(wx.EVT_SIZE, self.on_resize)
+
+    def _cams_update(self, event: wx.Event):
+        if self.camaq.value == 2:
+            return
+        cams = self.cams
+        for cam in cams.cam_dict.values():
+            if cam.frmGrab.value == 1:
+                cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
+                dims = cam.frame_size
+                frame = cam.frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                for f in range(3):
+                    cam.frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[:, :, f]
+                cam.frame_size = dims
+
+                self.cams.on_cam_update(cam, cam.frame)
+                if cam.idx == cams.cam_pointer:
+                    self.trial_panel.on_camera_frame_update(0, cam.frame)
+                elif cam.idx == cams.cam_pointer + 1:
+                    self.trial_panel.on_camera_frame_update(1, cam.frame)
+
+                cam.frmGrab.value = 0  # only after, when fully consumed,
+                # to get eventually a more recent one on next turn.
 
     @property
     def trial_button(self) -> wx.ToggleButton:
@@ -769,7 +798,9 @@ class MainFrame(wx.Frame):
         if self.init.GetValue():
             success = self.cams.initialize()
             if not success:
+                logger.error("cams initialize failed")
                 return False
+            self.trial_panel.prepare_cams(self.cams.camera_settings[:2])
             self.init.SetLabel("Release")
             self.exposure_button.Enable(True)
             self.play.Enable(True)
@@ -1014,7 +1045,7 @@ class MainFrame(wx.Frame):
         self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.frames)
         self.init.SetValue(True)
         self.widget_panel.update_task(task)
-        self.trial_panel = self.widget_panel.get_trial_panel()
+        self.trial_panel: TrialPanel = self.widget_panel.get_trial_panel()
         self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         self.trial_panel.repeat_trial.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         self.initCams()
