@@ -1,5 +1,6 @@
 import enum
 import multiprocessing
+import time
 from collections.abc import Callable
 from math import floor
 from queue import Empty
@@ -267,21 +268,31 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             self.frm.value = 0
             self.camq.get()
             cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
+
+        p0 = time.perf_counter()
+        img_count_idx = -1
+
         while self.aq.value > 0:
             try:
                 image_result = cam.GetNextImage(100)  # trying with timeout
-            except PySpin.SpinnakerException as e:
+            except PySpin.SpinnakerException as err:
                 # when doing hardware test, pass value to parent
                 # and alert that sync cable error
-                logger.error(f"timeout error: {e}")
+                logger.error("Could not get next image: %s", err)
                 # cam.EndAcquisition()
                 # cam.DeInit()
                 continue
 
             image_result = ctx.processor.Convert(image_result, PySpin.PixelFormat_BGR8)
             frame_bits = image_result.GetData()
-            timestamp = image_result.GetTimeStamp()
+            timestamp = image_result.GetTimeStamp()  # integer nanoseconds.
+            timestamp_secs = timestamp / 1e9
             frame_id = image_result.GetFrameID()
+            img_count_idx += 1
+
+            p_now = time.perf_counter()
+            if p_now - p0 < 1 or img_count_idx < 10:
+                logger.debug("img #%s: frame_id=%s ts=%s", img_count_idx, frame_id, timestamp_secs)
 
             if ctx.record:
                 if ctx.start_time == 0:
