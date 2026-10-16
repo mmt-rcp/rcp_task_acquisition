@@ -2,12 +2,12 @@ import ast
 import json
 import math
 import multiprocessing
-import queue
-import threading
 import time
 from enum import Enum
 from queue import Empty
 from typing import Callable
+
+import wx
 
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
@@ -199,6 +199,7 @@ class StimulusThread(ProcessWithLogging):
 
         logger.info("entering main loop")
         while self.alive:
+            wx.Yield()
             try:
                 msg = self.msgq.get(timeout=0.05)
                 logger.debug(f"msg: {msg}")
