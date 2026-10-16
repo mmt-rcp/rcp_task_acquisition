@@ -38,21 +38,19 @@ class ImagePanel(wx.Panel):
             "edgecolor": (0.1, 0.1, 0.1),
             "alpha": 0.75,
         }
-        for c in range(int(column_count)):
-            self.axes.append(self.figure.add_subplot(1, column_count, c + 1, frameon=True))
-
-            self.axes[c].set_position((row_pos, 0.005, 0.49, 0.99))
-
-            row_pos += row_inc
-            self.axes[c].xaxis.set_visible(False)
-            self.axes[c].yaxis.set_visible(False)
         self.texts = []
-        for index, axis in enumerate(self.axes):
+        for idx in range(int(column_count)):
+            axis = self.figure.add_subplot(1, column_count, idx + 1, frameon=True)
+            self.axes.append(axis)
+            axis.set_position((row_pos, 0.005, 0.49, 0.99))
+            row_pos += row_inc
+            axis.xaxis.set_visible(False)
+            axis.yaxis.set_visible(False)
             self.texts.append(
                 axis.text(
                     5,
                     5,
-                    str(index),
+                    str(idx),
                     fontsize=8,
                     color=(0.9, 0.9, 0.9),
                     verticalalignment="top",
