@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from PIL import Image
 from psychopy import core, visual
@@ -6,16 +7,17 @@ from psychopy import core, visual
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.NaturalisticSpeech.constants import IMG_DIR, NON_IMAGE_TASKS
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class NaturalisticSpeech(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
         self.photo = None
-        self.photo_dict = {}
+        self.photo_dict: dict[str, Any] = {}
         self.trial = 0
         self.screen_width = (
             2200  # not technically screen width but we dont want to cover the photodiode
@@ -29,7 +31,7 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.timer.value = 0
         if self.show_image:
             if not self.photo:
-                logger.warn("No Photo is selected")
+                logger.warning("No Photo is selected")
                 return
 
             logger.debug(self.photo)
@@ -75,7 +77,7 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         # data = {"photo_paths": self.photo_dict}
         # logger.debug(data)
         return self.photo_dict

@@ -28,7 +28,3 @@ class Sara(bases.StimulusBase):
         self.display.switch_patch()
         self.display.draw_patch()
         self.play_tone()
-
-    def saveMetadata(self, name, sessionFolder):
-        data = None
-        return data

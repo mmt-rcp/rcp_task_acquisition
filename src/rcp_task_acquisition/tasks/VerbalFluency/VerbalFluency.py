@@ -3,6 +3,7 @@ from psychopy import core
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.VerbalFluency.constants import TRIAL_TIME, VERBAL_FLUENCY_PATHS
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -62,6 +63,6 @@ class VerbalFluency(bases.StimulusBase):
     def get_trial(self):
         return self.trial, self.trial_type, self.trial_name
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         data = {"time_per_trial": TRIAL_TIME, "trials": self.trial_dict}
         return data

@@ -3,13 +3,17 @@ from datetime import datetime
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.NBack.NBack import N_back
 from rcp_task_acquisition.tasks.NBack.configs import NBACK_TYPES
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class NbackPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.trial_type = "real"
@@ -57,28 +61,13 @@ class NbackPanel(TrialPanel):
         )
         return grid_sizer
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-        self.selections = {
-            "type": NBACK_TYPES[self.nback_choice.GetSelection()],
-            "trial": self.trial_type,
-        }
-        self.timestamps[f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z"] = "next_trial_selected"
-
-    def update_trial(self, number):
-        self.trial_text.SetLabel(f"Selection for Trial # {number}")
-
     def get_result(self):
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.nback_choice.Enable(False)
         self.practice.Enable(False)
-
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
 
     def reset(self, number):
         self.nback_choice.Enable(True)

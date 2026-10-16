@@ -4,12 +4,18 @@ import wx
 
 import rcp_task_acquisition.tasks.NaturalisticSpeech.constants as c
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.NaturalisticSpeech.NaturalisticSpeech import NaturalisticSpeech
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class NaturalisticSpeechPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig(
+        "naturalistic_speech", "Naturalistic Speech", "naturalisticspeech", NaturalisticSpeech
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.seconds = 0
@@ -102,9 +108,9 @@ class NaturalisticSpeechPanel(TrialPanel):
 
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
 
         self.trial_is_active = True
         self.image_choice.Enable(False)

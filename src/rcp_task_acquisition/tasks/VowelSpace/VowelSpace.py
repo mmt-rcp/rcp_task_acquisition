@@ -5,22 +5,23 @@ import numpy as np
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.tasks.VowelSpace import constants as c
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
 
 class VowelSpace(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
-        self.generated_trials = None
-        self.completed_trials_dict = {}
+        self.generated_trials: list[str] = []
+        self.completed_trials_dict: dict[str, str] = {}
         self.create_trial_data()
         self.repeat_num = 0
         self.is_finished = False
         self.actual_trials = 0
         self.instructions_dict = c.VIDEO_PATHS
 
-    def present(self):
+    def present(self) -> None:
         self.current_trial = str(self.generated_trials[self.trial])
         self.actual_trials += 1
         self.completed_trials_dict[f"trial_{self.actual_trials}"] = str(self.current_trial)
@@ -38,14 +39,12 @@ class VowelSpace(bases.StimulusBase):
         self.trial_bookends()
 
     def get_trial(self):
-        logger.debug(self.trial)
-        logger.debug(self.generated_trials)
-        logger.debug(len(self.generated_trials))
-        if self.trial > (len(self.generated_trials)):
+        logger.debug("get_trial: trial=%s generated=%s", self.trial, self.generated_trials)
+        if self.trial > len(self.generated_trials):
             self.is_finished = True
         if self.is_finished:
-            return f"-1,-1,{self.is_finished}"
-        return f"{self.trial},{self.generated_trials[self.trial]},{self.is_finished}"
+            return -1, -1, True
+        return self.trial, self.generated_trials[self.trial], False
 
     def update_data(self, is_repeated):
         logger.debug(f"is_repeated: {is_repeated}")
@@ -60,14 +59,14 @@ class VowelSpace(bases.StimulusBase):
             if self.trial >= len(self.generated_trials):
                 self.is_finished = True
 
-    def create_trial_data(self):
+    def create_trial_data(self) -> None:
         num_repeats = int(c.VS_NUM_TRIALS / len(c.PHRASE_LIST))
         new_trials = np.tile(c.PHRASE_LIST, num_repeats)
         np.random.shuffle(new_trials)
         self.generated_trials = new_trials.tolist()
         logger.debug(f"trial: {self.generated_trials}")
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         metadata = {
             "trial_list": self.generated_trials,
             "trial_number": c.VS_NUM_TRIALS,
@@ -75,13 +74,13 @@ class VowelSpace(bases.StimulusBase):
         }
         return metadata
 
-    def reset_task(self):
+    def reset_task(self) -> None:
         self.trial = 0
         self.repeat_num = 0
         self.is_finished = False
         self.create_trial_data()
 
-    def play_vowel_phrase(self, trial):
+    def play_vowel_phrase(self, trial: str) -> None:
         """
         set up and play the files for the current phrase.
         one con of this method is there is no way (I know of) to stop in the
@@ -93,6 +92,7 @@ class VowelSpace(bases.StimulusBase):
             CHUNK = 1024
             file = c.VS_PATHS[trial]
             import wave
+
             import pyaudio
 
             path = os.path.join(c.STIM_DIR, file)

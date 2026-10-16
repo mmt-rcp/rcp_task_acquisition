@@ -1,118 +1,28 @@
 import os
-import shutil
+from pathlib import Path
+from typing import Any
 
 import ruamel.yaml
 
+from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.constants import (
-    CONFIG_FILE_PATH,
+    CODE_CONFIG_DIR_PATH,
     SCREEN_CONFIG_FILE_NAME,
-    STIM_CONFIG_FILE_PATH,
 )
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def get_screen_config():
-    userDataDir = os.path.realpath(CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, SCREEN_CONFIG_FILE_NAME)
-    ruamelFile = ruamel.yaml.YAML()
-
-    screen_config = None
-    if os.path.exists(configPath):
-        with open(configPath, "r") as f:
-            screen_config = ruamelFile.load(f)
-    if screen_config is None:
-        return
-    return screen_config
+def write_metadata(data: dict[str, Any], file_path: str | Path) -> None:
+    file_path = Path(file_path)
+    logger.info("writing metadata to %s", file_path)
+    with file_path.open("w") as fh:
+        dumper = ruamel.yaml.YAML()
+        dumper.dump(data, fh)
 
 
-def get_stimulus_config(filename):
-    userDataDir = os.path.realpath(STIM_CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, filename)
-    ruamelFile = ruamel.yaml.YAML()
-
-    stimulusConfig = None
-    if os.path.exists(configPath):
-        with open(configPath, "r") as f:
-            stimulusConfig = ruamelFile.load(f)
-    if stimulusConfig is None:
-        return
-    return stimulusConfig
-
-
-def copy_file(sessionFolder, filename):
-    # Copy visual stimulus config file to session directory
-    userDataDir = os.path.realpath(STIM_CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, filename)
-    shutil.copy2(configPath, os.path.join(sessionFolder, filename))
-
-
-def get_stimulus_path():
-    return STIM_CONFIG_FILE_PATH
-
-
-def get_config_path():
-    return CONFIG_FILE_PATH
-
-
-def write_config(config_name, data):
-    config_path = os.path.join(CONFIG_FILE_PATH, config_name)
-    with open(config_path, "w") as config_file:
-        ruamelFile = ruamel.yaml.YAML()
-        ruamelFile.dump(data, config_file)
-
-
-def read_config(config_name):
-    config_path = os.path.join(CONFIG_FILE_PATH, config_name)
-    ruamelFile = ruamel.yaml.YAML()
-    if not (os.path.exists(config_path)):
-        return None
-
-    with open(config_path, "r") as config_file:
-        config = ruamelFile.load(config_file)
-    return config
-
-
-def write_metadata(data, file_path):
-    with open(file_path, "w") as metadata_file:
-        ruamelFile = ruamel.yaml.YAML()
-        ruamelFile.dump(data, metadata_file)
-
-
-def cam_config_template():
-    """
-    Creates a template for config.yaml file. This specific order is preserved while saving as yaml file.
-    """
-    yaml_str = """\
-# Camera reference (enter serial numbers for each)
-    frontCam:
-    sideCam:
-    topCam:
-    masterCam:
-    \n
-# Camera settings
-    frontCrop:
-    sideCrop:
-    topCrop:
-    exposure:
-    framerate:
-    bin:
-    \n
-# User information
-    unitRef:
-    raw_data_dir:
-    COM:
-    default_video_dir:
-    \n
-    
-    """
-    ruamelFile = ruamel.yaml.YAML()
-    cfg_file = ruamelFile.load(yaml_str)
-    return cfg_file, ruamelFile
-
-
-def metadata_template():
+def metadata_template() -> ruamel.yaml.CommentedMap:
     """
     Creates a template for config.yaml file. This specific order is preserved while saving as yaml file.
     """
@@ -121,10 +31,6 @@ def metadata_template():
     version:
     \n
     
-# Cameras
-    cameras:
-    \n
-
 # Experiment
     Designer:
     administrator_id:
@@ -142,14 +48,9 @@ def metadata_template():
     participant_id:
     participant_details:
     \n
-    
+
 # Screen Config
     screen_settings:
-    \n
-
-# Labjack Settings
-    actual_scan_rate:
-    hardware:
     \n
 
 # Task
@@ -157,16 +58,25 @@ def metadata_template():
     task_settings:
     trial_data:
     task_notes:
-    """
+    \n
+
+# Cameras
+    cameras:
+    \n
+
+# Labjack Settings
+    actual_scan_rate:
+    hardware:
+    \n
+"""
 
     ruamelFile = ruamel.yaml.YAML()
-    cfg_file = ruamelFile.load(yaml_str)
-    return cfg_file, ruamelFile
+    meta_cfg = ruamelFile.load(yaml_str)
+    return meta_cfg
 
 
-def read_metadata(path):
-    ruamelFile = ruamel.yaml.YAML()
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            cfg = ruamelFile.load(f)
+def read_metadata(path: Path) -> ruamel.yaml.CommentedMap:
+    loader = ruamel.yaml.YAML()
+    with path.open("r") as f:
+        cfg = loader.load(f)
     return cfg
