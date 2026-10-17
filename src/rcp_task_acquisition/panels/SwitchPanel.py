@@ -11,9 +11,12 @@ from rcp_task_acquisition.utils.run_context import RcpRunContext
 logger = get_logger(__name__)
 
 
-class ActivePanel(Enum):
-    LAUNCH = True
-    TASK = False
+class ActivePanel(str, Enum):
+    LAUNCH = "LAUNCH"
+    TASK = "TASK"
+
+    def switch_panel(self) -> "ActivePanel":
+        return ActivePanel.LAUNCH if self is ActivePanel.TASK else ActivePanel.TASK
 
 
 class SwitchPanel:
@@ -21,7 +24,7 @@ class SwitchPanel:
 
     def __init__(self, *, rcp_context: RcpRunContext) -> None:
         self._rcp_context: RcpRunContext = rcp_context
-        self.active_panel = True
+        self.active_panel = ActivePanel.LAUNCH
         self.launch_panel = LaunchPanel(rcp_context=rcp_context)
         self.task_frame = MainFrame(rcp_context=rcp_context)
         self.warning = WarningHandler()
@@ -48,7 +51,7 @@ class SwitchPanel:
 
     def switch_panel(self) -> None:
         # if launch panel showing, switching to show task panel & vice versa
-        if self.active_panel == ActivePanel.LAUNCH.value:
+        if self.active_panel == ActivePanel.LAUNCH:
             self.task_frame.Enable()
             self.task_frame.quit.SetLabel("Exit to Launch Menu")
             self.launch_panel.get_metadata()
@@ -60,7 +63,7 @@ class SwitchPanel:
             self.task_frame.Hide()
             self.launch_panel.Show()
 
-        self.active_panel = not self.active_panel
+        self.active_panel = self.active_panel.switch_panel()
 
     def _on_disable_panel(self, event: wx.Event):
         logger.verbose("on_disable_panel: event=%s ; from=%s", event, event.GetEventObject())
@@ -79,7 +82,7 @@ class SwitchPanel:
         """
         Disable the current shown panel while enabling other panel
         """
-        if self.active_panel == ActivePanel.LAUNCH.value:
+        if self.active_panel == ActivePanel.LAUNCH:
             self.launch_panel.protocol_button.SetLabel("Loading...")
             self.launch_panel.enable_gui(False)
         else:
