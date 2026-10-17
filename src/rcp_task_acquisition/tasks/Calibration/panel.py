@@ -34,8 +34,9 @@ class CalibrationPanel(TrialPanel):
         logger.debug(
             "display: %s -> %s // %s", disp.GetName(), disp.GetGeometry(), disp.GetClientArea()
         )
-        frame = self._frame_patient = wx.Frame(parent)
+        frame = self._frame_patient = wx.Frame(parent, title="Cameras")
         frame.SetSize(disp.GetGeometry().GetSize())
+        frame.SetPosition(disp.GetGeometry().GetPosition())
         box_sizer = wx.BoxSizer(wx.VERTICAL)
         panel = self._patient_panel = wx.Panel(frame)
         box_sizer.Add(panel)
@@ -43,8 +44,8 @@ class CalibrationPanel(TrialPanel):
         img_panel = self._image_panel = ImagePanel(panel)
         img_panel.SetSize(frame.GetSize())
         self._image_panel.updateImage()
-        panel.SetSize(frame.GetMaxSize())
-        frame.Show()
+        panel.SetSize(frame.GetSize())
+        # frame.Hide()
         logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
         self.figure, self.axes, self.canvas = None, None, None
         self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroyed, self)
