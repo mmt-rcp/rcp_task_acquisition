@@ -45,7 +45,7 @@ class CalibrationPanel(TrialPanel):
         img_panel.SetSize(frame.GetSize())
         self._image_panel.updateImage()
         panel.SetSize(frame.GetSize())
-        # frame.Hide()
+        frame.Show()
         logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
         self.figure, self.axes, self.canvas = None, None, None
         self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroyed, self)
@@ -60,11 +60,13 @@ class CalibrationPanel(TrialPanel):
         self._close_patient_win()
 
     def Show(self, show: bool = True):
+        logger.debug("showing all")
         self._frame_patient.Show()
         return super().Show(show)
 
     def Hide(self):
-        self._frame_patient.Hide()
+        logger.debug("Hide()")
+        # self._frame_patient.Hide()
         return super().Hide()
 
     def Close(self, force: bool = False) -> bool:

@@ -9,6 +9,7 @@ from typing import Callable
 
 import wx
 
+from rcp_task_acquisition.tasks.Calibration.task import CalibrationTask
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
 from rcp_task_acquisition.tasks.HardwareTest import HardwareTest
@@ -40,6 +41,8 @@ class Msg(str, Enum):
     UPDATE_DATA = "update_data"
     RESET_TASK = "reset_task"
     HARDWARE_TEST = "hardware_test"
+    SHOW_WINDOW = "show"
+    HIDE_WINDOW = "hide"
     CLOSE_WINDOW = "close"
     VOWEL_SPACE = "vowel_space"
     SEND_METADATA = "send_metadata"
@@ -107,6 +110,8 @@ class StimulusThread(ProcessWithLogging):
     def _handle_update_task(self) -> None:
         msg = self.msgq.get()
         self.task = msg
+        if "calibrate" in self.task:
+            self._handle_initialize()
 
     def _handle_update_data(self) -> None:
         data = self.msgq.get()
@@ -243,16 +248,27 @@ class StimulusThread(ProcessWithLogging):
             reach_grasp=ReachGrasp,
             tone_taps_closed=ToneTapsClosed,
             verb_generation=VerbGeneration,
-        ).get(self.task, StimulusBase)
+            # calibrate_face=CalibrationTask,
+            # calibrate_top=CalibrationTask,
+        ).get(self.task, None)
+        if base_cls is None:
+            if "calibrate" in self.task:
+                base_cls = CalibrationTask
+            else:
+                logger.debug("Using StimulusBase for %s", self.task)
+                self.stimulus = StimulusBase(**base_vars)
+                return
         extra_args = []
         if issubclass(base_cls, N_back):
             extra_args.append(self.button)
         elif issubclass(base_cls, ToneTapsClosed):
             extra_args.append(self.press_count)
         self.stimulus = base_cls(base_vars, *extra_args)
-        logger.info("stimuli: %s", self.stimulus)
+        logger.info("stimulus: %s", self.stimulus)
 
     def end_stimulus(self) -> None:
+        if self.stimulus is not None:
+            self.stimulus.end_stimulus()
         self.window.idle(time_list=[])
         # self.send_metadata()
 

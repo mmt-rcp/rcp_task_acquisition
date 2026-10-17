@@ -291,7 +291,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             img_count_idx += 1
 
             p_now = time.perf_counter()
-            if p_now - p0 < 1 or img_count_idx < 10:
+            if img_count_idx < 5:
                 logger.debug("img #%s: frame_id=%s ts=%s", img_count_idx, frame_id, timestamp_secs)
 
             if ctx.record:

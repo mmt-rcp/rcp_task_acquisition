@@ -55,6 +55,9 @@ class StimulusBase:
         self.video_lock = video_lock
         self.first_frame = -1
 
+    def end_stimulus(self):
+        """For subclass to customize"""
+
     def present(self) -> None:
         self.timer.value = 0
         self.trial += 1

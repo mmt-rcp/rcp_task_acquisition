@@ -46,10 +46,11 @@ class SwitchPanel:
         self.exit_event()
 
     def _on_switch_panel(self, event: wx.Event) -> None:
-        logger.verbose("switch_panel: event: %s ; from=%s", event, event.GetEventObject())
+        logger.verbose("_on_switch_panel: event: %s ; from=%s", event, event.GetEventObject())
         self.switch_panel()
 
     def switch_panel(self) -> None:
+        logger.verbose("switch_panel: active=%s", self.active_panel)
         # if launch panel showing, switching to show task panel & vice versa
         if self.active_panel == ActivePanel.LAUNCH:
             self.task_frame.Enable()
@@ -72,7 +73,7 @@ class SwitchPanel:
             logger.debug("close from launch panel, preventing timer start")
             # if close of main launch panel, then don't switch panels.
             return
-        self.switch_panel
+        # self.switch_panel
         if 0:
             self.switch_panel()  # tried this, which is indirectly called by the disable_timer,
         # but for some reason don't get the same visual result.

@@ -35,6 +35,7 @@ from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.MetadataPanel import MetadataPanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.Calibration.panel import CalibrationPanel
 from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
@@ -1000,7 +1001,7 @@ class MainFrame(wx.Frame):
             event.Skip()
 
     def show(self, launch_args: dict[str, Any]) -> None:
-        logger.debug("show(): launch_args=%s", launch_args)
+        logger.verbose("show(): launch_args=%s", launch_args)
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
@@ -1015,10 +1016,12 @@ class MainFrame(wx.Frame):
         cams_cfg = user_cfg.cameras
         args: config.HardwareDictConfig
         if not self.task or self.task not in tasks_cfg:
+            logger.debug("task %r not in tasks_cfg (%s)", self.task, tuple(tasks_cfg))
             args = user_cfg.hardware
             self.widget_panel.show_cams()
             self.frames = user_cfg.cam_config.framerate
         else:
+            logger.debug("populating cameras and hardware configs")
             cams_cfg = config.CamerasDictConfig()
             args = config.HardwareDictConfig()
             self.frames = 0
@@ -1052,7 +1055,7 @@ class MainFrame(wx.Frame):
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
         self.video_start, self.video_pause = self.trial_panel.get_video_buttons()
-        if "calibrate" in self.task:
+        if isinstance(self.trial_panel, CalibrationPanel):
             self.calibrate = True
             self.task_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
             self.task_button.SetLabel("Record Cameras")
