@@ -14,9 +14,9 @@ logger = get_logger(__name__)
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class NaturalisticSpeech(bases.StimulusBase):
-    def __init__(self, base_vars: dict) -> None:
+    def __init__(self, base_vars: dict[str, Any]) -> None:
         super().__init__(**base_vars)
-        self.photo = None
+        self.photo: str = ""
         self.photo_dict: dict[str, Any] = {}
         self.trial = 0
         self.screen_width = (
@@ -25,7 +25,7 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.screen_height = 1440
         self.show_image = False
 
-    def present(self, test=True):
+    def present(self, test=True) -> None:
         # Load and draw the photo being presented
 
         self.timer.value = 0
@@ -82,13 +82,12 @@ class NaturalisticSpeech(bases.StimulusBase):
         # logger.debug(data)
         return self.photo_dict
 
-    def update_data(self, trial_data):
-        photo = trial_data[0]
+    def update_data(self, data: tuple[str, int]) -> None:
+        photo = data[0]
         logger.debug(f"photo: {photo}, nonimage_tasks: {NON_IMAGE_TASKS}")
         if photo in NON_IMAGE_TASKS:
             self.photo = photo
             self.show_image = False
         else:
             self.photo = os.path.join(IMG_DIR, photo)
-
             self.show_image = True

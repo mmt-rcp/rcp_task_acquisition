@@ -9,6 +9,7 @@ from typing import Callable
 
 import wx
 
+from rcp_task_acquisition.tasks.Calibration.task import CalibrationTask
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
 from rcp_task_acquisition.tasks.HardwareTest import HardwareTest
@@ -30,7 +31,7 @@ from rcp_task_acquisition.utils.typing import SharedBool, SharedEvent, SharedInt
 logger = get_logger(__name__)
 
 
-class Msg(str, Enum):
+class StimulusMessage(str, Enum):
     INITIALIZE = "init_stimulus"
     UPDATE_TASK = "update_task"
     RUN_TASK = "run_stimulus"
@@ -40,6 +41,8 @@ class Msg(str, Enum):
     UPDATE_DATA = "update_data"
     RESET_TASK = "reset_task"
     HARDWARE_TEST = "hardware_test"
+    SHOW_WINDOW = "show"
+    HIDE_WINDOW = "hide"
     CLOSE_WINDOW = "close"
     VOWEL_SPACE = "vowel_space"
     SEND_METADATA = "send_metadata"
@@ -83,20 +86,25 @@ class StimulusThread(ProcessWithLogging):
         self.alive = True
         self.task = task
         self.video_lock = event_lock
-        self._msg_handlers: dict[Msg, Callable] = {
-            Msg.INITIALIZE: self._handle_initialize,
-            Msg.SEND_METADATA: self._handle_send_metadata,
-            Msg.UPDATE_TASK: self._handle_update_task,
-            Msg.UPDATE_DATA: self._handle_update_data,
-            Msg.RUN_TASK: self._handle_run_task,
-            Msg.RESET_TASK: self._handle_reset_task,
-            Msg.END_TASK: self._handle_end_task,
-            Msg.VOWEL_SPACE: self._handle_vowel_space,
-            Msg.CLOSE_WINDOW: self._handle_close_window,
-            Msg.PLAY_INSTRUCTIONS: self._handle_play_instructions,
-            Msg.ADD_INSTRUCTIONS: self._handle_add_instructions,
-            Msg.HARDWARE_TEST: self._handle_hardware_test,
+        self._msg_handlers: dict[StimulusMessage, Callable] = {
+            StimulusMessage.INITIALIZE: self._handle_initialize,
+            StimulusMessage.SEND_METADATA: self._handle_send_metadata,
+            StimulusMessage.UPDATE_TASK: self._handle_update_task,
+            StimulusMessage.UPDATE_DATA: self._handle_update_data,
+            StimulusMessage.RUN_TASK: self._handle_run_task,
+            StimulusMessage.RESET_TASK: self._handle_reset_task,
+            StimulusMessage.END_TASK: self._handle_end_task,
+            StimulusMessage.VOWEL_SPACE: self._handle_vowel_space,
+            StimulusMessage.CLOSE_WINDOW: self._handle_close_window,
+            StimulusMessage.PLAY_INSTRUCTIONS: self._handle_play_instructions,
+            StimulusMessage.ADD_INSTRUCTIONS: self._handle_add_instructions,
+            StimulusMessage.HARDWARE_TEST: self._handle_hardware_test,
+            StimulusMessage.SHOW_WINDOW: self._handle_show_window,
         }
+
+    def _handle_show_window(self):
+        self.window.winHandle.set_visible(True)
+        self.window.flip()
 
     def _handle_initialize(self) -> None:
         self.init_stimuli()
@@ -107,19 +115,12 @@ class StimulusThread(ProcessWithLogging):
     def _handle_update_task(self) -> None:
         msg = self.msgq.get()
         self.task = msg
+        if "calibrate" in self.task:
+            self._handle_initialize()
 
     def _handle_update_data(self) -> None:
-        data = self.msgq.get()
-        logger.debug("stim: update_data: %s", data)
-        try:
-            if data[0] == "(":
-                trial_data = ast.literal_eval(data)
-            else:
-                trial_data = data
-        except Exception as err:
-            logger.exception("Cannot evaluate stim thread data (%s): %s", data, err)
-            trial_data = data
-        # trial_data = trial_data.replace("(", "")
+        trial_data = self.msgq.get(timeout=5)
+        logger.debug("stim: update_data: %s", trial_data)
         if self.stimulus is not None:
             self.stimulus.update_data(trial_data)
 
@@ -127,11 +128,11 @@ class StimulusThread(ProcessWithLogging):
         self.shared.value = 0
         # Main loop for presenting stimuli
         tStart = time.perf_counter()
-        logger.info(f"Presenting {self.task}")
+        stimulus = self.stimulus
+        logger.info(f"Presenting {self.task} ; stimu=%s", stimulus)
         if self.shared.value == -1:
             self.alive = False
             return
-        stimulus = self.stimulus
         if stimulus is not None:
             stimulus.set_first_frame(self.frame.value)
         self.window.reset_stimulus_frame()
@@ -196,13 +197,15 @@ class StimulusThread(ProcessWithLogging):
 
     def run(self) -> None:
         self.window = Window(screen=self.screenConfig, fullScreen=True)
-
+        # import pyglet.window.xlib  # delayed on purpose
+        win_handle: "pyglet.window.xlib.XlibWindow" = self.window.winHandle  # type: ignore
         logger.info("entering main loop")
         while self.alive:
             wx.Yield()
+            # win_handle.flip()
             try:
                 msg = self.msgq.get(timeout=0.05)
-                logger.debug(f"msg: {msg}")
+                logger.debug("msg: %s", msg)
             except Empty:
                 continue
             handler = self._msg_handlers.get(msg, None)
@@ -231,7 +234,6 @@ class StimulusThread(ProcessWithLogging):
             "finish": self.finish,
             "rcp_context": self._rcp_context,
         }
-        logger.debug(f"base vars: {base_vars}")
         base_cls = dict(
             n_back=N_back,
             motor_task_finger_taps=BasicTaps,
@@ -243,16 +245,27 @@ class StimulusThread(ProcessWithLogging):
             reach_grasp=ReachGrasp,
             tone_taps_closed=ToneTapsClosed,
             verb_generation=VerbGeneration,
-        ).get(self.task, StimulusBase)
+            # calibrate_face=CalibrationTask,
+            # calibrate_top=CalibrationTask,
+        ).get(self.task, None)
+        if base_cls is None:
+            if "calibrate" in self.task:
+                base_cls = CalibrationTask
+            else:
+                logger.debug("Using StimulusBase for %s", self.task)
+                self.stimulus = StimulusBase(**base_vars)  # type: ignore
+                return
         extra_args = []
         if issubclass(base_cls, N_back):
             extra_args.append(self.button)
         elif issubclass(base_cls, ToneTapsClosed):
             extra_args.append(self.press_count)
         self.stimulus = base_cls(base_vars, *extra_args)
-        logger.info("stimuli: %s", self.stimulus)
+        logger.info("stimulus: %s", self.stimulus)
 
     def end_stimulus(self) -> None:
+        if self.stimulus is not None:
+            self.stimulus.end_stimulus()
         self.window.idle(time_list=[])
         # self.send_metadata()
 

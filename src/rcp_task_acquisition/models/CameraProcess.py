@@ -377,7 +377,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self.camq_p2read.put("done")
 
     def _cmd_Stop(self, ctx: CamCtx) -> None:
-        pass  # TODO
+        self.camq_p2read.put("done")
 
     def _cmd_TrigOff(self, ctx: CamCtx) -> None:
         pass  # TODO

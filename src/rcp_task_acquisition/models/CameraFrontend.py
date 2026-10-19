@@ -1,10 +1,8 @@
 import ctypes
-import multiprocessing
 import os
 import queue
 import shutil
 import time
-from dataclasses import dataclass
 from multiprocessing import Array, Queue, Value
 from pathlib import Path
 
@@ -22,47 +20,12 @@ from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.ParticipantMonitorPanel import MonitorPanel
 from rcp_task_acquisition.utils import config
+from rcp_task_acquisition.utils.camera_settings import FrameDims, CamSettings
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
-from rcp_task_acquisition.utils.typing import SharedArray, SharedInt
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class FrameDims:
-    x1: int = 0
-    x2: int = 0
-    y1: int = 0
-    y2: int = 0
-    h: int = 0
-    w: int = 0
-    dispSize: int = 0
-
-
-@dataclass
-class CamSettings:
-    idx: int  # cam index
-    name: str
-    serial: str
-    is_primary: bool
-    size: int
-    shape: list[int]
-    bin_val: int
-    frame_dims: list[int]
-    decrease_val: int
-    actual_framerate: None | float
-    exposure: None | float
-    cam_tests: np.ndarray
-    contrast_tests: np.ndarray
-    frame: np.ndarray
-    frameBuff: np.ndarray
-    array4feed: SharedArray
-    frmGrab: SharedInt
-    camq: multiprocessing.Queue
-    camq_p2read: multiprocessing.Queue
-    frame_size: FrameDims
 
 
 class Camera:
@@ -79,7 +42,7 @@ class Camera:
     ):
         self._rcp_context = rcp_context
         self.serial = serial
-        self.shared = Value(ctypes.c_byte, 0)
+        # self.shared = Value(ctypes.c_byte, 0) unused
         self.camaq = Value(ctypes.c_byte, 0)
         self.frmaq = Value(ctypes.c_int, 0)
         self.reset_variables()
@@ -107,13 +70,20 @@ class Camera:
         self.im: list[AxesImage] = []
         self.x1 = 0
         self.y1 = 0
-        self.shared.value = 0
+        # self.shared.value = 0
         self.camaq.value = 0
         self.frmaq.value = 0
         self.crop = True
         self.hardware_test = True
         self._cams_cfg = config.CamerasDictConfig()
         self._is_unconnected = True
+
+    @property
+    def camera_settings(self) -> list[CamSettings]:
+        return self._cam_by_idx
+
+    def get_camera_by_index(self, idx: int) -> CamSettings:
+        return self._cam_by_idx[idx]
 
     def setup(
         self,
@@ -183,12 +153,12 @@ class Camera:
         cam_names = [cam.name for cam in self._cam_by_idx]
         self.ctrl_panel.hardware_test(30 * 2, camCt, cam_names)
 
-        self.figure, self.axes, self.canvas = self.image_panel.getfigure()
         for ndx in range(self.cam_pointer, self.cam_pointer + 2):
             cam = self._cam_by_idx[ndx]
-            self.im.append(self.axes[ndx].imshow(cam.frame))
+            axe = self.image_panel.axes[ndx]
+            self.im.append(axe.imshow(cam.frame))
             self.im[ndx].set_clim(0, 255)
-            self.cam_crop.update_crop(ndx, self.axes[ndx], cam.frame_dims)
+            self.cam_crop.update_crop(ndx, axe, cam.frame_dims)
         cam0 = self._cam_by_idx[self.cam_pointer]
         cam1 = self._cam_by_idx[self.cam_pointer + 1]
         self.image_panel.update_names(
@@ -277,44 +247,35 @@ class Camera:
         self.stopAq()
         time.sleep(2)
 
+    def on_cam_update(self, cam, frame):
+        if cam.idx == self.cam_pointer:
+            self.im[0].set_data(frame)
+        elif cam.idx == self.cam_pointer + 1:
+            self.im[1].set_data(frame)
+        #
+        if self.hardware_test:
+            cam.cam_tests = np.roll(cam.cam_tests, 1)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+            variance = laplacian.var()
+            cam.cam_tests[0] = variance
+            normalized_img = gray / 255.0
+            # Calculate RMS contrast (Standard Deviation)
+            rms = np.std(normalized_img)
+            cam.contrast_tests = np.roll(cam.contrast_tests, 1)
+            cam.contrast_tests[0] = rms
+
     def vidPlayer(self, event: wx.Event) -> None:
         if self.camaq.value == 2:
             return
-        self.participant_monitor.update_screen()
-        for cam in self._cam_by_idx:
-            if cam.frmGrab.value == 1:
-                cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
-                dims = cam.frame_size
-                frame = cam.frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                for f in range(3):
-                    cam.frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[:, :, f]
-                cam.frame_size = dims
-
-                if cam.idx == self.cam_pointer:
-                    self.im[0].set_data(cam.frame)
-                elif cam.idx == self.cam_pointer + 1:
-                    self.im[1].set_data(cam.frame)
-                cam.frmGrab.value = 0
-
-                if self.hardware_test:
-                    cam.cam_tests = np.roll(cam.cam_tests, 1)
-                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-                    variance = laplacian.var()
-                    cam.cam_tests[0] = variance
-
-                    normalized_img = gray / 255.0
-                    # Calculate RMS contrast (Standard Deviation)
-                    rms = np.std(normalized_img)
-                    cam.contrast_tests = np.roll(cam.contrast_tests, 1)
-                    cam.contrast_tests[0] = rms
+        # self.participant_monitor.update_screen()
+        # already done in separate timer
         if self.hardware_test:
             if self.focus_test.GetValue():
                 self.update_focus()
             elif self.contrast_test.GetValue():
                 self.update_contrast()
-        self.figure.canvas.draw()
+        self.image_panel.figure.canvas.draw()
 
     def update_focus(self, plot: bool = True) -> None:
         if plot:
@@ -358,7 +319,7 @@ class Camera:
         self.startAq()
 
     def stop_recording(self) -> None:
-        self.shared.value = -1
+        # self.shared.value = -1
         self.stopAq()
         time.sleep(2)
 
@@ -533,7 +494,7 @@ class Camera:
         self.im = []
         self.x1 = 0
         self.y1 = 0
-        self.shared.value = 0
+        # self.shared.value = 0
         self.camaq.value = 0
         self.frmaq.value = 0
         self.crop = True

@@ -26,7 +26,7 @@ class SaraPanel(TrialPanel):
         vertical_sizer.Add(self._setup_panel(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         # vertical_sizer.Add(self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
-        self.edit_num = None
+        self.edit_num: str | None = None
 
     def populate_metadata(self, metadata: dict):
         metadata["trial_data"] = self.add_metadata()
@@ -97,16 +97,16 @@ class SaraPanel(TrialPanel):
 
     def reset_assesment(self) -> None:
         logger.verbose("in reset_assessment")
-        button, text = self.scoring_panel.get_result()
+        button_idx, text = self.scoring_panel.get_result()
         # need to unbind to prevent infinite recursion,
         self.scoring_panel.Unbind(wx.EVT_CLOSE, handler=self._on_reset_assessment)
         # with this following Close:
         self.scoring_panel.Close()
-        logger.debug(f"button: {button}, text: {text}")
+        logger.debug(f"button: {button_idx}, text: {text}")
         assesment_dict = {
             "type": self.current_assesment,
-            "score": button,
-            "description": ASSESMENTS[self.current_assesment][button],
+            "score": button_idx,
+            "description": ASSESMENTS[self.current_assesment][button_idx],
             "notes": text,
         }
         self.assesment_num = self.assesment_choice.GetSelection()
@@ -117,7 +117,7 @@ class SaraPanel(TrialPanel):
         self.current_assesment = self.assesment_list[self.assesment_num]
         self.assesment_choice.SetSelection(self.assesment_num)
         logger.debug(f"edit num: {self.edit_num}")
-        if self.edit_num != None:
+        if self.edit_num is not None:
             self.actual_assesments[f"{self.edit_num}"] = assesment_dict
             self.edit_num = None
         else:
@@ -184,7 +184,7 @@ class AssesmentPanel(wx.Dialog):
         self.vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         self.border = 7
         self.left_radio = None
-        self.button_list: dict[str, wx.RadioButton] = {}
+        self.button_list: dict[int, wx.RadioButton] = {}
         self.vertical_sizer.Add(
             self._create_assesment_score(current_assesment, args),
             0,
@@ -202,29 +202,29 @@ class AssesmentPanel(wx.Dialog):
             args = {}
         assesment_scores = ASSESMENTS[current_assesment]
         grid_sizer = wx.GridBagSizer(len(assesment_scores.keys()), 3)
-        for assesment in assesment_scores:
+        for score in assesment_scores:
             button = wx.RadioButton(self)
-            number = wx.StaticText(self, label=str(assesment))
-            self.button_list[assesment] = button
-            description = wx.StaticText(self, label=assesment_scores[assesment])
+            number = wx.StaticText(self, label=str(score))
+            self.button_list[score] = button
+            description = wx.StaticText(self, label=assesment_scores[score])
             description.Wrap(520)
             grid_sizer.Add(
                 button,
-                pos=(assesment, 0),
+                pos=(score, 0),
                 span=(0, 1),
                 flag=wx.ALIGN_LEFT | wx.ALL,
                 border=self.border,
             )
             grid_sizer.Add(
                 number,
-                pos=(assesment, 1),
+                pos=(score, 1),
                 span=(0, 1),
                 flag=wx.ALIGN_LEFT | wx.ALL,
                 border=self.border,
             )
             grid_sizer.Add(
                 description,
-                pos=(assesment, 2),
+                pos=(score, 2),
                 span=(0, 1),
                 flag=wx.ALIGN_LEFT | wx.ALL,
                 border=self.border,
@@ -249,26 +249,6 @@ class AssesmentPanel(wx.Dialog):
             self.notes.SetValue(args["notes"])
         return grid_sizer
 
-        grid_sizer = wx.GridBagSizer(2, 4)
-        grid_sizer.Add(
-            self.hand_text, pos=(1, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.ALL, border=self.border
-        )
-        grid_sizer.Add(
-            self.left_radio,
-            pos=(2, 0),
-            span=(0, 2),
-            flag=wx.ALIGN_LEFT | wx.ALL,
-            border=self.border,
-        )
-        grid_sizer.Add(
-            self.right_radio,
-            pos=(2, 2),
-            span=(0, 2),
-            flag=wx.ALIGN_LEFT | wx.ALL,
-            border=self.border,
-        )
-        return grid_sizer
-
     def _add_buttons(self):
         grid_sizer = wx.GridBagSizer(1, 4)
         self.continue_button = wx.Button(self, label="Confirm Score", size=(150, -1))
@@ -282,11 +262,12 @@ class AssesmentPanel(wx.Dialog):
         )
         return grid_sizer
 
-    def get_result(self) -> tuple[str | None, str]:
+    def get_result(self) -> tuple[int, str]:
         text = self.notes.GetValue()
-        button_used = None
-        for button in self.button_list:
+        button_used = -1
+        for idx, button in enumerate(self.button_list):
             if self.button_list[button].GetValue():
-                button_used = button
+                button_used = idx
+                break
         logger.debug(f"button used: {button_used}")
         return button_used, text

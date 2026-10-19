@@ -3,8 +3,10 @@ from logging import warning
 from multiprocessing import sharedctypes
 from typing import Any
 
+import numpy as np
 import wx
 
+from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -13,7 +15,7 @@ logger = get_logger(__name__)
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
-    def __init__(self, parent: wx.Panel):
+    def __init__(self, parent: wx.Panel) -> None:
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0
@@ -41,18 +43,11 @@ class TrialPanel(wx.Panel):
         logger.debug("%s.Close(): unbind timer=%s", self.__class__, ret)
         return super().Close(force=force)
 
-    def populate_metadata(self, metadata: dict):
-        """For task metadata. NB: The full global metadata dict is passed."""
-
-    def get_instruction(self, count: int) -> str:
-        """Get instruction for play trial. count is trial number"""
-        return ""
-
     def _setup_buttons(self):
         self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
         self.continue_button.Hide()
-        self.repeat_trial = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))
-        self.repeat_trial.Hide()
+        self.repeat_trial_button = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))
+        self.repeat_trial_button.Hide()
         grid_sizer = wx.GridBagSizer(0, 0)
         grid_sizer.Add(
             self.continue_button,
@@ -62,7 +57,7 @@ class TrialPanel(wx.Panel):
             border=self.border,
         )
         grid_sizer.Add(
-            self.repeat_trial,
+            self.repeat_trial_button,
             pos=(1, 0),
             span=(0, 2),
             flag=wx.ALIGN_LEFT | wx.ALL,
@@ -74,6 +69,7 @@ class TrialPanel(wx.Panel):
         self.seconds = 0
 
     def show(self):
+        logger.verbose("show()")
         self.rest_timer.Start(1000)
         self.Show()
 
@@ -92,19 +88,19 @@ class TrialPanel(wx.Panel):
 
     def start_video(self):
         self.continue_button.Enable(False)
-        self.repeat_trial.Enable(False)
+        self.repeat_trial_button.Enable(False)
 
     def stop_video(self):
         self.continue_button.Enable(True)
-        self.repeat_trial.Enable(True)
+        self.repeat_trial_button.Enable(True)
 
     def pause_video(self):
         self.continue_button.Enable(True)
-        self.repeat_trial.Enable(True)
+        self.repeat_trial_button.Enable(True)
 
     def resume_video(self):
         self.continue_button.Enable(False)
-        self.repeat_trial.Enable(False)
+        self.repeat_trial_button.Enable(False)
 
     def run_trial(self, count) -> None:
         self.start_trial()
@@ -124,6 +120,22 @@ class TrialPanel(wx.Panel):
 
     def add_timer(self, timer: sharedctypes.Synchronized) -> None:
         self.timer = timer
+
+    def on_camera_frame_update(self, index: int, frame: np.ndarray):
+        """Allow a panel to intercept camera frame read from shared array, for display purpose"""
+
+    def populate_metadata(self, metadata: dict):
+        """For task metadata. NB: The full global metadata dict is passed."""
+
+    def get_instruction(self, count: int) -> str:
+        """Get instruction for play trial. count is trial number"""
+        return ""
+
+    def prepare_cams(self, cams: list[CamSettings]):
+        pass
+
+    def update_cams_viewed(self, cams: list[CamSettings]):
+        pass
 
 
 class TrialPanelWithInstructPlayback(TrialPanel):

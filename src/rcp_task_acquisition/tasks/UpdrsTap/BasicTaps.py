@@ -1,3 +1,5 @@
+from typing import Any
+
 from psychopy import core
 
 from rcp_task_acquisition.tasks import bases
@@ -9,16 +11,15 @@ logger = get_logger(__name__)
 
 
 class BasicTaps(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
-        # self.finish = is_finished
         self.trial_count = 0
-        self.hand = None
-        self.type = None
-        self.hand_used = {}
+        self.hand: str = ""
+        self.type: str = ""
+        self.hand_used: dict[str, dict[str, str]] = {}
         self.instructions_dict = BASIC_TAPS_PATHS
 
-    def present(self):
+    def present(self) -> None:
         self.trial_count += 1
         self.hand_used[f"trial_{self.trial_count}"] = {"hand": self.hand, "speed": self.type}
         self.timer.value = 0
@@ -40,9 +41,9 @@ class BasicTaps(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def update_data(self, hand_tuple):
-        self.hand = hand_tuple[0]
-        self.type = hand_tuple[1]
+    def update_data(self, data: tuple[str, str]) -> None:
+        self.hand = data[0]
+        self.type = data[1]
 
     def saveMetadata(self) -> TaskMetaData:
         data = {

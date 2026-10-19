@@ -1,6 +1,6 @@
 # SARA constants
 # in assesments lists, first list is the scoring criteria, while the second is whether or not to include hand choice
-ASSESMENTS = {
+ASSESMENTS: dict[str, dict[int, str]] = {
     "gait": {
         0: "Normal, no difficulties in walking, turning, and walking tandem (up to one misstep allowed)",
         1: "Slight difficulties, only visible when walking 10 consecutive steps in tandem",

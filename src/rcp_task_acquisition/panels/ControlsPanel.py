@@ -14,6 +14,7 @@ from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VerbGeneration.panel import VerbGenerationPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
+from rcp_task_acquisition.tasks.utils import get_task_panel_class
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,6 +47,8 @@ class ControlsPanel(wx.Panel):
             border=5,
         )
         vertical_position += 1
+        self._psychopy_monitor = psychopy_monitor
+        self._psychopy_size = monitor_size
         self.monitor = MonitorPanel(self, psychopy_monitor, monitor_size)
         vertical_spacer.Add(
             self.monitor.create_panel(),
@@ -71,16 +74,16 @@ class ControlsPanel(wx.Panel):
     def get_trial_panel(self) -> TrialPanel:
         return self.task_panel
 
-    def show_cams(self):
+    def show_cams(self) -> bool:
         return self.cam_panel.Show()
 
-    def get_monitor(self):
+    def get_monitor(self) -> MonitorPanel:
         return self.monitor
 
-    def hide_cams(self):
+    def hide_cams(self) -> bool:
         return self.cam_panel.Hide()
 
-    def _set_up_task(self, task: str, button_width: int):
+    def _set_up_task(self, task: str, button_width: int) -> wx.GridBagSizer:
         vertical_position = 0
         white_space = 10
         self.task_sizer = wx.GridBagSizer(6, 5)
@@ -194,7 +197,7 @@ class ControlsPanel(wx.Panel):
 
         # self.task_sizer.Remove(self._task_panel_sizer_index)
         self.task_panel.Destroy()  # Close() is making following sizer.Add to error
-        # self.task_panel.Close(force=True)
+        #
 
         self.task_panel = self.get_task_panel(task)
         self.task_sizer.Add(
@@ -208,12 +211,15 @@ class ControlsPanel(wx.Panel):
         self.Layout()
 
     def get_task_panel(self, task: str) -> TrialPanel:
+        # base_cls = get_task_panel_class(task)
         if task == "motor_task_finger_taps":
             return FingerTapPanel(self)
-        elif task == "tone_taps":
+        elif task == "tone_taps":  # seems not possible / unused anymore
             panel = FingerTapPanel(self)
             panel.seconds_text.Hide()
             return panel
+        elif task == "tone_taps_closed":
+            return ToneTapsClosedPanel(self)
         elif task == "naturalistic_speech":
             return NaturalisticSpeechPanel(self)
         elif task == "diadochokinesis":
@@ -226,15 +232,14 @@ class ControlsPanel(wx.Panel):
             return NbackPanel(self)
         elif task == "reach_grasp":
             return ReachGraspPanel(self)
-        elif task == "tone_taps_closed":
-            return ToneTapsClosedPanel(self)
         elif task == "sara":
             return SaraPanel(self)
         elif task == "verb_generation":
             return VerbGenerationPanel(self)
         elif "calibrate" in task:
-            return CalibrationPanel(self)
+            return CalibrationPanel(self, psychopy_monitor=self._psychopy_monitor)
         else:
+            logger.warning("using default TrialPanel for task %r", task)
             basic_panel = TrialPanel(self)
             basic_panel.continue_button.Show()
             return basic_panel

@@ -61,7 +61,7 @@ class NbackPanel(TrialPanel):
         )
         return grid_sizer
 
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
 
@@ -69,7 +69,7 @@ class NbackPanel(TrialPanel):
         self.nback_choice.Enable(False)
         self.practice.Enable(False)
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.nback_choice.Enable(True)
         self.practice.Enable(True)
         self.continue_button.Enable(True)

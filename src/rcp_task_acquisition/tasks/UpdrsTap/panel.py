@@ -2,6 +2,7 @@ import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
 from rcp_task_acquisition.tasks.ToneTaps.ToneTaps import ToneTapsClosed
+from rcp_task_acquisition.tasks.UpdrsTap.BasicTaps import BasicTaps
 from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
 from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
@@ -11,7 +12,7 @@ logger = get_logger(__name__)
 
 class FingerTapPanel(TrialPanelWithInstructPlayback):
     task_trial_item_config = TaskTrialClassConfig(
-        "tone_taps_closed", "Tone Taps", "fingertaptiming", ToneTapsClosed
+        "motor_task_finger_taps", "Finger Tap: Motor Variant", "fingertapmotor", BasicTaps
     )
 
     def __init__(self, parent=None):
@@ -109,11 +110,12 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         self.start_video_button.Enable(False)
         # self.trial_text.SetLabel(f"Trial # {number}")
 
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
         type_index = self.task_type.GetSelection()
-        task_type = None
-        if type_index != -1:
+        if type_index == -1:
+            task_type = ""
+        else:
             task_type = self.task_type_list[type_index]
 
         return self.tap_hand, task_type

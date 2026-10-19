@@ -22,7 +22,7 @@ class VerbGenerationPanel(TrialPanel):
         self.display_secs = 0
         self.display_mins = 0
         self.trial_number = 1
-        self.timestamps = {}
+        # self.timestamps = {}  unused
         self.countdown_start = 0
         self.button_width = 76
         self.border = 5
@@ -89,17 +89,13 @@ class VerbGenerationPanel(TrialPanel):
         self.noun_choice.Enable(False)
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
 
-    def update_trial(self, number):
-        self.trial_number = number
-        self.trial_text.SetLabel(f"Trial # {self.trial_number}")
-
-    def get_result(self):
+    def get_result(self) -> int:
         list_choice = self.noun_choice.GetSelection()
         return list_choice
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
         self.trial_is_active = False
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
         self.noun_choice.Enable(True)

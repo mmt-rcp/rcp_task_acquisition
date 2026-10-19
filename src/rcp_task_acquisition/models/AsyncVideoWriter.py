@@ -15,11 +15,13 @@ logger = get_logger(__name__)
 
 
 class AsyncVideoWriter:
+    # unused.
+
     STOP = object()
 
     def __init__(
         self, video_file, timestamp_file, fps, width, height, max_queue=512, fourcc="mp4v"
-    ):
+    ) -> None:  # type: ignore
         self.video_file = video_file
         self.timestamp_file = timestamp_file
         self.fps = fps
@@ -27,9 +29,9 @@ class AsyncVideoWriter:
         self.height = height
         self.max_queue = max_queue
         self.fourcc = fourcc
-        self.q = Queue(maxsize=max_queue)
+        self.q: Queue[Any] = Queue(maxsize=max_queue)
         self.ready = Event()
-        self.error = None
+        self.error: BaseException | None = None
         self.stop_event = Event()
         self.dropped_by_writer = 0
 
@@ -59,7 +61,7 @@ class AsyncVideoWriter:
         try:
             writer = cv2.VideoWriter(
                 self.video_file,
-                cv2.VideoWriter_fourcc(*self.fourcc),
+                cv2.VideoWriter_fourcc(*self.fourcc),  # type: ignore
                 self.fps,
                 (self.width, self.height),
             )
@@ -82,9 +84,10 @@ class AsyncVideoWriter:
                     f.write(f"{frame_id},{round(timestamp_delta)}\n")
                 finally:
                     self.q.task_done()
-        except Exception as e:
-            self.error = self.ready.set()
-            logger.exception(f"Async video writer failed: {e}")
+        except Exception as err:
+            self.ready.set()
+            self.error = err
+            logger.exception("Async video writer failed: %s", err)
 
         finally:
             if f is not None:

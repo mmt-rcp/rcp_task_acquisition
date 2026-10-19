@@ -24,7 +24,7 @@ class DictConfig(dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, Di
     enum_cls: type[DictKeyType]
     item_cls: type[DictDataType]
 
-    def __new__(cls, arg0=None, **kwargs):
+    def __new__(cls, arg0=None, **kwargs) -> "DictConfig[DictKeyType, DictDataType]":
         if arg0 is not None and len(kwargs) > 0:
             raise TypeError("Do not support both arg and kwargs")
         dct: dict[str, DictDataType] = {}
@@ -35,7 +35,7 @@ class DictConfig(dict[DictKeyType, DictDataType], typing.Generic[DictKeyType, Di
             raise ValueError(f"Unhandled key(s): {tuple(kwargs)}")
         self = super().__new__(cls)
         self.update(dct)
-        return self
+        return self  # type: ignore
 
     def __init__(self, *args, **kwargs):
         del args, kwargs  # initialized in __new__
