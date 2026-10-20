@@ -34,17 +34,34 @@ class CalibrationPanel(TrialPanel):
         logger.debug(
             "display: %s -> %s // %s", disp.GetName(), disp.GetGeometry(), disp.GetClientArea()
         )
-        frame = self._frame_patient = wx.Frame(parent, title="Cameras")
-        frame.SetSize(disp.GetGeometry().GetSize())
-        frame.SetPosition(disp.GetGeometry().GetPosition())
+        frame = self._frame_patient = wx.Frame(
+            parent,
+            title="Cameras",
+            style=0,
+            # style=wx.CLOSE_BOX
+            # | wx.CLIP_CHILDREN
+            # | wx.FRAME_FLOAT_ON_PARENT,
+        )
+        disp_size = disp.GetGeometry().GetSize()
+        frame_size = wx.Size(int(disp_size.width * 0.8), int(disp_size.height * 0.5))
+        # frame.SetSize(frame_size)
+        disp_pos = disp.GetGeometry().GetPosition()
+        frame.SetPosition(
+            wx.Point(
+                disp_pos.x + int((disp_size.width - frame_size.width) / 2),
+                disp_pos.y + int(frame_size.height * 0.5),
+            )
+        )
         box_sizer = wx.BoxSizer(wx.VERTICAL)
         panel = self._patient_panel = wx.Panel(frame)
+        # panel.SetSize(frame_size)
         box_sizer.Add(panel)
         frame.SetSizer(box_sizer)
         img_panel = self._image_panel = ImagePanel(panel)
-        img_panel.SetSize(frame.GetSize())
+        img_panel.SetSize(frame_size)
         img_panel.updateImage()
-        panel.SetSize(frame.GetSize())
+        panel.Fit()
+        frame.Fit()
         frame.Show()
         logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
         self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroyed, self)
