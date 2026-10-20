@@ -397,22 +397,24 @@ class Camera:
         error_message: list[str] = []
         self.camaq.value = 0
         threshold = 1
+
+        def request_cam_stop(cam_id: str):
+            cam_d = self.cam_dict.get(cam_id)
+            if cam_d is None:
+                return
+            cam_d.camq.put(CameraCommand.STOP)
+            update = cam_d.camq_p2read.get()
+            if update != "done" and isinstance(update, str) and update.isdigit():
+                if int(update) > threshold:
+                    error_message.append(f"{update}% of camera frames dropped for {camID}")
+                cam_d.camq_p2read.get()
+
         for camID in self.secondary_cams:
-            cam_d = self.cam_dict[camID]
-            cam_d.camq.put(CameraCommand.STOP)
-            update = cam_d.camq_p2read.get()
-            if update != "done" and isinstance(update, str) and update.isdigit():
-                if int(update) > threshold:
-                    error_message.append(f"{update}% of camera frames dropped for {camID}")
-                cam_d.camq_p2read.get()
+            request_cam_stop(camID)
+
         for camID in self.primary_cams:
-            cam_d = self.cam_dict[camID]
-            cam_d.camq.put(CameraCommand.STOP)
-            update = cam_d.camq_p2read.get()
-            if update != "done" and isinstance(update, str) and update.isdigit():
-                if int(update) > threshold:
-                    error_message.append(f"{update}% of camera frames dropped for {camID}")
-                cam_d.camq_p2read.get()
+            request_cam_stop(camID)
+
         logger.warning(error_message)
         error = ""
         if error_message:
