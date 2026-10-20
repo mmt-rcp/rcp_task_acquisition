@@ -247,13 +247,17 @@ class Camera:
         self.stopAq()
         time.sleep(2)
 
-    def on_cam_update(self, cam, frame):
+    def on_cam_update(self, cam: CamSettings, frame: np.ndarray) -> None:
+        redraw = False
         if cam.idx == self.cam_pointer:
             self.im[0].set_data(frame)
+            redraw = True
         elif cam.idx == self.cam_pointer + 1:
             self.im[1].set_data(frame)
+            redraw = True
         #
         if self.hardware_test:
+            redraw = True
             cam.cam_tests = np.roll(cam.cam_tests, 1)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             laplacian = cv2.Laplacian(gray, cv2.CV_64F)
@@ -264,6 +268,8 @@ class Camera:
             rms = np.std(normalized_img)
             cam.contrast_tests = np.roll(cam.contrast_tests, 1)
             cam.contrast_tests[0] = rms
+        if redraw:
+            self.image_panel.figure.canvas.draw()
 
     def vidPlayer(self, event: wx.Event) -> None:
         if self.camaq.value == 2:
@@ -275,7 +281,7 @@ class Camera:
                 self.update_focus()
             elif self.contrast_test.GetValue():
                 self.update_contrast()
-        self.image_panel.figure.canvas.draw()
+        # self.image_panel.figure.canvas.draw()
 
     def update_focus(self, plot: bool = True) -> None:
         if plot:

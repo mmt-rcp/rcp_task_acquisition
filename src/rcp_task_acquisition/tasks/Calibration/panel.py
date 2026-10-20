@@ -43,7 +43,7 @@ class CalibrationPanel(TrialPanel):
         frame.SetSizer(box_sizer)
         img_panel = self._image_panel = ImagePanel(panel)
         img_panel.SetSize(frame.GetSize())
-        self._image_panel.updateImage()
+        img_panel.updateImage()
         panel.SetSize(frame.GetSize())
         frame.Show()
         logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
