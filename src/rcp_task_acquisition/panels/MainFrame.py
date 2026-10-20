@@ -953,7 +953,10 @@ class MainFrame(wx.Frame):
         self.cams.update_crop(value)
 
     def recordCam(self) -> None:
-        if self.rec.GetValue() or self.task_button.GetValue():
+        is_rec = self.rec.GetValue()
+        is_task = self.task_button.GetValue()
+        logger.verbose("recordCam(): rec=%s task_button=%s", is_rec, is_task)
+        if is_rec or is_task:
             if self.recording:
                 return
             self.recording = True
@@ -987,7 +990,8 @@ class MainFrame(wx.Frame):
             self.update_settings.Enable(True)
             if self.calibrate:
                 self.task_button.SetLabel("Record Cameras")
-                self.trial_panel.hide()  # this also cancel the task/trial 1s timer
+                self.trial_panel.rest_timer.Stop()
+                # self.trial_panel.hide()  # this also cancel the task/trial 1s timer
                 if "face" not in self.task:
                     for p in self.sess_dir.glob("*"):
                         if "Face" in p.name:

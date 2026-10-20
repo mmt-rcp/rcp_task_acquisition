@@ -79,6 +79,7 @@ class CalibrationPanel(TrialPanel):
         self._frame_patient.Show()
         imp = self._image_panel
         imp.updateImage()
+        cam: CamSettings
         for idx, (axe, cam) in enumerate(zip(imp.axes, cams)):
             ims = axe.imshow(cam.frame)
             ims.set_clim(0, 255)

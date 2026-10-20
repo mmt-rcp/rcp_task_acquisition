@@ -395,7 +395,7 @@ class Camera:
             cam_d = self.cam_dict[camID]
             cam_d.camq.put(CameraCommand.STOP)
             update = cam_d.camq_p2read.get()
-            if update != "done":
+            if update != "done" and isinstance(update, str) and update.isdigit():
                 if int(update) > threshold:
                     error_message.append(f"{update}% of camera frames dropped for {camID}")
                 cam_d.camq_p2read.get()
@@ -403,7 +403,7 @@ class Camera:
             cam_d = self.cam_dict[camID]
             cam_d.camq.put(CameraCommand.STOP)
             update = cam_d.camq_p2read.get()
-            if update != "done":
+            if update != "done" and isinstance(update, str) and update.isdigit():
                 if int(update) > threshold:
                     error_message.append(f"{update}% of camera frames dropped for {camID}")
                 cam_d.camq_p2read.get()
