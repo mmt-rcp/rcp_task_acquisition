@@ -69,7 +69,7 @@ class MainFrame(wx.Frame):
 
     trial_panel: TrialPanel
 
-    def __init__(self, parent=None, *, rcp_context: RcpRunContext):
+    def __init__(self, parent: wx.Window | None = None, *, rcp_context: RcpRunContext) -> None:
         self._rcp_context = rcp_context
         self.task: str = ""
         self.launch_args: dict[str, Any] = {}
@@ -233,7 +233,8 @@ class MainFrame(wx.Frame):
         self.frmDims = [0, 1080, 0, 1440]
         self.shared = Value(ctypes.c_byte, 0)
         # self.camaq = Value(ctypes.c_byte, 0)  unused
-        self.frmaq = Value(ctypes.c_int, 0)
+        # self.frmaq = Value(ctypes.c_int, 0)
+        self.frmaq = self.cams.frmaq
 
         self.dtype = "uint8"
         self.size = self.frmDims[1] * self.frmDims[3] * 3
