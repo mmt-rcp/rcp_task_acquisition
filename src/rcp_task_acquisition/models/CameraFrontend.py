@@ -304,7 +304,7 @@ class Camera:
         if spaceneeded > freespace:
             self.warning.update_error(WarnCat.SPACE).display()
 
-        logger.info(f"Total estimated run time: {totTime}")
+        logger.info("Total estimated run time: %s", totTime)
         for ndx, cam_d in enumerate(self.cam_dict.values()):
             cam_d.camq.put(CameraCommand.RECORD_PREP)
             name_base = "%s_%s_trial%03d" % (path_base, cam_d.name, count)

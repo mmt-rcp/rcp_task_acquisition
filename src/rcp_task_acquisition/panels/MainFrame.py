@@ -70,7 +70,7 @@ class MainFrame(wx.Frame):
         screenSizes = [
             display.GetGeometry().GetSize() for display in displays
         ]  # Gets the size of each display
-        logger.debug(f"screenSizes: {screenSizes}")
+        logger.debug("screenSizes: %s", screenSizes)
         # index = 1 # For display 1.
         if len(screenSizes) != 2:
             self.warning.update_error(WarnCat.DISPLAY).display()
@@ -324,7 +324,7 @@ class MainFrame(wx.Frame):
             self.rest_timer.Stop()
 
     def trial_event(self, event):
-        logger.debug(f"in trial_event: {self.video_status.value}")
+        logger.debug("in trial_event: %s", self.video_status.value)
         if self.trial_button.GetValue():
             logger.debug("in trial button")
             time.sleep(1)
@@ -421,7 +421,7 @@ class MainFrame(wx.Frame):
         self.trial_event(event)
 
     def update_intertrial(self, event):
-        logger.debug(f"in intertrial: {self.finish.value}, video: {self.video_status.value}")
+        logger.debug("in intertrial: %s, video: %s", self.finish.value, self.video_status.value)
         if self.video_status.value == VideoStatus.FINISHED.value:
             logger.debug("in finish")
             self.trial_panel.stop_video()
@@ -466,7 +466,7 @@ class MainFrame(wx.Frame):
             self.video_status.value = VideoStatus.STOP.value
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
-            logger.debug(f"done stopping: {self.video_status.value}")
+            logger.debug("done stopping: %s", self.video_status.value)
 
     def pause_instructions(self, event):
         if event.GetEventObject().GetValue():
@@ -710,7 +710,7 @@ class MainFrame(wx.Frame):
         try:
             params = json.loads(self.resultsq.get())
         except Exception as e:
-            logger.error(f"update task metadata error: {e}")
+            logger.error("update task metadata error: %s", e)
         with open(Path(self.metapath), "r", encoding="utf-8") as file:
             metadata = yaml.load(file)
 
@@ -958,7 +958,7 @@ class MainFrame(wx.Frame):
                     args[hardware] = self.user_cfg["hardware"][hardware]
                 elif hardware in self.user_cfg["cameras"]:
                     self.cam_cfg[hardware] = self.user_cfg["cameras"][hardware]
-        logger.debug(f"args: {args}")
+        logger.debug("args: %s", args)
         hardware_tuple = [
             (arg, args[arg]["labjack_input"], "", args[arg]["voltage_range"]) for arg in args
         ]

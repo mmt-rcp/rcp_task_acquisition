@@ -82,7 +82,7 @@ class AsyncVideoWriter:
                     self.q.task_done()
         except Exception as e:
             self.error = self.ready.set()
-            logger.exception(f"Async video writer failed: {e}")
+            logger.exception("Async video writer failed: %s", e)
 
         finally:
             if f is not None:

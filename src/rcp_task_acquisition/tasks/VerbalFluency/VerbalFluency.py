@@ -41,7 +41,7 @@ class VerbalFluency(bases.StimulusBase):
         self.play_tone()
 
     def update_data(self, choices):
-        logger.debug(f"choices: {choices}")
+        logger.debug("choices: %s", choices)
         if isinstance(choices, str):
             self.trial = choices
             return

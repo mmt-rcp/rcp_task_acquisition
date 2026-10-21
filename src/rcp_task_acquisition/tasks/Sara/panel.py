@@ -86,7 +86,7 @@ class SaraPanel(TrialPanel):
     def reset_assesment(self, event):
 
         button, text = self.scoring_panel.Destroy()
-        logger.debug(f"button: {button}, text: {text}")
+        logger.debug("button: %s, text: %s", button, text)
         assesment_dict = {
             "type": self.current_assesment,
             "score": button,
@@ -100,7 +100,7 @@ class SaraPanel(TrialPanel):
             self.assesment_num = 0
         self.current_assesment = self.assesment_list[self.assesment_num]
         self.assesment_choice.SetSelection(self.assesment_num)
-        logger.debug(f"edit num: {self.edit_num}")
+        logger.debug("edit num: %s", self.edit_num)
         if self.edit_num != None:
             self.actual_assesments[f"{self.edit_num}"] = assesment_dict
             self.edit_num = None
@@ -121,7 +121,7 @@ class SaraPanel(TrialPanel):
 
     def run_trial(self, event):
         self.trial_number += 1
-        logger.debug(f"trial Number: {self.trial_number}")
+        logger.debug("trial Number: %s", self.trial_number)
         self.trial_is_active = True
         self.assesment_task.Enable(False)
         self.assesment_choice.Enable(False)
@@ -148,12 +148,12 @@ class SaraPanel(TrialPanel):
                 self.seconds_text.SetLabel(f"Time: {self.timer.value} secs")
 
     def edit_score(self, event):
-        logger.debug(f"assesment: {self.recent_trials[self.current_assesment]}")
+        logger.debug("assesment: %s", self.recent_trials[self.current_assesment])
         self.edit_num = f"trial_{self.recent_trials[self.current_assesment]}"
         args = self.actual_assesments[f"trial_{self.recent_trials[self.current_assesment]}"]
-        logger.debug(f"actual a: {self.actual_assesments}")
-        logger.debug(f"args: {args}")
-        logger.debug(f"recent t: {self.recent_trials}")
+        logger.debug("actual a: %s", self.actual_assesments)
+        logger.debug("args: %s", args)
+        logger.debug("recent t: %s", self.recent_trials)
         self.scoring_panel = AssesmentPanel(self.current_assesment, args)
         self.scoring_panel.Bind(wx.EVT_CLOSE, self.reset_assesment)
         self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self.reset_assesment)
@@ -274,6 +274,6 @@ class AssesmentPanel(wx.Dialog):
         for button in self.button_list:
             if self.button_list[button].GetValue():
                 button_used = button
-        logger.debug(f"button used: {button_used}")
+        logger.debug("button used: %s", button_used)
         super().Destroy()
         return button_used, text

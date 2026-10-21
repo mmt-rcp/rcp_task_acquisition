@@ -150,7 +150,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             except Empty:
                 continue
 
-            logger.debug(f"{camStr} msg: {msg}")
+            logger.debug("%s msg: %s", camStr, msg)
             handle = self._command_handlers.get(msg, None)
             if handle is None:
                 logger.warning("Unhandled command: %s", msg)
@@ -166,7 +166,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 linecache.checkcache(filename)
                 line = linecache.getline(filename, lineno, f.f_globals)
                 logger.exception(
-                    f'EXCEPTION IN ({filename}, LINE {lineno} "{line.strip()}"): {exc_obj}'
+                    'EXCEPTION IN (%s, LINE %s "%s"): %s', filename, lineno, line.strip(), exc_obj
                 )
                 logger.exception(self.camID + " : " + camStr)
                 if msg == CameraCommand.UPDATE_SETTINGS:
@@ -268,7 +268,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             except PySpin.SpinnakerException as e:
                 # when doing hardware test, pass value to parent
                 # and alert that sync cable error
-                logger.error(f"timeout error: {e}")
+                logger.error("timeout error: %s", e)
                 # cam.EndAcquisition()
                 # cam.DeInit()
                 continue
@@ -332,8 +332,9 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
             if self.async_writer.dropped_by_writer:
                 logger.error(
-                    f"{self.camID}: writer dropped {self.async_writer.dropped_by_writer} "
-                    f"frames because the queue filled"
+                    "%s: writer dropped %s frames because the queue filled",
+                    self.camID,
+                    self.async_writer.dropped_by_writer,
                 )
 
             (dropped_frame, total_frames, files_len) = identify_dropped_frames(
@@ -341,10 +342,14 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             )
             percentage_dropped = int(np.ceil((dropped_frame / total_frames) * 100))
             logger.debug(
-                f"{self.camID}: total: {total_frames}, dropped: {dropped_frame}, len: {files_len}"
+                "%s: total: %s, dropped: %s, len: %s",
+                self.camID,
+                total_frames,
+                dropped_frame,
+                files_len,
             )
             # logger.debug(f"{dropped_frame} of camera frames dropped for {self.camID}")
-            logger.debug(f"{percentage_dropped}% of camera frames dropped for {self.camID}")
+            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.camID)
 
             self.camq_p2read.put(percentage_dropped)
             ctx.record = False
@@ -481,13 +486,13 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.method = self.camq.get()
         if ctx.method == "crop":
             roi = self.frmdim
-            logger.debug(f"roi: {self.frmdim}")
+            logger.debug("roi: %s", self.frmdim)
             ctx.record_frame_rate = self.framerate  # int(user_cfg['cam_config']['framerate'])
             # Set width
             node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
             width_max = node_width.GetMax()
 
-            logger.debug(f"node_width:{width_max}")
+            logger.debug("node_width:%s", width_max)
             width_to_set = np.floor(width_max / roi[3] * user_cfg[ctx.camStr]["crop"][1] / 4) * 4
             if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
                 node_width.SetValue(int(width_to_set))
@@ -501,7 +506,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 node_height.SetValue(int(height_to_set))
             else:
                 logger.warning("Height not available...")
-            logger.debug(f"node height: {height_max}")
+            logger.debug("node height: %s", height_max)
             # Apply offset X
             node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
             offset_x = np.floor(width_max / roi[3] * user_cfg[ctx.camStr]["crop"][0] / 4) * 4
@@ -543,9 +548,12 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.AcquisitionFrameRate.SetValue(ctx.frmrate_time_to_set)
         exposure_time_to_set = cam.ExposureTime.GetValue()
         logger.info(
-            f"max fr: {max_frmrate}, record: {ctx.record_frame_rate}, self.framerate: {self.framerate}"
+            "max fr: %s, record: %s, self.framerate: %s",
+            max_frmrate,
+            ctx.record_frame_rate,
+            self.framerate,
         )
-        logger.info(f"exposure: {exposure_time_to_set}")
+        logger.info("exposure: %s", exposure_time_to_set)
         # ctx.record_frame_rate = cam.AcquisitionFrameRate.GetValue()
 
         cam.AcquisitionFrameRateEnable.SetValue(False)
@@ -559,7 +567,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             return
         # # Ensure desired exposure time does not exceed the maximum
         ctx.max_exposure = cam.ExposureTime.GetMax()
-        logger.debug(f"{ctx.camStr} max exposure: {ctx.max_exposure}")
+        logger.debug("%s max exposure: %s", ctx.camStr, ctx.max_exposure)
         exposure_time_request = ctx.max_exposure  # int(user_cfg[camStr]['exposure'])
         exposure_time_to_set = floor(1 / ctx.record_frame_rate * 1000 * 1000)
         exposure_time_to_set = min(exposure_time_request, exposure_time_to_set)
@@ -591,13 +599,13 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
     def _cmd_getExposure(self, ctx: CamCtx):
         cam = ctx.cam
-        logger.info(f"Current exposure: {ctx.current_exposure_time}")
+        logger.info("Current exposure: %s", ctx.current_exposure_time)
         ctx.current_exposure_time = cam.ExposureTime.GetValue() * 0.99
         cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
         ctx.current_exposure_time = min(ctx.current_exposure_time, ctx.max_exposure)
         # current_exposure_time = 1.1*max_exposure
         cam.ExposureTime.SetValue(ctx.current_exposure_time)
-        logger.debug(f"exposure: {cam.ExposureTime.GetValue()}")
+        logger.debug("exposure: %s", cam.ExposureTime.GetValue())
         self.camq_p2read.put(cam.ExposureTime.GetValue())
 
     def _cmd_setBalance(self, ctx: CamCtx):
@@ -615,7 +623,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         if ctx.ismaster:
             ctx.record_frame_rate = cam.AcquisitionFrameRate.GetValue()
             self.camq_p2read.put(ctx.record_frame_rate)
-        logger.info(f"Frame rate {ctx.camStr}: {self.framerate}")
+        logger.info("Frame rate %s: %s", ctx.camStr, self.framerate)
 
     def create_primary(self, cam):
         cam.CounterSelector.SetValue(PySpin.CounterSelector_Counter0)

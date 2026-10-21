@@ -44,7 +44,7 @@ class NaturalisticSpeechPanel(TrialPanel):
                 image_path = os.path.join(c.IMG_DIR, image)
                 self.image_path.append(image_path)
             except Exception as e:
-                logger.error(f"Unable to load {image}, Error: {e}")
+                logger.error("Unable to load %s, Error: %s", image, e)
 
         self.image_names += c.NON_IMAGE_TASKS
         self.image_choice = wx.Choice(self, id=wx.ID_ANY, choices=self.image_names, size=(310, -1))

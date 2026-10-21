@@ -151,7 +151,10 @@ def _create_deterministic_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
         logger.info(
-            f"Generated deterministic {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+            "Generated deterministic %s-back sequence: %s targets in %s trials",
+            n_back_level,
+            target_count,
+            total_trials,
         )
         return stimulus_paths, answers
 
@@ -222,7 +225,10 @@ def _create_practice_sequence(
                 answers.append(Answer.DIFFERENT)  # This is a non-target
 
         logger.info(
-            f"Generated practice {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+            "Generated practice %s-back sequence: %s targets in %s trials",
+            n_back_level,
+            target_count,
+            total_trials,
         )
         return stimulus_paths, answers
 
@@ -243,7 +249,7 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 1-back practice block with {trial_num} trials")
+        logger.info("Detected 1-back practice block with %s trials", trial_num)
         return _create_practice_sequence(1, trial_num)
 
     # Regular experimental block
@@ -251,7 +257,9 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"1-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "1-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(1, trial_num)
@@ -273,7 +281,7 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 2-back practice block with {trial_num} trials")
+        logger.info("Detected 2-back practice block with %s trials", trial_num)
         return _create_practice_sequence(2, trial_num)
 
     # Regular experimental block
@@ -281,7 +289,9 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"2-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "2-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(2, trial_num)
@@ -329,7 +339,7 @@ class N_back(bases.StimulusBase):
             name=cfg.INCORRECT_IMG,
             size=[300, 300],
         )
-        logger.debug(f"ims: {correct_img}, {incorrect_img}")
+        logger.debug("ims: %s, %s", correct_img, incorrect_img)
         # for fi in os.listdir(imdir) :
         #     ims.append(visual.ImageStim(self.display, image=os.path.join(imdir, fi), name=fi, size=[300, 300]))
         #     picture_list.append(fi)
@@ -526,10 +536,10 @@ class N_back(bases.StimulusBase):
         )
         self.is_real = None
         self.button_press = False
-        logger.debug(f"RUN PARAMS: {PARAMS}")
+        logger.debug("RUN PARAMS: %s", PARAMS)
 
     def saveMetadata(self, name, sessionFolder):
-        logger.debug(f"PARAMS: {PARAMS}")
+        logger.debug("PARAMS: %s", PARAMS)
         return PARAMS
 
     def update_data(self, selections):

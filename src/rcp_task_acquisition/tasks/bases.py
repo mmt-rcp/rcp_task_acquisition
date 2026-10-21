@@ -141,7 +141,7 @@ class StimulusBase:
         pass
 
     def play_instructional_video(self, trial_name):
-        logger.debug(f"Trial name: {trial_name}")
+        logger.debug("Trial name: %s", trial_name)
         if trial_name == "":
             file = self.instructions_dict
         else:
@@ -228,4 +228,4 @@ class StimulusBase:
             # play_obj.wait_done()
 
         except Exception as e:
-            logger.error(f"Error generating tone: {e}")
+            logger.error("Error generating tone: %s", e)
