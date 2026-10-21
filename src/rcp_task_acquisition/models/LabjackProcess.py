@@ -54,7 +54,10 @@ class LabJackDataStream(ProcessWithLogging):
         for item in self.extended_inputs:
             self.digital_inputs.append(item + 8)
         logger.debug(
-            f"analog: {self.analog_inputs}, digital: {self.digital_inputs}, extended: {self.extended_inputs}"
+            "analog: %s, digital: %s, extended: %s",
+            self.analog_inputs,
+            self.digital_inputs,
+            self.extended_inputs,
         )
 
         self.scan_list = self.analog_inputs
@@ -180,10 +183,10 @@ class LabJackDataStream(ProcessWithLogging):
             if -9999 in self.results:
                 logger.warning("ERROR!! OVERFLOW!!")
                 # return
-                logger.warning(f"prev data[1]: {data_1}")
-                logger.warning(f"prev data[2]: {data_2}")
-                logger.warning(f"data[1]: {data[1]}")
-                logger.warning(f"data[2]: {data[2]}")
+                logger.warning("prev data[1]: %s", data_1)
+                logger.warning("prev data[2]: %s", data_2)
+                logger.warning("data[1]: %s", data[1])
+                logger.warning("data[2]: %s", data[2])
                 # ljm.eStreamStop(self.handle)
                 self._disconnect()
                 ljm.closeAll()
@@ -193,7 +196,7 @@ class LabJackDataStream(ProcessWithLogging):
             data_1 = data[1]
             data_2 = data[2]
             if int(data[1]) > 48:
-                logger.debug(f"buffer value:  {data[1]}")
+                logger.debug("buffer value:  %s", data[1])
             results = self.results.reshape((self.scan_num, SCANS_PER_READ), order="F")
 
             ints = results[-1].astype(np.uint16)
@@ -208,7 +211,7 @@ class LabJackDataStream(ProcessWithLogging):
                     self.button_pressed.value = not np.all(reshape_list[button[0]])
                     if debounce == 0 and self.button_pressed.value:
                         self.press_counter.value += 1
-                        logger.debug(f"press#: {self.press_counter.value}")
+                        logger.debug("press#: %s", self.press_counter.value)
                         debounce = 1
                     if np.all(reshape_list[button[0]][-min_off_samples:]):
                         debounce = 0

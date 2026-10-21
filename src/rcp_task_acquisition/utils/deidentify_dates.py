@@ -105,7 +105,7 @@ class DateDeidentification:
         set_all_times(date_dest, self.deid_metadata)
         set_all_times(unit_dirW, self.deid_metadata)
         set_all_times(self.deid_data_dir, self.deid_metadata)
-        logger.debug(f"deid_data: {self.deid_data_dir}")
+        logger.debug("deid_data: %s", self.deid_data_dir)
 
     def deidentify_all_data(self):
         dirlist = []

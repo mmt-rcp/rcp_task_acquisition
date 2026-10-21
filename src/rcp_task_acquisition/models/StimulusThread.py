@@ -81,7 +81,7 @@ class StimulusThread(ProcessWithLogging):
         while self.alive:
             try:
                 msg = self.msgq.get(timeout=0.05)
-                logger.debug(f"msg: {msg}")
+                logger.debug("msg: %s", msg)
             except Empty:
                 continue
             try:
@@ -97,7 +97,7 @@ class StimulusThread(ProcessWithLogging):
                     self.shared.value = 0
                     # Main loop for presenting stimuli
                     tStart = time.time()
-                    logger.info(f"Presenting {self.task}")
+                    logger.info("Presenting %s", self.task)
                     if self.shared.value == -1:
                         break
                     self.stimulus.set_first_frame(self.frame.value)
@@ -113,7 +113,9 @@ class StimulusThread(ProcessWithLogging):
                     minutes = math.floor(tElapsed / 60)
                     seconds = tElapsed % 60
                     min_string = f"{math.floor(tElapsed / 60)} minutes, " if minutes > 0 else ""
-                    logger.info(f"Stimulus protocol completed in {min_string}{seconds:.2f} seconds")
+                    logger.info(
+                        "Stimulus protocol completed in %s%.2f seconds", min_string, seconds
+                    )
                     if self.finish.value != 2:
                         self.finish.value = 1
                     else:
@@ -140,9 +142,9 @@ class StimulusThread(ProcessWithLogging):
                     HardwareTest(base_vars).present()
                 elif msg == Msg.UPDATE_DATA:
                     msgq_data = self.msgq.get()
-                    logger.debug(f"stim: {msgq_data}")
+                    logger.debug("stim: %s", msgq_data)
                     try:
-                        logger.debug(f"stimthread datadata: {msgq_data[0]}")
+                        logger.debug("stimthread datadata: %s", msgq_data[0])
                         if msgq_data[0] == "(":
                             trial_data = ast.literal_eval(msgq_data)
                         else:
@@ -181,7 +183,7 @@ class StimulusThread(ProcessWithLogging):
             "video_status": self.video_status,
             "finish": self.finish,
         }
-        logger.debug(f"base vars: {base_vars}")
+        logger.debug("base vars: %s", base_vars)
         base_cls = dict(
             n_back=N_back,
             motor_task_finger_taps=BasicTaps,
@@ -203,7 +205,7 @@ class StimulusThread(ProcessWithLogging):
         #
         self.stimulus = base_cls(base_vars, *extra_args)
         #
-        logger.info(f"stimuli: {self.stimulus}")
+        logger.info("stimuli: %s", self.stimulus)
 
     def end_stimulus(self):
         self.window.idle(time_list=[])
@@ -213,7 +215,7 @@ class StimulusThread(ProcessWithLogging):
         # logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
         results = self.stimulus.saveMetadata(self.stimulusConfig[self.task], None)
         json_str = json.dumps(results)
-        logger.debug(f"jsonstr: {json_str}")
+        logger.debug("jsonstr: %s", json_str)
         self.resultsq.put(json_str)
 
     def close_window(self):
