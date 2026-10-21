@@ -13,6 +13,8 @@ nfast = 5
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class Photo_Test(bases.StimulusBase):
+    # unused
+
     def __init__(self, window, frame):
         super().__init__(window, frame)
 

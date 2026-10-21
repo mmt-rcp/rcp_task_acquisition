@@ -1,8 +1,9 @@
 from psychopy import core
 
 from rcp_task_acquisition.tasks import bases
-from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
+from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -15,7 +16,7 @@ class BasicTaps(bases.StimulusBase):
         self.hand = None
         self.type = None
         self.hand_used = {}
-        self.instructions_dict = BASIC_TAPS_PATH
+        self.instructions_dict = BASIC_TAPS_PATHS
 
     def present(self):
         self.trial_count += 1
@@ -43,7 +44,7 @@ class BasicTaps(bases.StimulusBase):
         self.hand = hand_tuple[0]
         self.type = hand_tuple[1]
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         data = {
             "time_per_trial": BASIC_TAPS_TIME,
             "number_of_trials": self.trial_count,

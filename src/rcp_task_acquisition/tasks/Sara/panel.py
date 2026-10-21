@@ -1,26 +1,35 @@
+from typing import Any
+
 import wx
 import wx.grid
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.Sara.Sara import Sara
 from rcp_task_acquisition.tasks.Sara.constants import ASSESMENTS
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class SaraPanel(TrialPanel):
-    def __init__(self, parent=None):
+    task_trial_item_config = TaskTrialClassConfig("sara", "SARA", "sara", Sara)
+
+    def __init__(self, parent: wx.Panel) -> None:
         super().__init__(parent)
-        self.current_assesment = None
-        self.assesment_list = list(ASSESMENTS.keys())
+        self.current_assesment: str = ""
+        self.assesment_list: list[str] = list(ASSESMENTS.keys())
         self.assesment_num = 0
-        self.actual_assesments = {}
-        self.recent_trials = {}
+        self.actual_assesments: dict[str, dict[str, Any]] = {}
+        self.recent_trials: dict[str, int] = {}
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_panel(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         # vertical_sizer.Add(self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
         self.edit_num = None
+
+    def populate_metadata(self, metadata: dict):
+        metadata["trial_data"] = self.add_metadata()
 
     def _setup_panel(self):
         self.assesment_task = wx.StaticText(self, label="Choose Assesment:")
@@ -33,7 +42,7 @@ class SaraPanel(TrialPanel):
         self.edit_button.Enable(False)
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs", size=(300, -1))
         self.assesment_choice.SetSelection(0)
-        self.assesment_choice.Bind(wx.EVT_CHOICE, self.check_can_edit)
+        self.assesment_choice.Bind(wx.EVT_CHOICE, lambda _: self.check_can_edit())
         grid_sizer = wx.GridBagSizer(7, 6)
         grid_sizer.Add(
             self.assesment_task,
@@ -75,17 +84,24 @@ class SaraPanel(TrialPanel):
 
     def show_scoring(self):
         self.scoring_panel = AssesmentPanel(self.current_assesment)
-        self.scoring_panel.Bind(wx.EVT_CLOSE, self.reset_assesment)
-        self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self.reset_assesment)
+        self.scoring_panel.Bind(wx.EVT_CLOSE, self._on_reset_assessment)
+        self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self._on_reset_assessment)
         self.continue_button.Enable(False)
         self.edit_button.Enable(False)
 
     def add_metadata(self):
         return self.actual_assesments
 
-    def reset_assesment(self, event):
+    def _on_reset_assessment(self, event: wx.Event):
+        self.reset_assesment()
 
-        button, text = self.scoring_panel.Destroy()
+    def reset_assesment(self) -> None:
+        logger.verbose("in reset_assessment")
+        button, text = self.scoring_panel.get_result()
+        # need to unbind to prevent infinite recursion,
+        self.scoring_panel.Unbind(wx.EVT_CLOSE, handler=self._on_reset_assessment)
+        # with this following Close:
+        self.scoring_panel.Close()
         logger.debug(f"button: {button}, text: {text}")
         assesment_dict = {
             "type": self.current_assesment,
@@ -111,25 +127,24 @@ class SaraPanel(TrialPanel):
         self.continue_button.SetLabel("Begin Assesment")
         self.continue_button.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
-        self.check_can_edit(event)
+        self.check_can_edit()
 
     def get_result(self):
         return self.current_assesment
 
-    def cancel_event(self, event):
-        self.cancel = True
-
-    def run_trial(self, event):
+    def run_trial(self, count: int) -> None:
         self.trial_number += 1
         logger.debug(f"trial Number: {self.trial_number}")
         self.trial_is_active = True
         self.assesment_task.Enable(False)
         self.assesment_choice.Enable(False)
-        self.current_assesment = self.assesment_list[self.assesment_choice.GetSelection()]
+        cur_asses = self.current_assesment = self.assesment_list[
+            self.assesment_choice.GetSelection()
+        ]
         self.continue_button.SetLabel("End Assesment")
-        self.recent_trials[self.current_assesment] = self.trial_number
+        self.recent_trials[cur_asses] = self.trial_number
 
-    def check_can_edit(self, event):
+    def check_can_edit(self) -> None:
         self.assesment_num = self.assesment_choice.GetSelection()
         self.current_assesment = self.assesment_list[self.assesment_num]
         if self.assesment_list[self.assesment_num] in self.recent_trials:
@@ -155,21 +170,21 @@ class SaraPanel(TrialPanel):
         logger.debug(f"args: {args}")
         logger.debug(f"recent t: {self.recent_trials}")
         self.scoring_panel = AssesmentPanel(self.current_assesment, args)
-        self.scoring_panel.Bind(wx.EVT_CLOSE, self.reset_assesment)
-        self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self.reset_assesment)
+        self.scoring_panel.Bind(wx.EVT_CLOSE, self._on_reset_assessment)
+        self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self._on_reset_assessment)
         self.continue_button.Enable(False)
         self.edit_button.Enable(False)
 
 
 class AssesmentPanel(wx.Dialog):
-    def __init__(self, current_assesment, args=None, parent=None):
+    def __init__(self, current_assesment, args=None, parent=None) -> None:
         if args is None:
             args = {}
         super().__init__(parent, title="Score Assesment")
         self.vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         self.border = 7
         self.left_radio = None
-        self.button_list = {}
+        self.button_list: dict[str, wx.RadioButton] = {}
         self.vertical_sizer.Add(
             self._create_assesment_score(current_assesment, args),
             0,
@@ -267,13 +282,11 @@ class AssesmentPanel(wx.Dialog):
         )
         return grid_sizer
 
-    def Destroy(self):
+    def get_result(self) -> tuple[str | None, str]:
         text = self.notes.GetValue()
-
         button_used = None
         for button in self.button_list:
             if self.button_list[button].GetValue():
                 button_used = button
         logger.debug(f"button used: {button_used}")
-        super().Destroy()
         return button_used, text

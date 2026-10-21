@@ -1,7 +1,10 @@
+from typing import Any
+
 from psychopy import core
 
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -42,7 +45,7 @@ class ReachGrasp(bases.StimulusBase):
         self.hand = data[0]
         self.grasp_object = data[1]
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         data = {
             "trial_count": self.trial_count,
             "hand_used": self.hand_dict,

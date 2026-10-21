@@ -5,6 +5,7 @@ from psychopy import core, visual
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -76,7 +77,7 @@ class VerbGeneration(bases.StimulusBase):
         self.trial_list[f"trial_{self.trial}"] = self.words_shown
         self.display.flip()
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         # data = {f"trial_{self.trial}": list(self.words_shown),
         #         "word_time": str(c.SHOW_TIME),
         #         "fixation_time": str(c.GENERATION_TIME)}
