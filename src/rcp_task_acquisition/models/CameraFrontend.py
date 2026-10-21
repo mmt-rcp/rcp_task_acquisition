@@ -460,7 +460,7 @@ class CamerasFrontend:
         self.camaq.value = 0
         self.stopAq()
         primary_rate = self.framerate
-        if len(self.primary_cams) <= 1:
+        if len(self.primary_cams) >= 1:
             prim_cam = self.cam_dict[self.primary_cams[0]]
             prim_cam.camq.put(CameraCommand.GET_BALANCE)
             rate = prim_cam.camq_p2read.get()
