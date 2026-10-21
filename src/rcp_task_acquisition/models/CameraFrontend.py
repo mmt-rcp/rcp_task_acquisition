@@ -28,7 +28,7 @@ from rcp_task_acquisition.utils.run_context import RcpRunContext
 logger = get_logger(__name__)
 
 
-class Camera:
+class CamerasFrontend:
     def __init__(
         self,
         serial: SerialDevice,

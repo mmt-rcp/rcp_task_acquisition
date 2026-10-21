@@ -23,7 +23,7 @@ import wx.lib.dialogs
 import numpy as np
 import cv2
 
-from rcp_task_acquisition.models.CameraFrontend import Camera
+from rcp_task_acquisition.models.CameraFrontend import CamerasFrontend
 from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.models.LabjackFrontend import LabjackFrontend
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
@@ -186,7 +186,7 @@ class MainFrame(wx.Frame):
         self.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
 
         self.participant_monitor = self.widget_panel.get_monitor()
-        self.cams = Camera(
+        self.cams = CamerasFrontend(
             self.serial_device,
             self.ctrl_panel,
             self.image_panel,
