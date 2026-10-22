@@ -10,7 +10,7 @@ from rcp_task_acquisition.tasks.NBack.panel import NbackPanel
 from rcp_task_acquisition.tasks.ReachGrasp.panel import ReachGraspPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
 from rcp_task_acquisition.tasks.ToneTaps.panel import ToneTapsClosedPanel
-from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel
+from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel, ToneTapsPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VerbGeneration.panel import VerbGenerationPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
@@ -32,7 +32,8 @@ class ControlsPanel(wx.Panel):
         task="task",
     ):
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
-
+        self._psychopy_monitor = psychopy_monitor
+        self._psychopy_size = monitor_size
         vertical_spacer = wx.GridBagSizer(5, 5)
         vertical_position = 0
         button_width = 76
@@ -47,8 +48,6 @@ class ControlsPanel(wx.Panel):
             border=5,
         )
         vertical_position += 1
-        self._psychopy_monitor = psychopy_monitor
-        self._psychopy_size = monitor_size
         self.monitor = MonitorPanel(self, psychopy_monitor, monitor_size)
         vertical_spacer.Add(
             self.monitor.create_panel(),
@@ -120,7 +119,7 @@ class ControlsPanel(wx.Panel):
         )
 
         self.hardware_button = wx.ToggleButton(
-            self, id=wx.ID_ANY, label="Hardware Test", size=(button_width * 2, -1)
+            self, label="Hardware Test", size=(button_width * 2, -1)
         )
         self.task_sizer.Add(
             self.hardware_button,
@@ -141,6 +140,13 @@ class ControlsPanel(wx.Panel):
             span=(0, 2),
             flag=wx.LEFT,
             border=white_space,
+        )
+
+        but = self.show_patient_cams_button = wx.ToggleButton(
+            self, label="Patient cameras", size=(button_width * 2, -1)
+        )
+        self.task_sizer.Add(
+            but, pos=(vertical_position, 2), span=(0, 2), flag=wx.LEFT, border=white_space
         )
 
         vertical_position += 1
@@ -200,6 +206,8 @@ class ControlsPanel(wx.Panel):
         #
 
         self.task_panel = self.get_task_panel(task)
+        self.show_patient_cams_button.Hide()
+
         self.task_sizer.Add(
             self.task_panel,
             pos=(1, 0),
@@ -211,38 +219,32 @@ class ControlsPanel(wx.Panel):
         self.Layout()
 
     def get_task_panel(self, task: str) -> TrialPanel:
-        # base_cls = get_task_panel_class(task)
-        if task == "motor_task_finger_taps":
-            return FingerTapPanel(self)
-        elif task == "tone_taps":  # seems not possible / unused anymore
-            panel = FingerTapPanel(self)
-            panel.seconds_text.Hide()
-            return panel
-        elif task == "tone_taps_closed":
-            return ToneTapsClosedPanel(self)
-        elif task == "naturalistic_speech":
-            return NaturalisticSpeechPanel(self)
-        elif task == "diadochokinesis":
-            return DdkPanel(self)
-        elif task == "vowel_space":
-            return VowelSpacePanel(self)
-        elif task == "verbal_fluency":
-            return VerbalFluencyPanel(self)
-        elif task == "n_back":
-            return NbackPanel(self)
-        elif task == "reach_grasp":
-            return ReachGraspPanel(self)
-        elif task == "sara":
-            return SaraPanel(self)
-        elif task == "verb_generation":
-            return VerbGenerationPanel(self)
-        elif "calibrate" in task:
-            return CalibrationPanel(self, psychopy_monitor=self._psychopy_monitor)
-        else:
-            logger.warning("using default TrialPanel for task %r", task)
-            basic_panel = TrialPanel(self)
-            basic_panel.continue_button.Show()
-            return basic_panel
+        possible_tasks = (
+            FingerTapPanel,
+            ToneTapsClosedPanel,
+            NaturalisticSpeechPanel,
+            DdkPanel,
+            VowelSpacePanel,
+            VerbalFluencyPanel,
+            VerbGenerationPanel,
+            NbackPanel,
+            ReachGraspPanel,
+            SaraPanel,
+            VerbGenerationPanel,
+        )
+        found_cls = None
+        for cls in possible_tasks:
+            if cls.task_trial_item_config.code == task:
+                found_cls = cls
+                break
+        if found_cls is None:
+            if "calibrate" in task:
+                found_cls = CalibrationPanel
+            else:
+                logger.warning("using default TrialPanel for task %r", task)
+                found_cls = TrialPanel
+        basic_panel = found_cls(self, patient_monitor=self._psychopy_monitor)
+        return basic_panel
 
 
 class CameraControlPanel(wx.Panel):

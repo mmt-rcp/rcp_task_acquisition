@@ -13,7 +13,7 @@ class HardwareTest(bases.StimulusBase):
         super().__init__(**base_vars)
         self.flash_time = 5
 
-    def present(self):
+    def present(self, check_commands):
         logger.debug("%s: presenting", self.__class__.__name__)
         self.display.switch_patch()
         self.display.draw_patch()
@@ -21,9 +21,11 @@ class HardwareTest(bases.StimulusBase):
         clock = core.Clock()
         logger.debug("before present loop ; flash=%s clock=%s", self.flash_time, clock.getTime())
         while True:
+            check_commands(0)
             p0 = time.perf_counter()
             cnt = -1
             while clock.getTime() < self.flash_time:
+                check_commands(0)
                 cnt += 1
                 # logger.debug("loop1")
                 self.display.draw_patch()
@@ -50,6 +52,7 @@ class HardwareTest(bases.StimulusBase):
             p0 = time.perf_counter()
             cnt = -1
             while clock.getTime() < self.flash_time:
+                check_commands(0)
                 cnt += 1
                 self.display.flip()
                 if self.finish.value == 2:

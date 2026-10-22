@@ -16,8 +16,8 @@ class NaturalisticSpeechPanel(TrialPanel):
         "naturalistic_speech", "Naturalistic Speech", "naturalisticspeech", NaturalisticSpeech
     )
 
-    def __init__(self, parent: wx.Panel) -> None:
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
         self.display_mins = 0

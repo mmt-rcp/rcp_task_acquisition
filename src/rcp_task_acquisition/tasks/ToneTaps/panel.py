@@ -17,8 +17,8 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
         ToneTapsClosed,
     )
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = "Left"
         self.instruction_paths = IVRY_TAPS_VIDEO_PATHS
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)

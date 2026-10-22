@@ -15,8 +15,8 @@ logger = get_logger(__name__)
 class SaraPanel(TrialPanel):
     task_trial_item_config = TaskTrialClassConfig("sara", "SARA", "sara", Sara)
 
-    def __init__(self, parent: wx.Panel) -> None:
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.current_assesment: str = ""
         self.assesment_list: list[str] = list(ASSESMENTS.keys())
         self.assesment_num = 0

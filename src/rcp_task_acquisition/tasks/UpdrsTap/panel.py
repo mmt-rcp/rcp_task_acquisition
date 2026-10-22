@@ -15,8 +15,8 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         "motor_task_finger_taps", "Finger Tap: Motor Variant", "fingertapmotor", BasicTaps
     )
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = "left"
         self.type = None
         self.trial_is_active = False
@@ -147,3 +147,13 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
             self.seconds -= 1
             if self.seconds >= 0:
                 self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
+
+
+class ToneTapsPanel(FingerTapPanel):
+    # seems unused
+
+    task_trial_item_config = TaskTrialClassConfig("tone_taps", "...", "fingertapmotor", BasicTaps)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.seconds_text.Hide()

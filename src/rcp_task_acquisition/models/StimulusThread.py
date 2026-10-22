@@ -100,10 +100,15 @@ class StimulusThread(ProcessWithLogging):
             StimulusMessage.ADD_INSTRUCTIONS: self._handle_add_instructions,
             StimulusMessage.HARDWARE_TEST: self._handle_hardware_test,
             StimulusMessage.SHOW_WINDOW: self._handle_show_window,
+            StimulusMessage.HIDE_WINDOW: self._handle_hide_window,
         }
 
     def _handle_show_window(self):
         self.window.winHandle.set_visible(True)
+        self.window.flip()
+
+    def _handle_hide_window(self):
+        self.window.winHandle.set_visible(False)
         self.window.flip()
 
     def _handle_initialize(self) -> None:
@@ -190,7 +195,7 @@ class StimulusThread(ProcessWithLogging):
             "finish": self.finish,
             "rcp_context": self._rcp_context,
         }
-        HardwareTest(base_vars).present()
+        HardwareTest(base_vars).present(self.check_command)
 
     def _handle_close_window(self) -> None:
         self.close_window()
@@ -204,25 +209,28 @@ class StimulusThread(ProcessWithLogging):
             wx.Yield()
             # win_handle.flip()
             try:
-                msg = self.msgq.get(timeout=0.05)
-                logger.debug("msg: %s", msg)
-            except Empty:
-                continue
-            handler = self._msg_handlers.get(msg, None)
-            if handler is None:
-                logger.warning("Unhandled msg: %s", msg)
-                continue
-            try:
-                handler()
-            except SystemExit:
-                logger.debug("interrupted stimulus")
-                self.end_stimulus()
-                # don't see which part of the code is supposed to raise SystemExit to reach here
-                # also SystemExit is meant to exit the process. but this is continuing the main loop...
+                self.check_command(0.05)
             except Exception as err:
                 logger.exception("Error during main loop: %s", err)
-                self.end_stimulus()
                 break
+
+    def check_command(self, timeout: float):
+        try:
+            msg = self.msgq.get(timeout=timeout)
+            logger.debug("msg: %s", msg)
+        except Empty:
+            return
+        handler = self._msg_handlers.get(msg, None)
+        if handler is None:
+            logger.warning("Unhandled msg: %s", msg)
+            return
+        try:
+            handler()
+        except SystemExit:
+            logger.debug("interrupted stimulus")
+            self.end_stimulus()
+            # don't see which part of the code is supposed to raise SystemExit to reach here
+            # also SystemExit is meant to exit the process. but this is continuing the main loop...
 
     def init_stimuli(self) -> None:
         base_vars = {

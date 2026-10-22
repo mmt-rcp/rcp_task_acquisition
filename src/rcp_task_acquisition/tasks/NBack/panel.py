@@ -14,8 +14,8 @@ logger = get_logger(__name__)
 class NbackPanel(TrialPanel):
     task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.trial_type = "real"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_nback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)

@@ -5,7 +5,9 @@ from typing import Any
 
 import numpy as np
 import wx
+from matplotlib.image import AxesImage
 
+from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -15,7 +17,7 @@ logger = get_logger(__name__)
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
-    def __init__(self, parent: wx.Panel) -> None:
+    def __init__(self, parent: wx.Panel, *, patient_monitor: int = 0) -> None:
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0
@@ -38,9 +40,96 @@ class TrialPanel(wx.Panel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
+        if type(self) is TrialPanel:
+            self.continue_button.Show()
+
+        # for camera views on patient screen:
+        self.im: list[AxesImage] = []
+        disp = None
+        for idx in range(wx.Display.GetCount()):
+            if idx == patient_monitor:
+                disp = wx.Display(idx)
+                break
+        if disp is None:
+            disp = wx.Display(0)
+        logger.debug(
+            "display: %s -> %s // %s", disp.GetName(), disp.GetGeometry(), disp.GetClientArea()
+        )
+        frame = self._frame_patient = wx.Frame(
+            parent,
+            title="Cameras",
+            style=0,
+            # style=wx.CLOSE_BOX
+            # | wx.CLIP_CHILDREN
+            # | wx.FRAME_FLOAT_ON_PARENT,
+        )
+        disp_size = disp.GetGeometry().GetSize()
+        frame_size = wx.Size(int(disp_size.width * 0.8), int(disp_size.height * 0.5))
+        # frame.SetSize(frame_size)
+        disp_pos = disp.GetGeometry().GetPosition()
+        frame.SetPosition(
+            wx.Point(
+                disp_pos.x + int((disp_size.width - frame_size.width) / 2),
+                disp_pos.y + int(frame_size.height * 0.5),
+            )
+        )
+        box_sizer = wx.BoxSizer(wx.VERTICAL)
+        panel = self._patient_panel = wx.Panel(frame)
+        # panel.SetSize(frame_size)
+        box_sizer.Add(panel)
+        frame.SetSizer(box_sizer)
+        img_panel = self._image_panel = ImagePanel(panel)
+        img_panel.SetSize(frame_size)
+        img_panel.updateImage()
+        panel.Fit()
+        frame.Fit()
+        frame.Hide()
+        logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
+        self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroyed, self)
+
+    @property
+    def patient_frame(self) -> wx.Frame:
+        return self._frame_patient
+
+    def _close_patient_win(self):
+        logger.debug("_close_patient_win", stacklevel=3)
+        self._frame_patient.Hide()
+        self._frame_patient.Close()
+        self._frame_patient = None
+
+    def _on_destroyed(self, evt: wx.Event):
+        self._close_patient_win()
+
+    def on_camera_frame_update(self, index: int, frame: np.ndarray):
+        """Allow a panel to intercept camera frame read from shared array, for display purpose"""
+        self.im[index].set_data(frame)
+        self._image_panel.figure.canvas.draw()
+
+    def update_cams_viewed(self, cams: list[CamSettings]):
+        for im, cam in zip(self.im, cams):
+            im.set_data(cam.frame)
+        self._image_panel.update_names(list(cam.name for cam in cams))
+
+    def prepare_cams(self, cams: list[CamSettings]):
+        # logger.debug("received prepare cams: %s", cams)
+        # self._frame_patient.Show()
+        imp = self._image_panel
+        imp.updateImage()
+        cam: CamSettings
+        for idx, (axe, cam) in enumerate(zip(imp.axes, cams)):
+            ims = axe.imshow(cam.frame)
+            ims.set_clim(0, 255)
+            self.im.append(ims)
+            # self.cam_crop.update_crop(idx, axe, cam.frame_dims)
+        cam0 = cams[0]
+        cam1 = cams[1]
+        imp.update_names([cam0.name, cam1.name])
+        imp.draw()
+
     def Close(self, force: bool = False) -> bool:
         ret = self.Unbind(wx.EVT_TIMER, self.rest_timer)
         logger.debug("%s.Close(): unbind timer=%s", self.__class__, ret)
+        self._close_patient_win()
         return super().Close(force=force)
 
     def _setup_buttons(self):
@@ -121,21 +210,12 @@ class TrialPanel(wx.Panel):
     def add_timer(self, timer: sharedctypes.Synchronized) -> None:
         self.timer = timer
 
-    def on_camera_frame_update(self, index: int, frame: np.ndarray):
-        """Allow a panel to intercept camera frame read from shared array, for display purpose"""
-
     def populate_metadata(self, metadata: dict):
         """For task metadata. NB: The full global metadata dict is passed."""
 
     def get_instruction(self, count: int) -> str:
         """Get instruction for play trial. count is trial number"""
         return ""
-
-    def prepare_cams(self, cams: list[CamSettings]):
-        pass
-
-    def update_cams_viewed(self, cams: list[CamSettings]):
-        pass
 
 
 class TrialPanelWithInstructPlayback(TrialPanel):
