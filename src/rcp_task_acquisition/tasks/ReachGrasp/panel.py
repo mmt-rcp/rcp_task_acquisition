@@ -30,8 +30,11 @@ class ReachGraspPanel(TrialPanel):
         # self.right_radio.Bind(wx.EVT_RADIOBUTTON, self.on_select)
         self.right_radio.SetValue(True)
         self.object_text = wx.StaticText(self, label="Choose grasp apparatus:")
-        self.large_object_radio = wx.RadioButton(self, label="Large", style=wx.RB_GROUP)
-        self.precision_object_radio = wx.RadioButton(self, label="Precision")
+        self.large_object_radio = wx.RadioButton(
+            self, label="Large", style=wx.RB_GROUP
+        )  # begin new group
+        self.pinch_object_radio = wx.RadioButton(self, label="Pinch")
+        self.poke_object_radio = wx.RadioButton(self, label="Poke")
 
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
 
@@ -74,14 +77,21 @@ class ReachGraspPanel(TrialPanel):
         grid_sizer.Add(
             self.large_object_radio,
             pos=(4, 0),
-            span=(0, 2),
+            span=(0, 1),
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
         grid_sizer.Add(
-            self.precision_object_radio,
+            self.pinch_object_radio,
+            pos=(4, 1),
+            span=(0, 1),
+            flag=wx.ALIGN_LEFT | wx.ALL,
+            border=self.border,
+        )
+        grid_sizer.Add(
+            self.poke_object_radio,
             pos=(4, 2),
-            span=(0, 2),
+            span=(0, 1),
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
@@ -108,13 +118,22 @@ class ReachGraspPanel(TrialPanel):
         self.hand_text.Enable(False)
         self.object_text.Enable(False)
         self.large_object_radio.Enable(False)
-        self.precision_object_radio.Enable(False)
+        self.pinch_object_radio.Enable(False)
+        self.poke_object_radio.Enable(False)
         self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
 
     def get_result(self) -> tuple[str, str]:
         # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
-        self.grasp_object = "Large" if self.large_object_radio.GetValue() else "Precision"
+        self.grasp_object = (
+            "Large"
+            if self.large_object_radio.GetValue()
+            else "Pinch"
+            if self.pinch_object_radio.GetValue()
+            else "Poke"
+            if self.poke_object_radio.GetValue()
+            else "Unknown"
+        )
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
         return self.reach_hand, self.grasp_object  # , self.pace
 
@@ -125,7 +144,8 @@ class ReachGraspPanel(TrialPanel):
         self.hand_text.Enable(True)
         self.object_text.Enable(True)
         self.large_object_radio.Enable(True)
-        self.precision_object_radio.Enable(True)
+        self.pinch_object_radio.Enable(True)
+        self.poke_object_radio.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
         self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")
