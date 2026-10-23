@@ -17,6 +17,7 @@ class ReachGrasp(bases.StimulusBase):
         self.grasp_object: str = ""
         self.hand_dict: dict[str, str] = {}
         self.grasp_dict: dict[str, str] = {}
+        self._start_tone_duration = 0.1
 
     def present(self):
         self.timer.value = 0
@@ -25,7 +26,7 @@ class ReachGrasp(bases.StimulusBase):
         self.grasp_dict[f"trial_{self.trial_count}"] = self.grasp_object
         # PARAMS["hand_used"][f"trial_{self.trial_count}"] = self.hand
         # PARAMS["grasp_object"][f"trial_{self.trial_count}"] = self.grasp_object
-        self.play_tone()
+        self.play_tone(self._start_tone_duration)
         self.display.switch_patch()
         self.display.draw_patch()
         self.display.flip()
