@@ -27,6 +27,11 @@ logger = get_logger(__name__)
 _registered_stimuli_classes: list[type["StimulusBase"]] = []
 
 
+class CheckCommandsHandler(typing.Protocol):
+    def __call__(self, timeout: float) -> bool:
+        """Call the command handler with such timeout to wait for new command"""
+
+
 class StimulusBase:
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -42,6 +47,7 @@ class StimulusBase:
         video_status: SharedInt,
         finish: SharedInt,
         rcp_context: RcpRunContext,
+        check_commands: CheckCommandsHandler,
     ):
         self._rcp_context = rcp_context
         self.display = display
@@ -56,6 +62,7 @@ class StimulusBase:
         self.trial = 0  # current trial nbr
         self.video_lock = video_lock
         self.first_frame = -1
+        self.check_commands = check_commands
 
     def end_stimulus(self):
         """For subclass to customize"""

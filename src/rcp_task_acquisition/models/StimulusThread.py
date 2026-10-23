@@ -102,6 +102,7 @@ class StimulusThread(ProcessWithLogging):
             StimulusMessage.SHOW_WINDOW: self._handle_show_window,
             StimulusMessage.HIDE_WINDOW: self._handle_hide_window,
         }
+        self._reentrant_check_commands = 0
 
     def _handle_show_window(self):
         self.window.winHandle.set_visible(True)
@@ -194,8 +195,9 @@ class StimulusThread(ProcessWithLogging):
             "video_status": self.video_status,
             "finish": self.finish,
             "rcp_context": self._rcp_context,
+            "check_commands": self.check_command,
         }
-        HardwareTest(base_vars).present(self.check_command)
+        HardwareTest(base_vars).present()
 
     def _handle_close_window(self) -> None:
         self.close_window()
@@ -215,13 +217,19 @@ class StimulusThread(ProcessWithLogging):
                 break
 
     def check_command(self, timeout: float):
+        self._reentrant_check_commands += 1
+        if self._reentrant_check_commands > 2:
+            raise RuntimeError("refusing too many reentrant check_commands")
         try:
             msg = self.msgq.get(timeout=timeout)
             logger.debug("msg: %s", msg)
         except Empty:
+            self._reentrant_check_commands -= 1
             return
+
         handler = self._msg_handlers.get(msg, None)
         if handler is None:
+            self._reentrant_check_commands -= 1
             logger.warning("Unhandled msg: %s", msg)
             return
         try:
@@ -231,6 +239,8 @@ class StimulusThread(ProcessWithLogging):
             self.end_stimulus()
             # don't see which part of the code is supposed to raise SystemExit to reach here
             # also SystemExit is meant to exit the process. but this is continuing the main loop...
+        finally:
+            self._reentrant_check_commands -= 1
 
     def init_stimuli(self) -> None:
         base_vars = {
@@ -241,6 +251,7 @@ class StimulusThread(ProcessWithLogging):
             "video_status": self.video_status,
             "finish": self.finish,
             "rcp_context": self._rcp_context,
+            "check_commands": self.check_command,
         }
         base_cls = dict(
             n_back=N_back,
