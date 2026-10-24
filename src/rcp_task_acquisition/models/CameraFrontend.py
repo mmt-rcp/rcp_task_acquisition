@@ -190,7 +190,7 @@ class CamerasFrontend:
         self.updateSettings()
         self.camaq.value = 1
         self.startAq()
-        time.sleep(0.5)
+        # time.sleep(0.5)
         self.camaq.value = 0
         self.stopAq()
 
@@ -245,7 +245,7 @@ class CamerasFrontend:
 
     def live_stop(self) -> None:
         self.stopAq()
-        time.sleep(2)
+        # time.sleep(2)
 
     def on_cam_update(self, cam: CamSettings, frame: np.ndarray) -> None:
         redraw = False
@@ -327,7 +327,7 @@ class CamerasFrontend:
     def stop_recording(self) -> None:
         # self.shared.value = -1
         self.stopAq()
-        time.sleep(2)
+        # time.sleep(2)
 
     def initThreads(self) -> None:
         logger.verbose("initThreads started")
@@ -350,7 +350,7 @@ class CamerasFrontend:
             )
             self.multi_cameras[cam_d.serial] = multi_cam
             multi_cam.start()
-        time.sleep(1)
+        # time.sleep(1)
         for cam in self._cam_by_idx:
             initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
             cam.camq.put(initialization)
@@ -444,6 +444,7 @@ class CamerasFrontend:
         for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.SET_EXPOSURE)
         self.startAq()
+        # todo: should use a command result
         self.camaq.value = 1
         time.sleep(1)
         self.camaq.value = 0
@@ -455,6 +456,7 @@ class CamerasFrontend:
         for cam_d in self._cam_by_idx:
             cam_d.camq.put(CameraCommand.SET_BALANCE)
         self.startAq()
+        # todo: should use a command result
         self.camaq.value = 1
         time.sleep(1)
         self.camaq.value = 0
