@@ -370,7 +370,6 @@ class Camera:
             msg = "Xx"
             self.serial.ser.write(msg.encode())
         error_message = []
-        video_errors = []
         self.camaq.value = 0
         threshold = 1
         for cam in self.secondary_cams:
@@ -388,7 +387,6 @@ class Camera:
                     error_message.append(f"{update}% of camera frames dropped for {cam}")
                 self.cam_dict[cam].camq_p2read.get()
         logger.warning("errors: %s", error_message)
-        logger.warning("video errors: %s", video_errors)
         # error = ""
         # if video_errors:
         #     error = "\n" + "\n".join(video_errors)
