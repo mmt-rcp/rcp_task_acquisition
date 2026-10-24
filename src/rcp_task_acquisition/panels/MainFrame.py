@@ -433,7 +433,7 @@ class MainFrame(wx.Frame):
         logger.debug("trial_event(): video_status=%s", self.video_status.value)
         if self.trial_button.GetValue():
             logger.debug("in trial button")
-            time.sleep(1)
+            # time.sleep(1)
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
@@ -611,7 +611,7 @@ class MainFrame(wx.Frame):
                 "Are you sure?", caption="Abort", style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
             ):
                 shutil.rmtree(self.sess_dir)
-                time.sleep(5)
+                # time.sleep(5)
             self.play.SetValue(False)
             self.shared.value = -1
         elif self.play.GetValue() == True or button_label == "Hardware Test":
