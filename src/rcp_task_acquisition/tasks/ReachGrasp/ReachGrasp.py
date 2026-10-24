@@ -10,13 +10,13 @@ logger = get_logger(__name__)
 
 
 class ReachGrasp(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict[str, Any]) -> None:
         super().__init__(**base_vars)
         self.trial_count = 0
-        self.hand = None
-        self.grasp_object = None
-        self.hand_dict = {}
-        self.grasp_dict = {}
+        self.hand: str = ""
+        self.grasp_object: str = ""
+        self.hand_dict: dict[str, str] = {}
+        self.grasp_dict: dict[str, str] = {}
 
     def present(self):
         self.timer.value = 0
@@ -41,7 +41,7 @@ class ReachGrasp(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def update_data(self, data):
+    def update_data(self, data: tuple[str, str]) -> None:
         self.hand = data[0]
         self.grasp_object = data[1]
 

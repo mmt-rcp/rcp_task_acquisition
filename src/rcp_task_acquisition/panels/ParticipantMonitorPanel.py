@@ -46,7 +46,7 @@ class MonitorPanel(wx.Panel):
         self.parent.Layout()
         return image_sizer
 
-    def update_screen(self):
+    def update_screen(self) -> None:
         with mss.MSS() as sct:
             monitor = sct.monitors[self.psychopy_monitor]
             shot = sct.grab(monitor)
@@ -63,6 +63,3 @@ class MonitorPanel(wx.Panel):
             self.prev_arr = img
             self.monitor_bitmap.SetBitmap(bitmap)
         self.parent.Layout()
-
-    def update_screen_event(self, event):
-        self.update_screen()

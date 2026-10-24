@@ -1,4 +1,5 @@
 import time
+from multiprocessing import sharedctypes
 from typing import Any
 
 import numpy as np
@@ -19,7 +20,7 @@ logger = get_logger(__name__)
 
 
 # Parameters
-PARAMS = {
+PARAMS: dict[str, Any] = {
     "tone_number_per_trial": 12,  # how many tones to play?
     "total_time_before_cutoff": 30,  # how many seconds to run it after the tones stop
     "tone_hz": TAP_FREQUENCY,
@@ -35,32 +36,26 @@ PARAMS = {
 class ToneTapsClosed(bases.StimulusBase):
     def __init__(self, base_vars: dict, press_count: SharedInt) -> None:
         super().__init__(**base_vars)
-        self.hand_list = []
-        self.hand = None
+        self.hand = ""
         self.trial_count = 0
         self.first_tap = True
-        self.press_count = press_count
+        self.press_count: sharedctypes.Synchronized[int] = press_count
         self.instructions_dict = IVRY_TAPS_VIDEO_PATHS
 
-    def present(self, test=True):
+    def present(self, test=True) -> None:
         # Initialize the message text
-        texts = []
-        texts.append(
+        texts: list[visual.TextStim] = [
             visual.TextStim(
                 self.display,
                 text="Tap in time with the tones.",
                 name="WelcomeInstructions",
                 height=50,
-            )
-        )
-        texts.append(
+            ),
             visual.TextStim(
                 self.display, text="Keep tapping at the same rate.", name="End_Screen", height=50
-            )
-        )
-        texts.append(
-            visual.TextStim(self.display, text="Thank you! Done", name="End_Screen", height=50)
-        )
+            ),
+            visual.TextStim(self.display, text="Thank you! Done", name="End_Screen", height=50),
+        ]
 
         self.timer.value = 0
         self.display.switch_patch()
@@ -75,7 +70,7 @@ class ToneTapsClosed(bases.StimulusBase):
 
         # start phase
         gToneTime = GLOBAL_CLOCK.getTime()
-        playTime = PARAMS["tone_delay"]
+        playTime: float = PARAMS["tone_delay"]
         clock = core.Clock()
         while self.press_count.value <= PARAMS["tone_number_per_trial"] - 1:
             if GLOBAL_CLOCK.getTime() - gToneTime > playTime:
@@ -120,8 +115,8 @@ class ToneTapsClosed(bases.StimulusBase):
         self.display.flip()
         self.first_tap = True
 
-    def update_data(self, hand):
-        self.hand = hand
+    def update_data(self, data: str) -> None:
+        self.hand = data
 
     def play_tap(self):
         t = np.linspace(0, TAP_DURATION, int(44100 * TAP_DURATION), False)

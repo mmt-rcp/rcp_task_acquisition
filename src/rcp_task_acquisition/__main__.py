@@ -197,7 +197,7 @@ def run_app():
         rc = 1
     except SystemExit as err:
         logger.notice("interrupted by system exit from:", exc_info=True)
-        rc = err.code or 1
+        rc = err.code or 1  # type: ignore
     except BaseException as err:
         logger.exception("Fatal error: %s", err)
         rc = 255

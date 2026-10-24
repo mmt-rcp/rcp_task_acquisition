@@ -1,4 +1,5 @@
 import os
+import typing
 
 import numpy as np
 
@@ -38,18 +39,17 @@ class VowelSpace(bases.StimulusBase):
 
         self.trial_bookends()
 
-    def get_trial(self):
+    def get_trial(self) -> tuple[int, str, bool]:
         logger.debug("get_trial: trial=%s generated=%s", self.trial, self.generated_trials)
         if self.trial > len(self.generated_trials):
             self.is_finished = True
         if self.is_finished:
-            return -1, -1, True
+            return -1, "", True
         return self.trial, self.generated_trials[self.trial], False
 
-    def update_data(self, is_repeated):
-        logger.debug(f"is_repeated: {is_repeated}")
-        is_repeated = is_repeated == "True"
-        logger.debug(f"is_repeated: {is_repeated} formatted")
+    def update_data(self, data: bool) -> None:
+        is_repeated = data
+        logger.debug("is_repeated: %r", is_repeated)
         if is_repeated:
             # self.repeat_num+=1
             logger.debug("in is_repeated")

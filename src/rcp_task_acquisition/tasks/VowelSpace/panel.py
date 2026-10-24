@@ -112,16 +112,18 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.syllable_start_video_button.Enable(False)
 
     def repeat_event(self) -> None:
+        # unused but in unused MainFrame.repeat_event ...
         self.repeat = True
         self.rest_timer.Stop()
         self.continue_button.SetValue(True)
         # self.repeat_trial.Enable(False)
 
-    def get_result(self):
+    def get_result(self) -> bool:
         return True  # self.repeat
 
-    def reset(self, number):
-        self.timestamps = {}
+    def reset(self, count: int) -> None:
+        pass
+        # self.timestamps = {}  unused
 
     def run_trial(self, count: int) -> None:
         # self.repeat = False

@@ -192,7 +192,12 @@ class LabjackFrontend:
         )[:] = new_arr.flatten()
         self.graph_panel.draw()
         try:
-            self.labjack_process.join()
+            labjack_proc = self.labjack_process
+            labjack_proc.join(3)
+            if labjack_proc.is_alive():
+                logger.warning("labjack process still alive, terminating")
+                labjack_proc.terminate()
+                labjack_proc.join(2)
         except Exception as err:
             logger.info("No open Labjack process: %s", err)
         logger.info("labjack_stopped")

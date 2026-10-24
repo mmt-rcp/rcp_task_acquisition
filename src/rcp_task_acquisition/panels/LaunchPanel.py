@@ -3,7 +3,7 @@ from typing import Any
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-from rcp_task_acquisition.models.participant import Participant
+from rcp_task_acquisition.models.participant import Participant, no_participant
 from rcp_task_acquisition.panels.HardwarePanel import HardwarePanel
 from rcp_task_acquisition.panels.ParticipantPanel import ParticipantPanel
 from rcp_task_acquisition.utils.logger import get_logger
@@ -72,6 +72,10 @@ class LaunchPanel:
         vertical_sizer.Add(self.hardware_panel, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.TOP, 30)
         self._resize_dialog()
 
+    @property
+    def selected_participant(self) -> Participant | None:
+        return self._selected_participant
+
     def get_participants(self) -> None:
         self.participant_id_show_list, self.participants_list = (
             self.participant_panel.get_all_participants()
@@ -83,11 +87,10 @@ class LaunchPanel:
         box = self.panel  # wx.StaticBox(self.panel)
         self.protocol_text = wx.StaticText(box, label="Protocol:")
         self.protocol_choice = wx.Choice(box, id=wx.ID_ANY, choices=self.task_list, size=(220, -1))
-        self.protocol_choice.Bind(wx.EVT_CHOICE, self.task_event)
+        self.protocol_choice.Bind(wx.EVT_CHOICE, lambda _: self._on_protocol_changed())
         self.protocol_choice.SetSelection(0)
+        self._on_protocol_changed()  # don't think needed: this SetSelection previous line already does it.
         self.protocol_button = wx.Button(box, size=button_width, label="Select Protocol")
-        self.task_event("")
-
         self.administrator_text = wx.StaticText(box, label="Administrator Id:")
         self.administrator_id = wx.TextCtrl(box, size=wx.Size(450, -1), style=wx.TE_LEFT, value="")
 
@@ -205,10 +208,11 @@ class LaunchPanel:
     def _participant_id_combo_event(self, event: wx.Event) -> None:
         combo = self.participant_id
         idx = combo.GetSelection()
+        part: Participant | None
         if idx < 0:
             part = None
         else:
-            part: Participant = combo.GetClientData(idx)
+            part = combo.GetClientData(idx)
         logger.info("selected participant: %s", part)
 
         def doit():
@@ -224,7 +228,7 @@ class LaunchPanel:
 
     def _setup_buttons(self) -> wx.BoxSizer:
         button_width = wx.Size(200, -1)
-        box = self.panel  # wx.StaticBox(self.panel)
+        box = self.panel
         self.hardware_button = wx.ToggleButton(box, size=button_width, label="Update Hardware")
         self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.hardware_event)
 
@@ -339,8 +343,10 @@ class LaunchPanel:
             self.hardware_panel.Hide()
         self._resize_dialog()
 
-    def task_event(self, event):
-        self.task = self.task_list[self.protocol_choice.GetCurrentSelection()]
+    def _on_protocol_changed(self) -> None:
+        idx = self.protocol_choice.GetCurrentSelection()
+        logger.debug("protocol_choice selected: %s", idx)
+        self.task = self.task_list[idx]
         self.hardware_panel.set_task(self.task)
 
     def Show(self):
@@ -349,6 +355,8 @@ class LaunchPanel:
 
     def get_metadata(self) -> None:
         participant = self._selected_participant
+        if participant is None:
+            participant = no_participant
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
         logger.info(f"participant panel: {self.participants_list}")

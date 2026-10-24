@@ -1,15 +1,24 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel, TrialPanelWithInstructPlayback
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.ToneTaps.ToneTaps import ToneTapsClosed
 from rcp_task_acquisition.tasks.ToneTaps.constants import IVRY_TAPS_VIDEO_PATHS
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig(
+        "tone_taps_closed",
+        "Finger Tap: Motor Variant",
+        "fingertaptiming",
+        ToneTapsClosed,
+    )
+
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = "Left"
         self.instruction_paths = IVRY_TAPS_VIDEO_PATHS
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -85,17 +94,14 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
         self.hand_text.Enable(False)
         self.trial_text.SetLabel(f"Trial # {count}")
 
-    def update_trial(self, number):
-        self.trial_text.SetLabel(f"Trial # {number}")
-
-    def get_result(self):
+    def get_result(self) -> str:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
         return self.tap_hand
 
     def on_select(self, event):
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.seconds = 11
         self.trial_is_active = False
         self.left_radio.Enable(True)
@@ -106,9 +112,9 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
         # self.continue_button.Enable(False)
         self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")
-        self.trial_text.SetLabel(f"Trial # {number}")
+        self.trial_text.SetLabel(f"Trial # {count}")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds += 1
             self.seconds_text.SetLabel(f"Time: {self.timer.value} secs")

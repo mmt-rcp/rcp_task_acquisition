@@ -1,14 +1,19 @@
 import wx
 
+import numpy as np
+from matplotlib.image import AxesImage
+
+from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class CalibrationPanel(TrialPanel):
-    def __init__(self, parent: wx.Panel):
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
         self.display_mins = 0
@@ -18,6 +23,18 @@ class CalibrationPanel(TrialPanel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
+    # def Show(self, show: bool = True):
+    #     logger.debug("showing with show=%s", show)
+    #     # self._frame_patient.Show(show)
+    #     ret = super().Show(show)
+    #     self.Update()
+    #     return ret
+    #
+    # def Hide(self):
+    #     logger.debug("Hide()")
+    #     # self._frame_patient.Hide()
+    #     return super().Hide()
+
     def _set_up_timer(self):
         self.seconds_text = wx.StaticText(self, label="Time: 0 mins, 0 secs")
         grid_sizer = wx.GridBagSizer(5, 4)
@@ -26,7 +43,7 @@ class CalibrationPanel(TrialPanel):
         )
         return grid_sizer
 
-    def reset(self, number):
+    def reset(self, count: int):
         self.seconds = 0
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
 

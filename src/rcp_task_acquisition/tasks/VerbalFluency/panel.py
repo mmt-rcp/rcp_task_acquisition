@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import wx
 
@@ -22,17 +23,17 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         "verbal_fluency", "Verbal Fluency", "verbalfluency", VerbalFluency
     )
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: wx.Panel) -> None:
         super().__init__(parent)
         self.prompt = None
         self.type = None
         self.first = True
         self.value: str = ""
         self.trial_num = 0
-        self.actual_list = []
+        self.actual_list: list[str] = []
         self.phonemic_list: list[str] = []  # list of 1 char strings
         self.initial_list = PHONEMIC_LIST
-        self.semantic = None
+        self.semantic: str = ""
         self.trial_is_active = False
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -151,7 +152,6 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         elif self.trial_num == len(self.phonemic_list):
             self.value = self.semantic
             self.prompt_text.SetLabel(SEMANTIC_PHRASE.replace("*", self.value))
-            self.value = self.semantic
             self.prompt_text.Wrap(299)
         else:
             self.prompt_text.SetLabel("Task Finished!\n Press 'End Task' button to save data.")
@@ -167,17 +167,17 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.start_video_button.SetValue(False)
         self.start_video_button.SetLabel("Play Video")
 
-    def get_result(self):
+    def get_result(self) -> str:
         return self.value
 
     def get_instruction(self, count: int) -> str:
         return self.value
 
-    def reset(self, trial):
-        super().reset(trial)
+    def reset(self, count: int) -> None:
+        super().reset(count)
         self.continue_button.Enable(True)
 
-    def add_metadata(self):
+    def add_metadata(self) -> dict[str, Any]:
         return {"phonemic_category": self.phonemic_list, "semantic_category": self.semantic}
 
     def on_timer(self, event):
@@ -188,11 +188,11 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.seconds = 60
         self.start_trial()
 
-    def get_trials(self) -> tuple[str]:
+    def get_trials(self) -> tuple[str, str, str]:
         logger.debug(f"get_trials: {'.'.join(self.phonemic_list)}, {self.semantic}, {self.value}")
         return ".".join(self.phonemic_list), self.semantic, self.value
 
-    def start_new_trial(self):
+    def start_new_trial(self) -> None:
         super().start_new_trial()
         self.trial_num = 0
         self.phonemic_choice.Enable(True)

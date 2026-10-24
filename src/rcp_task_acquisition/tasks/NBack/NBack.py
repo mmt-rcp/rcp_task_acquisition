@@ -48,7 +48,7 @@ PARAMS = {
     "stimTime": 0.5,  # time stimulus is on in seconds,
 }
 # basedir = "/home/rcp/task-acquisition/tasks"
-imdir = os.path.join(CODE_DIR, "tasks", "NBack", "stimuli")
+IMAGES_DIR = os.path.join(CODE_DIR, "tasks", "NBack", "stimuli")
 # nReps = 3 # Number of reps to do of all stimuli
 # randomSeed = 0 # Random seed
 # nBackDegree = 1 # What is the N in N-Back?
@@ -300,7 +300,7 @@ class N_back(bases.StimulusBase):
         super().__init__(**base_vars)
         self.button = button
         self.trial = 0
-        self.is_real: str | None = None
+        self.is_real: bool = False
         self.type: int = -1
         self.button_press = False
         self.instructions: dict[str, str] = {}
@@ -319,12 +319,12 @@ class N_back(bases.StimulusBase):
         self._params: dict[str, Any] = copy.deepcopy(PARAMS)
 
     # Sets up display window, fixation cross, text pages and image stimuli
-    def setupWinStims(self, imdir):
+    def setupWinStims(
+        self, imdir: str
+    ) -> tuple[visual.TextStim, visual.ImageStim, visual.ImageStim]:
         fixation = visual.TextStim(self.display, text="+", name="FixationCross", height=50)
-        texts = []
 
         # Initialize the image stimuli
-        picture_list = []
         correct_img = visual.ImageStim(
             self.display,
             image=os.path.join(imdir, cfg.CORRECT_IMG),
@@ -342,8 +342,7 @@ class N_back(bases.StimulusBase):
         #     ims.append(visual.ImageStim(self.display, image=os.path.join(imdir, fi), name=fi, size=[300, 300]))
         #     picture_list.append(fi)
 
-        self.metadata = picture_list
-        return (fixation, texts, correct_img, incorrect_img)
+        return fixation, correct_img, incorrect_img
 
     # Sets up trial data structure and stimuli presentation order
     def setupTrialData(self, nReps, ims, randomSeed, ISITime, stimTime, nBackDegree):
@@ -407,7 +406,7 @@ class N_back(bases.StimulusBase):
         logger.debug(self.type)
         logger.debug(self.is_real)
         # Initialize the display window
-        fixation, _texts, correct_ims, incorrect_ims = self.setupWinStims(imdir)
+        fixation, correct_ims, incorrect_ims = self.setupWinStims(IMAGES_DIR)
         # Set up a dataframe to hold time data
         timeDataColumns = ["Event_Name", "Trial_Num", "Time_Since_Start"]
         timeData = pd.DataFrame(columns=timeDataColumns)
@@ -455,7 +454,7 @@ class N_back(bases.StimulusBase):
                 time.sleep(0.05)
             if self.finish.value == 2:
                 self.display.flip()
-                self.is_real = None
+                self.is_real = False
                 self.button_press = False
                 return
         self.play_tone()
@@ -468,7 +467,7 @@ class N_back(bases.StimulusBase):
             for t_index, trial in enumerate(trial_set):
                 if self.finish.value == 2:
                     self.display.flip()
-                    self.is_real = None
+                    self.is_real = False
                     self.button_press = False
                     return
                 trial_vis = self.letters[trial]
@@ -525,7 +524,7 @@ class N_back(bases.StimulusBase):
             if index < len(trial_list) - 1:
                 if self.finish.value == 2:
                     self.display.flip()
-                    self.is_real = None
+                    self.is_real = False
                     self.button_press = False
                     return
 
@@ -547,7 +546,7 @@ class N_back(bases.StimulusBase):
         timeData, _fixFlipTime = self.showAndLog(
             self.display, timeData, 0, end_text, 2, "Trial_Shown"
         )
-        self.is_real = None
+        self.is_real = False
         self.button_press = False
         logger.debug(f"RUN PARAMS: {self._params}")
 
@@ -555,10 +554,9 @@ class N_back(bases.StimulusBase):
         logger.debug(f"PARAMS: {self._params}")
         return self._params
 
-    def update_data(self, selections):
-        self.is_real = selections[0] == "real"
-        self.type = 1 if selections[1] == "1-back" else 2
-
+    def update_data(self, data: tuple[str, str]) -> None:
+        self.is_real = data[0] == "real"
+        self.type = 1 if data[1] == "1-back" else 2
         # self._params["n_back_type"] = self.type
         # self._params["real"] = self.is_real
 
