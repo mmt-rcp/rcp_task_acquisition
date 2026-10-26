@@ -14,18 +14,18 @@ logger = get_logger(__name__)
 
 
 class Diadochokinesis(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
         self.round = 0
         self.trial_count = 0
-        self.syllable = None
-        self.index = None
-        self.repeat = None
+        self.syllable = ""
+        self.index = 0
+        self.repeat: str = ""
         self.rest = False
-        self.trial_dict = {}
+        self.trial_dict: dict[str, str] = {}  # key is trial_N, value is repeated word
         self.instructions_dict = DDK_PATHS
 
-    def present(self):
+    def present(self) -> None:
         self.timer.value = 0
         self.trial_count += 1
         self.trial_dict[f"trial_{self.trial_count}"] = self.repeat
@@ -48,8 +48,8 @@ class Diadochokinesis(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def get_trial(self):
-        next_syllable = self.syllable
+    def get_trial(self) -> tuple[int, str, str | None]:
+        next_syllable: str | None = self.syllable
         if self.trial_count == 3:
             if self.index < len(DDK_TRIALS) - 1:
                 # not the end of the list
@@ -58,7 +58,7 @@ class Diadochokinesis(bases.StimulusBase):
                 next_syllable = None
         return self.trial_count, self.syllable, next_syllable
 
-    def update_data(self, data):
+    def update_data(self, data: str) -> None:
         self.repeat = data
 
     def saveMetadata(self) -> TaskMetaData:

@@ -20,16 +20,17 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         "diadochokinesis", "Diadochokinesis", "ddk", Diadochokinesis
     )
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: wx.Panel, *args, **kwargs) -> None:
         self.param_list = np.repeat(np.array(DDK_TRIALS), DDK_TRIALS_PER_SYLLABLE).tolist()
         self.trial_number_ = 1
-        self.trials = {}
         self.syllable_count = 0
-        self.syllable = str(self.param_list[0])
-        self.trials["trial_0"] = str(self.syllable)
-        self.video_buttons = []
-        self.other_buttons = []
-        super().__init__(parent)
+        self.syllable: str = self.param_list[0]
+        self.trials: dict[str, str] = {
+            "trial_0": self.syllable,
+        }
+        self.video_buttons: list[wx.ToggleButton] = []
+        self.other_buttons: list[wx.ToggleButton] = []
+        super().__init__(parent, *args, **kwargs)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         static_box_sizer = self.setup_instruction_playback()
@@ -38,12 +39,11 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self.add_video_panel(static_box_sizer), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
         self.SetSizerAndFit(vertical_sizer)
-
-        self.instruction_paths = DDK_PATHS  # ["introduction"]
+        self.instruction_paths = DDK_PATHS
         self.video_title.SetLabel("Instructions Overview: ")
         self.start_video_button.Enable(True)
 
-    def _setup_ddk(self):
+    def _setup_ddk(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         self.syllable_text = wx.StaticText(self, label=f"Syllable: {self.syllable}")
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
@@ -129,12 +129,15 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
         return static_box_sizer
 
-    def next_trial(self, event):
+    def next_trial(self, event: wx.Event):
+        logger.verbose(
+            "next_trial: trial_number=%s trial_number_=%s", self.trial_number, self.trial_number_
+        )
         if self.trial_number_ < len(self.param_list):
             self.syllable = self.param_list[self.trial_number_]
             self.syllable_text.SetLabel(f"Syllable: {self.syllable}")
             self.continue_button.SetLabel("Begin Trial")
-            self.trials[f"trial_{self.trial_number_}"] = str(self.syllable)
+            self.trials[f"trial_{self.trial_number_}"] = self.syllable
             self.trial_number_ += 1
             self.trial_text.SetLabel(f"Trial # {self.trial_number_}")
             self.syllable_video_title.SetLabel(f"Syllable ({self.syllable}) Instructions:")
@@ -145,7 +148,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self.continue_button.Enable(False)
             self.next_button.Enable(False)
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.seconds = -1
         self.seconds_text.SetLabel("Time: 0 secs")
         self.syllable_text.SetLabel(f"Syllable: {self.syllable}")
@@ -153,7 +156,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.continue_button.SetLabel("Repeat Trial")
         self.continue_button.SetValue(False)
 
-    def get_result(self):
+    def get_result(self) -> str:
         return self.syllable
 
     def get_instruction(self, count: int) -> str:

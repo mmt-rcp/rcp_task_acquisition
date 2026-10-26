@@ -14,8 +14,8 @@ logger = get_logger(__name__)
 class NbackPanel(TrialPanel):
     task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.trial_type = "real"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_nback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
@@ -61,7 +61,7 @@ class NbackPanel(TrialPanel):
         )
         return grid_sizer
 
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
 
@@ -69,7 +69,7 @@ class NbackPanel(TrialPanel):
         self.nback_choice.Enable(False)
         self.practice.Enable(False)
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.nback_choice.Enable(True)
         self.practice.Enable(True)
         self.continue_button.Enable(True)

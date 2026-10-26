@@ -1,20 +1,35 @@
+import argparse
 import os
+import re
 import shutil
+import warnings
 from datetime import datetime
 from pathlib import Path
 
 
 from rcp_task_acquisition.utils import config, win_os
+from rcp_task_acquisition.utils.constants import DEFAULT_USER_CONFIG_PATH
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.logging import setup_logging
 
 logger = get_logger(__name__)
 
 import rcp_task_acquisition.utils.file_utils as fu
 
 
+_regex_date = re.compile(
+    r"(^\d*\d{4})"  # YYYY or more YYYY+
+    r"(0\d|10|11|12)"  # 01 -> 12
+    r"(0\d|1\d|2\d|30|31)$"  # 01 -> 31
+)
+# YYYYMMDD ; with MM and DD checked for "raw" validity.
+# so to bypass/not include patterns like "12345678" for instance.
+
+
 def set_all_times(path: Path, dt):
-    logger.debug("set_all_times on %s", path)
     if win_os.win32con is None:
+        warnings.warn("set_all_times not available here")
+        return
         raise RuntimeError("Cannot yet use elsewhere than on Windows")
 
     pywintypes = win_os.pywintypes
@@ -82,7 +97,7 @@ class DateDeidentification:
                 del metadata[f]
         after_fields = list(metadata)
         logger.debug("removed fields: %s", sorted(set(before_fields) - set(after_fields)))
-        part_id = metadata.get("participant_id") or ""
+        part_id = metadata.get("participant_id", None) or ""
         task_part = session_path.parts[-1]
         date_shift = self.date_offset - date_ordinal
         rng = SimpleLCG(seed=date_shift)
@@ -116,26 +131,53 @@ class DateDeidentification:
         # set all intermediate directories, up to and including deid_data_dir
         rel = unit_dirW.relative_to(self.deid_data_dir)
         while True:
-            set_all_times(self.deid_data_dir.joinpath(rel), self.deid_metadate)
+            p = self.deid_data_dir.joinpath(rel)
+            logger.debug("setting all times on %s", p)
+            set_all_times(p, self.deid_metadate)
             rel = rel.parent
             if rel == rel.parent:  # Path(".")
                 break
         logger.debug(f"deid_data: {self.deid_data_dir}")
 
-    def deidentify_all_data(self):
-        dirlist = []
-        prev_date_list = [name for name in os.listdir(self.raw_data_dir)]
-        for d in prev_date_list:
-            unit_dirR = os.path.join(self.raw_data_dir, d, self.config.unitRef)
-            if os.path.exists(unit_dirR):
-                prev_expt_list = [name for name in os.listdir(unit_dirR)]
-                for s in prev_expt_list:
-                    dirlist.append(os.path.join(unit_dirR, s))
-                    session_path = Path(unit_dirR, s)
-                    self.deidentify_one_session(session_path)
+    def deidentify_all_data(self, *, dry_run: bool = True):
+        if dry_run:
+            logger.notice("dry_run enabled, won't copy but list found sessions to process")
+        # previous:
+        prev_date_list = [
+            (p, p.parent.parent.name, _regex_date.match(p.parent.parent.name))
+            for p in self.raw_data_dir.glob("*/*/session*")
+        ]
+        # new:
+        new_date_list = [
+            (p, p.parent.name, _regex_date.match(p.parent.name))
+            for p in self.raw_data_dir.glob("*/*/*")  # patient_id/yyyymmdd/taskcodeNNN
+            if p.is_dir() and p.name[-3:].isdigit()  # taskcodeNNN
+        ]
+        for p, d, match_res in prev_date_list + new_date_list:
+            if match_res is None:
+                continue
+            logger.info("%sdeidentifying %s", "would " if dry_run else "", p)
+            if not dry_run:
+                self.deidentify_one_session(p, d)
 
 
-def run_all_dates(user_config: config.RcpUserConfig):
+def run_all_dates(user_config: config.RcpUserConfig, *, dry_run: bool = True):
     deidentify = DateDeidentification(user_config)
-    deidentify.deidentify_all_data()
+    deidentify.deidentify_all_data(dry_run=dry_run)
     logger.info("Data deidentification done!")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--user-config", "--user_config", type=Path, default=DEFAULT_USER_CONFIG_PATH
+    )
+    parser.add_argument("--execute", dest="dry_run", action="store_false", default=True)
+    args = parser.parse_args()
+    user_config, _ = config.load_rcp_user_config(args.user_config)
+    run_all_dates(user_config, dry_run=args.dry_run)
+
+
+if __name__ == "__main__":
+    setup_logging()
+    main()

@@ -76,6 +76,7 @@ def metadata_template() -> ruamel.yaml.CommentedMap:
 
 
 def read_metadata(path: Path) -> ruamel.yaml.CommentedMap:
+    logger.debug("reading metadata from %s", path)
     loader = ruamel.yaml.YAML()
     with path.open("r") as f:
         cfg = loader.load(f)

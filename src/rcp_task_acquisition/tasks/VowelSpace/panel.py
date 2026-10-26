@@ -14,8 +14,8 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         "vowel_space", "Vowel Space", "vowelspacearea", VowelSpace
     )
 
-    def __init__(self, parent: wx.Panel):
-        super().__init__(parent)
+    def __init__(self, parent: wx.Panel, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = None
         self.repeat = True
         self.seconds = 0
@@ -112,16 +112,18 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.syllable_start_video_button.Enable(False)
 
     def repeat_event(self) -> None:
+        # unused but in unused MainFrame.repeat_event ...
         self.repeat = True
         self.rest_timer.Stop()
         self.continue_button.SetValue(True)
         # self.repeat_trial.Enable(False)
 
-    def get_result(self):
+    def get_result(self) -> bool:
         return True  # self.repeat
 
-    def reset(self, number):
-        self.timestamps = {}
+    def reset(self, count: int) -> None:
+        pass
+        # self.timestamps = {}  unused
 
     def run_trial(self, count: int) -> None:
         # self.repeat = False
