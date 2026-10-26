@@ -40,8 +40,10 @@ class TrialPanel(wx.Panel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
-        if type(self) is TrialPanel:
-            self.continue_button.Show()
+        # if type(self) is TrialPanel:
+        #     self.continue_button.Show()
+        # else:
+        #     self.continue_button.Hide()
 
         # for camera views on patient screen:
         self.im: list[AxesImage] = []
