@@ -430,17 +430,24 @@ class MainFrame(wx.Frame):
 
     def trial_event(self) -> None:
         """called on initialize or stop of single trial"""
-        logger.debug("trial_event(): video_status=%s", self.video_status.value)
+        vid_stat_val = self.video_status.value
+        try:
+            vid_stat = VideoStatus(vid_stat_val)
+        except ValueError:
+            vid_stat = f"Unknown ({vid_stat_val}"
+        logger.debug(
+            "trial_event(): trial_but=%s video_status=%s", self.trial_button.GetValue(), vid_stat
+        )
         if self.trial_button.GetValue():
             logger.debug("in trial button")
             time.sleep(1)
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
-            if self.video_status.value == VideoStatus.PAUSED:
+            if vid_stat == VideoStatus.PAUSED:
                 self.video_status.value = VideoStatus.STOP
                 self.video_lock.wait()
-            if self.video_status.value == VideoStatus.FINISHED:
+            if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
                 self.video_status.value = VideoStatus.NOT_PLAYING
                 self.trial_panel.stop_video()
