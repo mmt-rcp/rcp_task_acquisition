@@ -6,8 +6,8 @@ from rcp_task_acquisition.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class Calibration(TrialPanel):
-    def __init__(self, parent=None):
+class CalibrationPanel(TrialPanel):
+    def __init__(self, parent: wx.Panel):
         super().__init__(parent)
         self.seconds = 0
         self.display_secs = 0
@@ -15,7 +15,6 @@ class Calibration(TrialPanel):
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._set_up_timer(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
-
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 

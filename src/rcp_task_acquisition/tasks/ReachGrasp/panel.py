@@ -1,9 +1,15 @@
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.ReachGrasp.ReachGrasp import ReachGrasp
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 
 
 class ReachGraspPanel(TrialPanel):
+    task_trial_item_config = TaskTrialClassConfig(
+        "reach_grasp", "Reach Grasp", "reachgrasp", ReachGrasp
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.reach_hand = "Left"
@@ -95,7 +101,7 @@ class ReachGraspPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
         self.left_radio.Enable(False)
         self.right_radio.Enable(False)
@@ -103,21 +109,14 @@ class ReachGraspPanel(TrialPanel):
         self.object_text.Enable(False)
         self.large_object_radio.Enable(False)
         self.precision_object_radio.Enable(False)
-        self.trial_text.SetLabel(f"Trial # {number}")
+        self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
-
-    def continue_event(self, event):
-        self.rest_timer.Stop()
 
     def get_result(self):
         # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
         self.grasp_object = "Large" if self.large_object_radio.GetValue() else "Precision"
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
         return self.reach_hand, self.grasp_object  # , self.pace
-
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
 
     def reset(self, number):
         self.seconds = 5

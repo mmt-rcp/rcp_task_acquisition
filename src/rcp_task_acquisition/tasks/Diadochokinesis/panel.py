@@ -1,19 +1,25 @@
 import numpy as np
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
 from rcp_task_acquisition.tasks.Diadochokinesis.constants import (
     DDK_PATHS,
     DDK_TRIAL_TIME,
     DDK_TRIALS,
     DDK_TRIALS_PER_SYLLABLE,
 )
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class DdkPanel(TrialPanel):
+class DdkPanel(TrialPanelWithInstructPlayback):
+    task_trial_item_config = TaskTrialClassConfig(
+        "diadochokinesis", "Diadochokinesis", "ddk", Diadochokinesis
+    )
+
     def __init__(self, parent=None):
         self.param_list = np.repeat(np.array(DDK_TRIALS), DDK_TRIALS_PER_SYLLABLE).tolist()
         self.trial_number_ = 1
@@ -150,7 +156,7 @@ class DdkPanel(TrialPanel):
     def get_result(self):
         return self.syllable
 
-    def get_instruction(self, count):
+    def get_instruction(self, count: int) -> str:
         if self.syllable_start_video_button.GetValue():
             key_end = "_1" if self.trial_number_ % 3 == 1 else ""
             value = f"{self.syllable}{key_end}"
@@ -158,7 +164,7 @@ class DdkPanel(TrialPanel):
             value = "introduction"
         return value
 
-    def run_trial(self, count):
+    def run_trial(self, count: int) -> None:
         self.seconds = DDK_TRIAL_TIME
         self.trial_is_active = True
         self.continue_button.SetLabel("Stop Trial")

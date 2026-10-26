@@ -8,6 +8,7 @@ from rcp_task_acquisition.tasks.Diadochokinesis.constants import (
     DDK_TRIALS_PER_SYLLABLE,
 )
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
 logger = get_logger(__name__)
 
@@ -60,7 +61,7 @@ class Diadochokinesis(bases.StimulusBase):
     def update_data(self, data):
         self.repeat = data
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         params = {
             "trials_per_syllable": DDK_TRIALS_PER_SYLLABLE,
             "syllable_list": DDK_TRIALS,

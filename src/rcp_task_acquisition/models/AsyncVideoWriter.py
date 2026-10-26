@@ -4,8 +4,10 @@ import threading
 from pathlib import Path
 from queue import Empty, Full, Queue
 from threading import Event, Thread
+from typing import Any
 
 import cv2
+import numpy as np
 
 from rcp_task_acquisition.utils.logger import get_logger
 
@@ -109,7 +111,16 @@ class AsyncVideoWriter:
 class AsyncFFmpegGPUWriter:
     STOP = object()
 
-    def __init__(self, video_file, timestamp_file, fps, width, height, max_queue=512, qp=23):
+    def __init__(
+        self,
+        video_file: str,
+        timestamp_file: str,
+        fps: float,
+        width: int,
+        height: int,
+        max_queue: int = 512,
+        qp: int = 23,
+    ):
         self.video_file = video_file
         self.timestamp_file = timestamp_file
         self.fps = fps
@@ -118,9 +129,9 @@ class AsyncFFmpegGPUWriter:
         self.max_queue = max_queue
         self.qp = qp
 
-        self.q = Queue(maxsize=max_queue)
+        self.q: Queue[Any] = Queue(maxsize=max_queue)
         self.dropped_by_writer = 0
-        self.error = None
+        self.error: BaseException | None = None
         self.ready = threading.Event()
         self.thread = threading.Thread(target=self._worker, daemon=False)
         self.thread.start()
@@ -129,7 +140,7 @@ class AsyncFFmpegGPUWriter:
         if self.error is not None:
             raise self.error
 
-    def write(self, frame_bgr, frame_id, timestamp_delta):
+    def write(self, frame_bgr: bytes, frame_id: int, timestamp_delta: float) -> bool:
         try:
             # Must enqueue an owned frame copy unless the producer already copied.
             self.q.put_nowait((frame_bgr, frame_id, timestamp_delta))
@@ -138,8 +149,7 @@ class AsyncFFmpegGPUWriter:
             self.dropped_by_writer += 1
             return False
 
-    def _worker(self):
-        proc = None
+    def _worker(self) -> None:
         f = None
         ffmpeg_dir: str = (
             f"{(Path(__file__).parent.parent.parent.parent / 'library' / 'ffmpeg' / 'bin')};"
@@ -179,6 +189,7 @@ class AsyncFFmpegGPUWriter:
             self.video_file,
         ]
 
+        proc: subprocess.Popen | None = None
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -189,6 +200,7 @@ class AsyncFFmpegGPUWriter:
                 env=custom_env,
                 shell=True,
             )
+            assert proc is not None
 
             f = open(self.timestamp_file, "w")
             f.write("frame_id,timestamp\n")
@@ -206,7 +218,7 @@ class AsyncFFmpegGPUWriter:
                     # ffmpeg expects exactly width*height*3 bytes per frame.
                     # proc.stdin.write(frame_bgr.tobytes())
                     # proc.stdin.write(memoryview(frame_bgr))
-                    proc.stdin.write(frame_bgr)
+                    proc.stdin.write(frame_bgr)  # type: ignore
                     f.write(f"{frame_id},{round(timestamp_delta)}\n")
 
                 finally:

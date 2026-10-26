@@ -1,20 +1,25 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.VowelSpace.VowelSpace import VowelSpace
 from rcp_task_acquisition.tasks.VowelSpace.constants import VIDEO_PATHS
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class VowelSpacePanel(TrialPanel):
-    def __init__(self, parent=None):
+class VowelSpacePanel(TrialPanelWithInstructPlayback):
+    task_trial_item_config = TaskTrialClassConfig(
+        "vowel_space", "Vowel Space", "vowelspacearea", VowelSpace
+    )
+
+    def __init__(self, parent: wx.Panel):
         super().__init__(parent)
         self.tap_hand = None
         self.repeat = True
         self.seconds = 0
         self.trial_number = 0
-        self.timestamps = {}
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         static_box_sizer = self.setup_instruction_playback()
         vertical_sizer.Add(self._setup_vs(), 0, wx.ALIGN_LEFT | wx.ALL, 10)
@@ -30,7 +35,7 @@ class VowelSpacePanel(TrialPanel):
         self.start_video_button.Enable(True)
         self.new_trial = False
 
-    def _setup_vs(self):
+    def _setup_vs(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         self.current_text = wx.StaticText(self, label="")
         self.current_text.Wrap(299)
@@ -97,15 +102,8 @@ class VowelSpacePanel(TrialPanel):
         static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
         return static_box_sizer
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-        self.continue_button.SetValue(True)
-        # self.repeat_trial.Enable(False)
-
     def is_finish(self):
-        # self.finish_text.SetLabel("Task Finished! Press End Task.")
         self.finish_text.SetLabel("Task Finished! Press 'End Task' to save data.")
-        # self.seconds_text.SetLabel("")
         self.current_text.SetLabel("")
         self.trial_text.SetLabel("")
         self.continue_button.Enable(False)
@@ -113,11 +111,10 @@ class VowelSpacePanel(TrialPanel):
         self.syllable_video_title.SetLabel("Phrase Instructions:")
         self.syllable_start_video_button.Enable(False)
 
-    def repeat_event(self):
+    def repeat_event(self) -> None:
         self.repeat = True
         self.rest_timer.Stop()
         self.continue_button.SetValue(True)
-
         # self.repeat_trial.Enable(False)
 
     def get_result(self):
@@ -126,37 +123,37 @@ class VowelSpacePanel(TrialPanel):
     def reset(self, number):
         self.timestamps = {}
 
-    def run_trial(self, count):
+    def run_trial(self, count: int) -> None:
         # self.repeat = False
         self.repeat = True
         self.continue_button.SetLabel("Stop Trial")
         self.next_button.Enable(False)
 
-    def update_trial(self, trial, syllable):
+    def update_trial(self, trial: int, syllable: str):
         """
         Updating with the current syllable
         Trials are 0-indexed so we add 1 here to be in a better format for showing
         """
         self.current_text.SetLabel(f"Say {syllable} again")
-        self.trial_text.SetLabel(f"Trial # {int(trial) + 1}")
+        self.trial_text.SetLabel(f"Trial # {trial + 1}")
         self.current_syllable = syllable
-        self.trial_number = int(trial)
+        self.trial_number = trial
         self.syllable_video_title.SetLabel(f"Phrase Instructions: {self.current_syllable}")
 
-    def get_instruction(self, count):
+    def get_instruction(self, count: int) -> str:
         if self.syllable_start_video_button.GetValue():
             value = self.current_syllable
         else:
             value = "introduction"
         return value
 
-    def start_new_trial(self):
+    def start_new_trial(self) -> None:
         self.repeat = True
         # self.repeat_trial.Enable(False)
         self.continue_button.Enable(True)
         self.finish_text.SetLabel("")
 
-    def get_buttons(self):
+    def get_buttons(self) -> None:
         if self.syllable_start_video_button.GetValue():
             self.video_buttons = [
                 self.syllable_start_video_button,

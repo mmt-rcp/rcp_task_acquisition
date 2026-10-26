@@ -16,14 +16,17 @@ def get_proportions(original_size, scaled_width):
 
 
 class MonitorPanel(wx.Panel):
-    def __init__(self, parent, psychopy_monitor, display_size):
+    monitor_bitmap: wx.StaticBitmap
+
+    def __init__(self, parent: wx.Panel, psychopy_monitor: int, display_size: wx.Size):
+        super().__init__(parent)
         self.parent = parent
         self.psychopy_monitor = psychopy_monitor + 1
         max_gui_image_size = (346, 216)
         self.display_size = get_proportions(display_size, max_gui_image_size[0])
-        self.prev_arr = None
+        self.prev_arr: np.ndarray | None = None
 
-    def create_panel(self):
+    def create_panel(self) -> wx.GridBagSizer:
         title = wx.StaticText(self.parent, label="Participant Monitor:")
         font = wx.Font(wx.FontInfo(8).Bold())
         title.SetFont(font)
@@ -56,9 +59,9 @@ class MonitorPanel(wx.Panel):
             wx_image = wx.Image(w, h)
             wx_image.SetData(rgb.tobytes())
             wx_image = wx_image.Scale(self.display_size[0], self.display_size[1])
-            wx_image.ConvertToBitmap()
+            bitmap = wx_image.ConvertToBitmap()
             self.prev_arr = img
-            self.monitor_bitmap.SetBitmap(wx_image)
+            self.monitor_bitmap.SetBitmap(bitmap)
         self.parent.Layout()
 
     def update_screen_event(self, event):

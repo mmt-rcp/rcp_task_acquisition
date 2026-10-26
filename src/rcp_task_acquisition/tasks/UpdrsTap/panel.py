@@ -1,13 +1,19 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
-from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.ToneTaps.ToneTaps import ToneTapsClosed
+from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class FingerTapPanel(TrialPanel):
+class FingerTapPanel(TrialPanelWithInstructPlayback):
+    task_trial_item_config = TaskTrialClassConfig(
+        "tone_taps_closed", "Tone Taps", "fingertaptiming", ToneTapsClosed
+    )
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tap_hand = "left"
@@ -18,7 +24,7 @@ class FingerTapPanel(TrialPanel):
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
-        self.instruction_paths = BASIC_TAPS_PATH
+        self.instruction_paths = BASIC_TAPS_PATHS
         self.start_video_button.Enable(True)
         self.SetSizer(vertical_sizer)
 
@@ -94,7 +100,7 @@ class FingerTapPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         # self.seconds = 10
         self.trial_is_active = True
         self.left_radio.Enable(False)
