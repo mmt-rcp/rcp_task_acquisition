@@ -23,8 +23,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         "verbal_fluency", "Verbal Fluency", "verbalfluency", VerbalFluency
     )
 
-    def __init__(self, parent: wx.Panel) -> None:
-        super().__init__(parent)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.prompt = None
         self.type = None
         self.first = True
