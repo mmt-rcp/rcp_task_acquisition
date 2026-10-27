@@ -251,9 +251,7 @@ def load_rcp_user_config_buffer(buffer, *, strict_only=True) -> tuple[RcpUserCon
     # and basically all inner values, are "Commented" maps/sequences...
     # and not succeeding to get raw values for now from that.
     # Preferring to have pure Python types (dict/list/tuples/etc..) instead.
-    loader = yaml.SafeLoader
-
-    dct = yaml.load(buffer, Loader=loader)
+    dct = yaml.load(buffer, Loader=yaml.SafeLoader)
 
     def _load(*, strict):
         return dacite.from_dict(
@@ -321,8 +319,7 @@ def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksGroupCo
     commented_config = loader.load(buffer)
     buffer.seek(0)
 
-    loader = yaml.SafeLoader
-    dct = yaml.load(buffer, Loader=loader)
+    dct = yaml.load(buffer, Loader=yaml.SafeLoader)
 
     def gen_tasks_config(v):
         return RcpTasksGroupConfig(**v)
