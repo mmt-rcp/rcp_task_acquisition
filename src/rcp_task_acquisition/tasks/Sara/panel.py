@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 class SaraPanel(TrialPanel):
     task_trial_item_config = TaskTrialClassConfig("sara", "SARA", "sara", Sara)
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.current_assesment: str = ""
         self.assesment_list: list[str] = list(ASSESMENTS.keys())
@@ -28,10 +28,10 @@ class SaraPanel(TrialPanel):
         self.SetSizer(vertical_sizer)
         self.edit_num: str | None = None
 
-    def populate_metadata(self, metadata: dict):
+    def populate_metadata(self, metadata: dict) -> None:
         metadata["trial_data"] = self.add_metadata()
 
-    def _setup_panel(self):
+    def _setup_panel(self) -> wx.GridBagSizer:
         self.assesment_task = wx.StaticText(self, label="Choose Assesment:")
         self.assesment_choice = wx.Choice(
             self, id=wx.ID_ANY, choices=self.assesment_list, size=(310, -1)
@@ -82,17 +82,17 @@ class SaraPanel(TrialPanel):
         self.edit_button.Bind(wx.EVT_BUTTON, self.edit_score)
         return grid_sizer
 
-    def show_scoring(self):
+    def show_scoring(self) -> None:
         self.scoring_panel = AssesmentPanel(self.current_assesment)
         self.scoring_panel.Bind(wx.EVT_CLOSE, self._on_reset_assessment)
         self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self._on_reset_assessment)
         self.continue_button.Enable(False)
         self.edit_button.Enable(False)
 
-    def add_metadata(self):
+    def add_metadata(self) -> dict[str, dict[str, Any]]:
         return self.actual_assesments
 
-    def _on_reset_assessment(self, event: wx.Event):
+    def _on_reset_assessment(self, event: wx.Event) -> None:
         self.reset_assesment()
 
     def reset_assesment(self) -> None:
@@ -129,7 +129,7 @@ class SaraPanel(TrialPanel):
         self.seconds_text.SetLabel("Time: 0 secs")
         self.check_can_edit()
 
-    def get_result(self):
+    def get_result(self) -> str:
         return self.current_assesment
 
     def run_trial(self, count: int) -> None:
@@ -152,17 +152,17 @@ class SaraPanel(TrialPanel):
         else:
             self.edit_button.Enable(False)
 
-    def reset(self, trial):
-        super().reset(trial)
+    def reset(self, count: int) -> None:
+        super().reset(count)
         self.continue_button.Enable(True)
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds += 1
             if self.seconds >= 0:
                 self.seconds_text.SetLabel(f"Time: {self.timer.value} secs")
 
-    def edit_score(self, event):
+    def edit_score(self, event: wx.Event) -> None:
         logger.debug("assesment: %s", self.recent_trials[self.current_assesment])
         self.edit_num = f"trial_{self.recent_trials[self.current_assesment]}"
         args = self.actual_assesments[f"trial_{self.recent_trials[self.current_assesment]}"]
@@ -197,7 +197,7 @@ class AssesmentPanel(wx.Dialog):
         self.Layout()
         self.Show()
 
-    def _create_assesment_score(self, current_assesment, args=None):
+    def _create_assesment_score(self, current_assesment, args=None) -> wx.GridBagSizer:
         if args is None:
             args = {}
         assesment_scores = ASSESMENTS[current_assesment]
@@ -233,7 +233,7 @@ class AssesmentPanel(wx.Dialog):
             self.button_list[args["score"]].SetValue(True)
         return grid_sizer
 
-    def _add_notes(self, args=None):
+    def _add_notes(self, args=None) -> wx.GridBagSizer:
         if args is None:
             args = {}
         grid_sizer = wx.GridBagSizer(2, 4)
@@ -249,7 +249,7 @@ class AssesmentPanel(wx.Dialog):
             self.notes.SetValue(args["notes"])
         return grid_sizer
 
-    def _add_buttons(self):
+    def _add_buttons(self) -> wx.GridBagSizer:
         grid_sizer = wx.GridBagSizer(1, 4)
         self.continue_button = wx.Button(self, label="Confirm Score", size=(150, -1))
 

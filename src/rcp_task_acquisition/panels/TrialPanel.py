@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
-    def __init__(self, parent: wx.Panel, *, patient_monitor: int = 0) -> None:
+    def __init__(self, parent: wx.Window, *, patient_monitor: int = 0) -> None:
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0

@@ -429,6 +429,7 @@ class MainFrame(wx.Frame):
     def trial_event(self) -> None:
         """called on initialize or stop of single trial"""
         vid_stat_val = self.video_status.value
+        vid_stat: str | VideoStatus
         try:
             vid_stat = VideoStatus(vid_stat_val)
         except ValueError:
