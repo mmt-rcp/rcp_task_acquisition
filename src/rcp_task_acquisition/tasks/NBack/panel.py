@@ -26,6 +26,7 @@ class NbackPanel(TrialPanel):
 
         self.practice = wx.RadioButton(self, label="Practice Trial", style=wx.RB_GROUP)
         self.real = wx.RadioButton(self, label="Real Trial")
+        self._group_radio_trial_kinds = (self.practice, self.real)
 
         trial = wx.StaticText(self, label="Select N-back")
         self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES, size=(200, -1))
@@ -67,11 +68,13 @@ class NbackPanel(TrialPanel):
 
     def run_trial(self, count: int) -> None:
         self.nback_choice.Enable(False)
-        self.practice.Enable(False)
+        for radio in self._group_radio_trial_kinds:
+            radio.Enable(False)
 
     def reset(self, count: int) -> None:
         self.nback_choice.Enable(True)
-        self.practice.Enable(True)
+        for radio in self._group_radio_trial_kinds:
+            radio.Enable(True)
         self.continue_button.Enable(True)
         self.continue_button.Enable(True)
         self.continue_button.SetValue(False)
