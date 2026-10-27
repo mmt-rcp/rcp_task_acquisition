@@ -10,7 +10,7 @@ class ReachGraspPanel(TrialPanel):
         "reach_grasp", "Reach Grasp", "reachgrasp", ReachGrasp
     )
 
-    def __init__(self, parent: wx.Window, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.reach_hand = "Left"
         self.pace = "Self-Paced"
@@ -20,7 +20,7 @@ class ReachGraspPanel(TrialPanel):
         vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    def _setup_fingertap(self):
+    def _setup_fingertap(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
 
         self.hand_text = wx.StaticText(self, label="Choose which hand trial will use:")
