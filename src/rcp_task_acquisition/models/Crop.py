@@ -76,9 +76,9 @@ class Crop:
         roi_y = event.ydata
         x_center = self.croproi[ndx][1] / 2
         y_center = self.croproi[ndx][3] / 2
-        logger.info(f"x: {roi_x}, y: {roi_y}")
-        logger.info(f"dimensions: {self.frmDims}")
-        logger.info(f"center x = {x_center}, center y = {y_center}")
+        logger.info("x: %s, y: %s", roi_x, roi_y)
+        logger.info("dimensions: %s", self.frmDims)
+        logger.info("center x = %s, center y = %s", x_center, y_center)
         if roi_x < x_center:
             roi_x = x_center
         elif roi_x + x_center > self.frmDims[3]:

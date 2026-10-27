@@ -124,7 +124,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.seconds_text.SetLabel("Time: 60 secs")
         self.phonemic_list = json.loads(self.initial_list[self.phonemic_choice.GetSelection()])
         self.semantic = self.semantic_list[self.semantic_choice.GetSelection()]
-        logger.debug(f"Trial Continued; {self.phonemic_list}, {self.semantic} selected")
+        logger.debug("Trial Continued; %s, %s selected", self.phonemic_list, self.semantic)
         self.value = self.phonemic_list[self.trial_num]
         self.prompt_text.SetLabel(PHONEMIC_PHRASE.replace("*", self.value))
         self.video_title.SetLabel(f"Trial: {self.value}")
@@ -134,7 +134,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.Layout()
         self.Update()
 
-        logger.debug(f"value: {self.value}")
+        logger.debug("value: %s", self.value)
         self.trial_num += 1
         self.actual_list.append(self.value)
         self.start_video_button.Enable(True)
@@ -148,7 +148,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self.value = self.phonemic_list[self.trial_num]
             self.prompt_text.SetLabel(PHONEMIC_PHRASE.replace("*", self.value))
             self.prompt_text.Wrap(299)
-            logger.debug(f"value: {self.value}")
+            logger.debug("value: %s", self.value)
         elif self.trial_num == len(self.phonemic_list):
             self.value = self.semantic
             self.prompt_text.SetLabel(SEMANTIC_PHRASE.replace("*", self.value))
@@ -189,7 +189,9 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.start_trial()
 
     def get_trials(self) -> tuple[str, str, str]:
-        logger.debug(f"get_trials: {'.'.join(self.phonemic_list)}, {self.semantic}, {self.value}")
+        logger.debug(
+            "get_trials: %s, %s, %s", ".".join(self.phonemic_list), self.semantic, self.value
+        )
         return ".".join(self.phonemic_list), self.semantic, self.value
 
     def start_new_trial(self) -> None:

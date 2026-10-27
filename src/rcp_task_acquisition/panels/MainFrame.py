@@ -99,7 +99,7 @@ class MainFrame(wx.Frame):
         screenSizes = [
             display.GetGeometry().GetSize() for display in displays
         ]  # Gets the size of each display
-        logger.debug(f"screenSizes: {screenSizes}")
+        logger.debug("screenSizes: %s", screenSizes)
         # index = 1 # For display 1.
         if len(screenSizes) != 2:
             self.warning.update_error(WarnCat.DISPLAY).display()
@@ -573,7 +573,7 @@ class MainFrame(wx.Frame):
             self.video_status.value = VideoStatus.STOP
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
-            logger.debug(f"done stopping: {self.video_status.value}")
+            logger.debug("done stopping: %s", self.video_status.value)
 
     def pause_instructions(self, event: wx.Event) -> None:
         geo = event.GetEventObject()

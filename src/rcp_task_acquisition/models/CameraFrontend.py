@@ -313,7 +313,7 @@ class CamerasFrontend:
         if spaceneeded > freespace:
             self.warning.update_error(WarnCat.SPACE).display()
 
-        logger.info(f"Total estimated run time: {totTime}")
+        logger.info("Total estimated run time: %s", totTime)
         for cam in self._cam_by_idx:
             cam.camq.put(CameraCommand.RECORD_PREP)
             name_base = "%s_%s_trial%03d" % (path_base, cam.name, count)
