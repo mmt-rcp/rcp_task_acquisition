@@ -10,7 +10,7 @@ class ReachGraspPanel(TrialPanel):
         "reach_grasp", "Reach Grasp", "reachgrasp", ReachGrasp
     )
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.reach_hand = "Left"
         self.pace = "Self-Paced"

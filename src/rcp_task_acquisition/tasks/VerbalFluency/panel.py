@@ -46,7 +46,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def populate_metadata(self, metadata: dict):
         metadata["trial_data"]["categories"] = self.add_metadata()
 
-    def _setup_panel(self):
+    def _setup_panel(self) -> wx.GridBagSizer:
         self.phonemic_task = wx.StaticText(self, label="Choose Phonemic Category:")
         self.phonemic_choice = wx.Choice(
             self, id=wx.ID_ANY, choices=self.initial_list, size=(200, -1)
@@ -115,7 +115,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def switch_panel(self):
+    def switch_panel(self) -> None:
         self.phonemic_choice.Enable(False)
         self.semantic_choice.Enable(False)
         self.semantic_task.Enable(False)
@@ -139,7 +139,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.actual_list.append(self.value)
         self.start_video_button.Enable(True)
 
-    def update_values(self):
+    def update_values(self) -> None:
         logger.debug("printing update_values")
         self.continue_button.SetValue(False)
         self.start_video_button.Enable(True)
@@ -180,7 +180,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def add_metadata(self) -> dict[str, Any]:
         return {"phonemic_category": self.phonemic_list, "semantic_category": self.semantic}
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {TRIAL_TIME - self.timer.value} secs")
 

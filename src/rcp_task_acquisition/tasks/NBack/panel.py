@@ -14,14 +14,14 @@ logger = get_logger(__name__)
 class NbackPanel(TrialPanel):
     task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.trial_type = "real"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_nback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    def _setup_nback(self):
+    def _setup_nback(self) -> wx.GridBagSizer:
         self.choice_list = ["1-back", "2-back"]
 
         self.practice = wx.RadioButton(self, label="Practice Trial", style=wx.RB_GROUP)

@@ -16,7 +16,7 @@ class VerbGenerationPanel(TrialPanel):
         "verb_generation", "Verb Generation", "verbgeneration", VerbGeneration
     )
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
@@ -40,7 +40,7 @@ class VerbGenerationPanel(TrialPanel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
-    def _set_up_photo(self):
+    def _set_up_photo(self) -> wx.GridBagSizer:
         """
         Set up the naturalistic speech panel
         Returns:
@@ -103,7 +103,7 @@ class VerbGenerationPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
         self.continue_button.SetValue(False)
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         self.seconds += 1
         self.display_mins = int(self.timer.value / 60)
         self.display_secs = self.timer.value % 60
