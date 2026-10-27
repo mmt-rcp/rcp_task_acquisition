@@ -89,6 +89,7 @@ class MainFrame(wx.Frame):
         self.labjack_scan_rate: float | None = None
         self.hardware_test = False
         self.exit_stimulus = False
+        self.participant = None
 
         self.warning = WarningHandler()
 
@@ -370,7 +371,6 @@ class MainFrame(wx.Frame):
             self.task_active = True
             self.count = 0
             self.finish.value = 0
-            # self.msgq.put(StimulusMessage.INITIALIZE)
             is_success = self.lj.start_labjack()
             if not is_success:
                 self.task_button.SetValue(False)
@@ -379,7 +379,8 @@ class MainFrame(wx.Frame):
             self.labjack_stream_button.SetValue(True)
             self.labjack_stream_button.Enable(False)
             self.labjack_stream_button.SetLabel("Stop Labjack")
-            self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
+            self.prepare_file(self.task, self.participant)
+            self.create_file()
             lj_path = os.path.join(self.sess_dir, self.path_base + "_labjack.txt")
             msg = f"P{self.path_base}x"
             self.lj.add_csv(lj_path, self.serial_device, msg)
@@ -394,9 +395,6 @@ class MainFrame(wx.Frame):
                 self.trial_panel.update_trial(trial, syllable)
             self.trial_panel.start_new_trial()
             self.trial_panel.show()
-            # self.update_metadata()
-            # self.create_metadata()
-            self.create_file()
             # if not self.rest_timer.IsRunning():
             #     self.rest_timer.Start(1000)
         else:
@@ -838,7 +836,8 @@ class MainFrame(wx.Frame):
         task_item_cfg = task_panel_cls.task_trial_item_config
         if task_item_cfg is None:
             code_path_part = task
-            logger.warning("unexpected task with None task_trial_item_config: %s", task)
+            if not issubclass(task_panel_cls, CalibrationPanel):
+                logger.warning("unexpected task with None task_trial_item_config: %s", task)
         else:
             code_path_part = task_item_cfg.path_part
         ctx = self._rcp_context
@@ -847,7 +846,7 @@ class MainFrame(wx.Frame):
         date_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
         self.date_string = date_string
 
-        if "calibrate" in task:
+        if issubclass(task_panel_cls, CalibrationPanel):
             calibrate_path = Path(user_cfg.RawDataDir).parent
             base_dir = self.base_dir = Path(calibrate_path, "CalibrationData", date_string)
             prev_expt_list = [p for p in base_dir.glob("*")]
@@ -863,8 +862,6 @@ class MainFrame(wx.Frame):
             self.metapath = Path(self.sess_dir, meta_name)
         else:
             base_dir = self.base_dir = Path(ctx.user_config.RawDataDir, part.id, date_string)
-            # if not base_dir.exists():
-            #     base_dir.mkdir(parents=True, exist_ok=True)
             prev_expt_list = (
                 [v for v in base_dir.glob("*") if v.is_dir()] if base_dir.exists() else []
             )
@@ -875,6 +872,7 @@ class MainFrame(wx.Frame):
             self.path_base = f"{part.id}_{date_string}_{self.sess_string}_{unit_ref}"
             meta_name = f"{self.path_base}_metadata.yaml"
             self.metapath = Path(self.sess_dir, meta_name)
+        logger.notice("prepared new metapath: %s", self.metapath)
 
     def create_file(self) -> None:
         if not self.sess_dir.exists():
@@ -1002,8 +1000,10 @@ class MainFrame(wx.Frame):
                 self.task_button.SetLabel("Stop Recording")
                 self.trial_panel.reset(0)
                 self.trial_panel.show()
+                self.prepare_file(self.task, self.participant)
             # else:
             #     self.create_file()
+
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.set_crop.Enable(False)
             self.minRec.Enable(False)
