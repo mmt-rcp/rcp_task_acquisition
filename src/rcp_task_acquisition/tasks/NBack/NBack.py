@@ -404,7 +404,7 @@ class N_back(bases.StimulusBase):
         self.display.switch_patch()
         return [timeData, thisFlipTime]
 
-    def present(self, test=True, getTime=False):
+    def present(self, test=True, getTime=False) -> None:
         # clear global event keys
         self.trial += 1
 
@@ -570,7 +570,7 @@ class N_back(bases.StimulusBase):
         # self._params["n_back_type"] = self.type
         # self._params["real"] = self.is_real
 
-    def intertrial_instructions(self):
+    def intertrial_instructions(self) -> list[visual.TextStim]:
         texts = []
         string = (
             "You will now have a 10 second break.\n"
@@ -585,7 +585,7 @@ class N_back(bases.StimulusBase):
         )
         return texts
 
-    def practice_instructions(self):
+    def practice_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "practice_welcome"
@@ -621,7 +621,7 @@ class N_back(bases.StimulusBase):
             )
         return texts
 
-    def real_instructions(self):
+    def real_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "task_instructions"
