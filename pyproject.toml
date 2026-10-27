@@ -20,12 +20,22 @@ dev = [
 	"spyder >= 6.1.3, < 7",  # IDE
 	"ruff >= 0.16, < 1",
 	"pre-commit >= 4.6, < 5",
-	"rcp-task-acquisition[test]",
+	"rcp-task-acquisition[test,mypy]",
 ]
+
 test = [
 	"pytest >= 9, < 10",
 	"pytest-random-order >= 1.2.0, < 2",
 	"coverage >= 7.15.0, < 8",
+]
+
+mypy = [
+	"mypy >= 2.4.0, < 3",
+	# for mypy:
+	"types-pyaudio",
+	"types-pyserial",
+	"types-PyYAML",
+	"types-pywin32",
 ]
 
 [project.scripts]

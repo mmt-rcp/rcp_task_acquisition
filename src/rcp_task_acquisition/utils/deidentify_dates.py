@@ -27,14 +27,14 @@ _regex_date = re.compile(
 
 
 def set_all_times(path: Path, dt):
-    if win_os.win32con is None:
-        warnings.warn("set_all_times not available here")
-        return
-        raise RuntimeError("Cannot yet use elsewhere than on Windows")
-
     pywintypes = win_os.pywintypes
     win32con = win_os.win32con
     win32file = win_os.win32file
+
+    if pywintypes is None or win32con is None or win32file is None:
+        warnings.warn("set_all_times not available here")
+        return
+        raise RuntimeError("Cannot yet use elsewhere than on Windows")
 
     ts = dt.timestamp()
     os.utime(path, (ts, ts))  # accessed + modified
