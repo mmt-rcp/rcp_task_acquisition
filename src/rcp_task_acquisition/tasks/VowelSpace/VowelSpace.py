@@ -27,7 +27,7 @@ class VowelSpace(bases.StimulusBase):
         self.actual_trials += 1
         self.completed_trials_dict[f"trial_{self.actual_trials}"] = str(self.current_trial)
         logger.debug(
-            f"trial: {self.trial}, repeat: {self.repeat_num}, current: {self.current_trial}"
+            "trial: %s, repeat: %s, current: %s", self.trial, self.repeat_num, self.current_trial
         )
 
         self.trial_bookends()
@@ -64,7 +64,7 @@ class VowelSpace(bases.StimulusBase):
         new_trials = np.tile(c.PHRASE_LIST, num_repeats)
         np.random.shuffle(new_trials)
         self.generated_trials = new_trials.tolist()
-        logger.debug(f"trial: {self.generated_trials}")
+        logger.debug("trial: %s", self.generated_trials)
 
     def saveMetadata(self) -> TaskMetaData:
         metadata = {

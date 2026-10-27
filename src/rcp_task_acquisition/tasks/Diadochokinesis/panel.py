@@ -20,7 +20,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         "diadochokinesis", "Diadochokinesis", "ddk", Diadochokinesis
     )
 
-    def __init__(self, parent: wx.Panel) -> None:
+    def __init__(self, parent: wx.Panel, *args, **kwargs) -> None:
         self.param_list = np.repeat(np.array(DDK_TRIALS), DDK_TRIALS_PER_SYLLABLE).tolist()
         self.trial_number_ = 1
         self.syllable_count = 0
@@ -30,7 +30,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         }
         self.video_buttons: list[wx.ToggleButton] = []
         self.other_buttons: list[wx.ToggleButton] = []
-        super().__init__(parent)
+        super().__init__(parent, *args, **kwargs)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         static_box_sizer = self.setup_instruction_playback()

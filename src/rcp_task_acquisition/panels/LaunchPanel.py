@@ -80,7 +80,7 @@ class LaunchPanel:
         self.participant_id_show_list, self.participants_list = (
             self.participant_panel.get_all_participants()
         )
-        logger.info(f"show_id: {self.participant_id_show_list}, list: {self.participants_list}")
+        logger.info("show_id: %s, list: %s", self.participant_id_show_list, self.participants_list)
         self._set_participants_in_combo(self.participants_list)
 
     def _setup_metadata(self, button_width: wx.Size) -> wx.GridBagSizer:
@@ -359,7 +359,7 @@ class LaunchPanel:
             participant = no_participant
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
-        logger.info(f"participant panel: {self.participants_list}")
+        logger.info("participant panel: %s", self.participants_list)
         self.hardware_button.Enable(False)
         self.panel.Refresh()
         self.metadata["task"] = self.task

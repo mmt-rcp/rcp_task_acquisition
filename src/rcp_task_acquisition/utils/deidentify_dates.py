@@ -137,7 +137,7 @@ class DateDeidentification:
             rel = rel.parent
             if rel == rel.parent:  # Path(".")
                 break
-        logger.debug(f"deid_data: {self.deid_data_dir}")
+        logger.debug("deid_data: %s", self.deid_data_dir)
 
     def deidentify_all_data(self, *, dry_run: bool = True):
         if dry_run:

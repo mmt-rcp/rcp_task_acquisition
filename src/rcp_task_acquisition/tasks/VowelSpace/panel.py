@@ -14,8 +14,8 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         "vowel_space", "Vowel Space", "vowelspacearea", VowelSpace
     )
 
-    def __init__(self, parent: wx.Panel):
-        super().__init__(parent)
+    def __init__(self, parent: wx.Panel, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = None
         self.repeat = True
         self.seconds = 0

@@ -99,7 +99,7 @@ class MainFrame(wx.Frame):
         screenSizes = [
             display.GetGeometry().GetSize() for display in displays
         ]  # Gets the size of each display
-        logger.debug(f"screenSizes: {screenSizes}")
+        logger.debug("screenSizes: %s", screenSizes)
         # index = 1 # For display 1.
         if len(screenSizes) != 2:
             self.warning.update_error(WarnCat.DISPLAY).display()
@@ -430,17 +430,24 @@ class MainFrame(wx.Frame):
 
     def trial_event(self) -> None:
         """called on initialize or stop of single trial"""
-        logger.debug("trial_event(): video_status=%s", self.video_status.value)
+        vid_stat_val = self.video_status.value
+        try:
+            vid_stat = VideoStatus(vid_stat_val)
+        except ValueError:
+            vid_stat = f"Unknown ({vid_stat_val}"
+        logger.debug(
+            "trial_event(): trial_but=%s video_status=%s", self.trial_button.GetValue(), vid_stat
+        )
         if self.trial_button.GetValue():
             logger.debug("in trial button")
             time.sleep(1)
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
-            if self.video_status.value == VideoStatus.PAUSED:
+            if vid_stat == VideoStatus.PAUSED:
                 self.video_status.value = VideoStatus.STOP
                 self.video_lock.wait()
-            if self.video_status.value == VideoStatus.FINISHED:
+            if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
                 self.video_status.value = VideoStatus.NOT_PLAYING
                 self.trial_panel.stop_video()
@@ -566,7 +573,7 @@ class MainFrame(wx.Frame):
             self.video_status.value = VideoStatus.STOP
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
-            logger.debug(f"done stopping: {self.video_status.value}")
+            logger.debug("done stopping: %s", self.video_status.value)
 
     def pause_instructions(self, event: wx.Event) -> None:
         geo = event.GetEventObject()

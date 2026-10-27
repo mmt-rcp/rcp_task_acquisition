@@ -38,13 +38,13 @@ class NaturalisticSpeech(bases.StimulusBase):
 
             with Image.open(self.photo) as img:
                 width, height = img.size
-                logger.debug(f"Width: {width}, Height: {height}")
+                logger.debug("Width: %s, Height: %s", width, height)
             new_height = (self.screen_width / width) * height
             new_width = self.screen_width
             if new_height > self.screen_height:
                 new_width = (self.screen_height / height) * width
                 new_height = self.screen_height
-            logger.debug(f"width: {new_width}, height: {new_height}")
+            logger.debug("width: %s, height: %s", new_width, new_height)
             stim = visual.ImageStim(
                 self.display,
                 image=self.photo,
@@ -84,7 +84,7 @@ class NaturalisticSpeech(bases.StimulusBase):
 
     def update_data(self, data: tuple[str, int]) -> None:
         photo = data[0]
-        logger.debug(f"photo: {photo}, nonimage_tasks: {NON_IMAGE_TASKS}")
+        logger.debug("photo: %s, nonimage_tasks: %s", photo, NON_IMAGE_TASKS)
         if photo in NON_IMAGE_TASKS:
             self.photo = photo
             self.show_image = False
