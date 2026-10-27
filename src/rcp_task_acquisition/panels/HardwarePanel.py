@@ -226,7 +226,7 @@ class HardwarePanel(wx.Panel):
                 border=self.border,
             )
             vertical_pos += 1
-            logger.debug(f"hardware:  {hard_name}")
+            logger.debug("hardware:  %s", hard_name)
             new_hardware = HardwareRow(
                 name, in_use, labjack, voltage_ranges
             )  # min_graph, max_graph, voltage_ranges)

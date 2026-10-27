@@ -78,7 +78,7 @@ class ParticipantDatabase:
             logger.info("sucessfully added row to DB")
             return True, participant_id
         except Exception as e:
-            logger.info(f"error adding to db: {e}")
+            logger.info("error adding to db: %s", e)
             return False, ""
 
     def close(self):
