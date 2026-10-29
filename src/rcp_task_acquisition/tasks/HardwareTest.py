@@ -13,7 +13,7 @@ class HardwareTest(bases.StimulusBase):
         super().__init__(**base_vars)
         self.flash_time = 5
 
-    def present(self):
+    def present(self) -> None:
         logger.debug("%s: presenting", self.__class__.__name__)
         self.display.switch_patch()
         self.display.draw_patch()

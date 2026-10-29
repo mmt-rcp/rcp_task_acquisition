@@ -15,7 +15,7 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         "motor_task_finger_taps", "Finger Tap: Motor Variant", "fingertapmotor", BasicTaps
     )
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.tap_hand = "left"
         self.type = None

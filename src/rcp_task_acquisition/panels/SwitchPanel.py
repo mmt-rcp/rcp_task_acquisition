@@ -48,7 +48,6 @@ class SwitchPanel:
         task = self.task_frame.task = launch_panel.task
         logger.debug("launching protocol with task %s", task)
         launch_panel.get_metadata()
-        self.task_frame.prepare_file(task, launch_panel.selected_participant)
         self._on_disable_panel(event)
 
     def _on_exit(self, _: wx.Event) -> None:

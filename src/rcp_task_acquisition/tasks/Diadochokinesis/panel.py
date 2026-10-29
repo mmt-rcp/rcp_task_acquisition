@@ -20,7 +20,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         "diadochokinesis", "Diadochokinesis", "ddk", Diadochokinesis
     )
 
-    def __init__(self, parent: wx.Panel, *args, **kwargs) -> None:
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         self.param_list = np.repeat(np.array(DDK_TRIALS), DDK_TRIALS_PER_SYLLABLE).tolist()
         self.trial_number_ = 1
         self.syllable_count = 0

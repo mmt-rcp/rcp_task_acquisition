@@ -14,18 +14,19 @@ logger = get_logger(__name__)
 class NbackPanel(TrialPanel):
     task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.trial_type = "real"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_nback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    def _setup_nback(self):
+    def _setup_nback(self) -> wx.GridBagSizer:
         self.choice_list = ["1-back", "2-back"]
 
         self.practice = wx.RadioButton(self, label="Practice Trial", style=wx.RB_GROUP)
         self.real = wx.RadioButton(self, label="Real Trial")
+        self._group_radio_trial_kinds = (self.practice, self.real)
 
         trial = wx.StaticText(self, label="Select N-back")
         self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES, size=(200, -1))
@@ -67,11 +68,13 @@ class NbackPanel(TrialPanel):
 
     def run_trial(self, count: int) -> None:
         self.nback_choice.Enable(False)
-        self.practice.Enable(False)
+        for radio in self._group_radio_trial_kinds:
+            radio.Enable(False)
 
     def reset(self, count: int) -> None:
         self.nback_choice.Enable(True)
-        self.practice.Enable(True)
+        for radio in self._group_radio_trial_kinds:
+            radio.Enable(True)
         self.continue_button.Enable(True)
         self.continue_button.Enable(True)
         self.continue_button.SetValue(False)
