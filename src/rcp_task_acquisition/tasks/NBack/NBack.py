@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 import random
 import time
@@ -289,7 +290,6 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
 class N_back(bases.StimulusBase):
     def __init__(self, base_vars, button):
-        self.parameters = {}
         super().__init__(**base_vars)
         self.button = button
         self.trial = 0
@@ -309,6 +309,7 @@ class N_back(bases.StimulusBase):
             "T": visual.TextStim(self.display, text="T", name="trial", pos=(-100, 0), height=1000),
             "V": visual.TextStim(self.display, text="V", name="trial", pos=(-100, 0), height=1000),
         }
+        self.params = copy.deepcopy(PARAMS)
 
     # Sets up display window, fixation cross, text pages and image stimuli
     def setupWinStims(self, imdir):
@@ -429,7 +430,7 @@ class N_back(bases.StimulusBase):
                 trial_list.append(trials)
                 answer_list.append(answers)
 
-        PARAMS[f"trial_{self.trial}"] = {
+        self.params[f"trial_{self.trial}"] = {
             "trials": list(trial_list),
             "reps_per_trial": len(list(trial_list)),
             "n_back_type": self.type,
@@ -454,7 +455,7 @@ class N_back(bases.StimulusBase):
         self.play_tone()
         core.wait(0.05)
         timeData, fixFlipTime = self.showAndLog(
-            self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown"
+            self.display, timeData, 0, fixation, self.params["ISITime"], "Initial_Fixation_Shown"
         )
 
         for index, trial_set in enumerate(trial_list):
@@ -467,10 +468,21 @@ class N_back(bases.StimulusBase):
                 trial_vis = self.letters[trial]
                 self.button_press = False
                 timeData, fixFlipTime = self.showAndLog(
-                    self.display, timeData, 0, trial_vis, PARAMS["stimTime"], "Trial_Shown", True
+                    self.display,
+                    timeData,
+                    0,
+                    trial_vis,
+                    self.params["stimTime"],
+                    "Trial_Shown",
+                    True,
                 )
                 timeData, fixFlipTime = self.showAndLog(
-                    self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown"
+                    self.display,
+                    timeData,
+                    0,
+                    fixation,
+                    self.params["ISITime"],
+                    "Initial_Fixation_Shown",
                 )
                 if not self.is_real:
                     if self.button.value:
@@ -518,7 +530,12 @@ class N_back(bases.StimulusBase):
                 self.play_tone()
                 core.wait(0.05)
                 timeData, fixFlipTime = self.showAndLog(
-                    self.display, timeData, 0, fixation, PARAMS["ISITime"], "Initial_Fixation_Shown"
+                    self.display,
+                    timeData,
+                    0,
+                    fixation,
+                    self.params["ISITime"],
+                    "Initial_Fixation_Shown",
                 )
 
         timeData, _fixFlipTime = self.showAndLog(
@@ -526,18 +543,18 @@ class N_back(bases.StimulusBase):
         )
         self.is_real = None
         self.button_press = False
-        logger.debug(f"RUN PARAMS: {PARAMS}")
+        logger.debug(f"RUN PARAMS: {self.params}")
 
     def saveMetadata(self, name, sessionFolder):
-        logger.debug(f"PARAMS: {PARAMS}")
-        return PARAMS
+        logger.debug(f"PARAMS: {self.params}")
+        return self.params
 
     def update_data(self, selections):
         self.is_real = selections[0] == "real"
         self.type = 1 if selections[1] == "1-back" else 2
 
-        # PARAMS["n_back_type"] = self.type
-        # PARAMS["real"] = self.is_real
+        # self.params["n_back_type"] = self.type
+        # self.params["real"] = self.is_real
 
     def intertrial_instructions(self):
         texts = []
