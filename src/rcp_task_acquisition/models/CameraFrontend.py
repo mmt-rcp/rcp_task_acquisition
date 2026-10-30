@@ -111,12 +111,12 @@ class CamerasFrontend:
 
             cam_idx += 1
             cam_bin = int(cfg.bin)
-            cam_dims = [
+            cam_dims = (
                 0,
                 int(CAM_MAX_HEIGHT / DOWNSAMPLE_VAL / cam_bin),
                 0,
                 int(CAM_MAX_WIDTH / DOWNSAMPLE_VAL / cam_bin),
-            ]
+            )
             is_primary = bool(cfg.ismaster or self._is_unconnected)
             new_cam = CamSettings(
                 idx=cam_idx,
