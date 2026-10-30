@@ -444,8 +444,10 @@ class MainFrame(wx.Frame):
             self.cams.trial = self.count
             self.cams.session = self.session
             if vid_stat == VideoStatus.PAUSED:
+                self.video_lock.clear()
                 self.video_status.value = VideoStatus.STOP
                 self.video_lock.wait()
+                self.video_lock.clear()
             if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
                 self.video_status.value = VideoStatus.NOT_PLAYING
