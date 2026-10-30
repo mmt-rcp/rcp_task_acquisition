@@ -38,7 +38,7 @@ class SaraPanel(TrialPanel):
             self, id=wx.ID_ANY, choices=self.assessment_list, size=(310, -1)
         )
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Assessment", size=(150, -1))
+        self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
         self.edit_button = wx.Button(self, label="Edit Previous Score", size=(150, -1))
         self.edit_button.Enable(False)
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs", size=(300, -1))
@@ -128,7 +128,7 @@ class SaraPanel(TrialPanel):
             self.actual_assessments[f"trial_{self.trial_number}"] = assesment_dict
         self.assessment_task.Enable(True)
         self.assessment_choice.Enable(True)
-        self.continue_button.SetLabel("Begin Assesment")
+        self.continue_button.SetLabel("Begin Trial")
         self.continue_button.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
         self.check_can_edit()
@@ -145,7 +145,7 @@ class SaraPanel(TrialPanel):
         cur_asses = self.current_assessment = self.assessment_list[
             self.assessment_choice.GetSelection()
         ]
-        self.continue_button.SetLabel("End Assesment")
+        self.continue_button.SetLabel("Stop Trial")
         self.recent_trials[cur_asses] = self.trial_number
 
     def check_can_edit(self) -> None:
