@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from rcp_task_acquisition.utils.config import CameraConfig, CameraItem
 from rcp_task_acquisition.utils.typing import SharedArray, SharedInt, FrameDimsTupleT
 
 
@@ -21,6 +22,7 @@ class FrameDims:
 class CamSettings:
     idx: int  # cam index
     name: str
+    cam_item: CameraItem
     serial: str
     is_primary: bool
     size: int
@@ -28,7 +30,7 @@ class CamSettings:
     bin_val: int
     frame_dims: FrameDimsTupleT
     decrease_val: int
-    actual_framerate: None | float
+    actual_framerate: float
     exposure: None | float
     cam_tests: np.ndarray
     contrast_tests: np.ndarray
@@ -39,3 +41,4 @@ class CamSettings:
     camq: multiprocessing.Queue
     camq_p2read: multiprocessing.Queue
     frame_size: FrameDims
+    base_config: CameraConfig
