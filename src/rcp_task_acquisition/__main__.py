@@ -93,7 +93,12 @@ class App(wx.App):
             # could be a wheel install.. todo
             up2date_status = None
         if up2date_status is not None:
-            wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP)
+            dialog = wx.MessageDialog(
+                None,
+                message=up2date_status,
+                style=wx.ICON_WARNING | wx.STAY_ON_TOP,
+            )
+            dialog.ShowModal()
 
     def OnInit(self):
         self._check_repo_status()
