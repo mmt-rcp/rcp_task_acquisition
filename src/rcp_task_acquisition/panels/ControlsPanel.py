@@ -141,9 +141,8 @@ class ControlsPanel(wx.Panel):
             flag=wx.LEFT,
             border=white_space,
         )
-
         but = self.show_patient_cams_button = wx.ToggleButton(
-            self, label="Patient cameras", size=(button_width * 2, -1)
+            self, id=wx.ID_ANY, label="Patient cameras", size=(button_width * 2, -1)
         )
         self.task_sizer.Add(
             but, pos=(vertical_position, 2), span=(0, 2), flag=wx.LEFT, border=white_space
