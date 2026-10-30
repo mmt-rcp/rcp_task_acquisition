@@ -212,6 +212,8 @@ class MainFrame(wx.Frame):
                 self._show_patient_cams(toggled)
             else:
                 self.widget_panel.show_patient_cams_button.Show(toggled)
+                self.widget_panel.Fit()  # need it otherwise the button appears on top before drawn at correct place
+                self.widget_panel.Update()
                 if not toggled:
                     self._show_patient_cams(False)
 
