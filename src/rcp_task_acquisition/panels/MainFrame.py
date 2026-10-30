@@ -446,8 +446,10 @@ class MainFrame(wx.Frame):
             self.cams.trial = self.count
             self.cams.session = self.session
             if vid_stat == VideoStatus.PAUSED:
+                self.video_lock.clear()
                 self.video_status.value = VideoStatus.STOP
                 self.video_lock.wait()
+                self.video_lock.clear()
             if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
                 self.video_status.value = VideoStatus.NOT_PLAYING
@@ -461,7 +463,7 @@ class MainFrame(wx.Frame):
 
             if isinstance(self.trial_panel, VerbalFluencyPanel) and self.trial_panel.first:
                 self.count = 0
-                self.trial_button.SetLabel("Start Trial")
+                self.trial_button.SetLabel("Begin Trial")
                 self.trial_panel.switch_panel()
                 data = self.trial_panel.get_trials()
                 self._update_data(data)
@@ -552,7 +554,7 @@ class MainFrame(wx.Frame):
             self.liveTimer.Stop()
             self.finish.value = 0
             self.trial_panel.update_values()
-            self.trial_button.SetLabel("Start Trial")
+            self.trial_button.SetLabel("Begin Trial")
             self.rest_timer.Stop()
             self.update_task_metadata()
 
