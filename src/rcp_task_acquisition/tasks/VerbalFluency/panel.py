@@ -58,7 +58,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self, id=wx.ID_ANY, choices=self.semantic_list, size=(200, -1)
         )
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Task", size=(150, -1))
+        self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
 
         self.prompt_text = wx.StaticText(self, label="", size=(300, 50))
         self.seconds_text = wx.StaticText(self, label="", size=(300, -1))
@@ -206,7 +206,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.prompt_text.SetLabel("")
         self.seconds_text.SetLabel("")
         self.continue_button.Enable(True)
-        self.continue_button.SetLabel("Begin Task")
+        self.continue_button.SetLabel("Begin Trial")
         self.video_title.SetLabel("")
         self.start_video_button.SetValue(False)
         self.start_video_button.SetLabel("Play Video")

@@ -143,7 +143,7 @@ def run_app():
     )
 
     logger = logging.get_verbose_logger("rcp")
-    logger.notice("Starting application.. version=%s", app_version)
+    logger.notice("Starting application.. version=%s python=%s", app_version, sys.executable)
     logger.debug("start cmdline=%s", shlex.join(sys.argv))
     logger.debug("start env:\n%s", "\n".join(f"{k}={v!r}" for k, v in os.environ.items()))
 
