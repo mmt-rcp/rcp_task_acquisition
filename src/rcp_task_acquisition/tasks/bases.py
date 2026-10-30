@@ -144,7 +144,6 @@ class StimulusBase:
                 video.stop()
                 self.display.idle(time_list=[])
                 self.video_lock.set()
-                self.video_lock.clear()
                 return
             else:
                 # Draw the current frame of the video

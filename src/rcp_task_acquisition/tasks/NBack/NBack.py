@@ -154,7 +154,10 @@ def _create_deterministic_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
         logger.info(
-            f"Generated deterministic {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+            "Generated deterministic %s-back sequence: %s targets in %s trials",
+            n_back_level,
+            target_count,
+            total_trials,
         )
         break
     return stimulus_paths, answers
@@ -230,7 +233,10 @@ def _create_practice_sequence(
 
         break
     logger.info(
-        f"Generated practice {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+        "Generated practice %s-back sequence: %s targets in %s trials",
+        n_back_level,
+        target_count,
+        total_trials,
     )
     return stimulus_paths, answers
 
@@ -251,7 +257,7 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 1-back practice block with {trial_num} trials")
+        logger.info("Detected 1-back practice block with %s trials", trial_num)
         return _create_practice_sequence(1, trial_num)
 
     # Regular experimental block
@@ -259,7 +265,9 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[str], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"1-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "1-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(1, trial_num)
@@ -281,7 +289,7 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 2-back practice block with {trial_num} trials")
+        logger.info("Detected 2-back practice block with %s trials", trial_num)
         return _create_practice_sequence(2, trial_num)
 
     # Regular experimental block
@@ -289,7 +297,9 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"2-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "2-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(2, trial_num)
@@ -337,7 +347,7 @@ class N_back(bases.StimulusBase):
             name=cfg.INCORRECT_IMG,
             size=[300, 300],
         )
-        logger.debug(f"ims: {correct_img}, {incorrect_img}")
+        logger.debug("ims: %s, %s", correct_img, incorrect_img)
         # for fi in os.listdir(imdir) :
         #     ims.append(visual.ImageStim(self.display, image=os.path.join(imdir, fi), name=fi, size=[300, 300]))
         #     picture_list.append(fi)
@@ -394,7 +404,7 @@ class N_back(bases.StimulusBase):
         self.display.switch_patch()
         return [timeData, thisFlipTime]
 
-    def present(self, test=True, getTime=False):
+    def present(self, test=True, getTime=False) -> None:
         # clear global event keys
         self.trial += 1
 
@@ -548,10 +558,10 @@ class N_back(bases.StimulusBase):
         )
         self.is_real = False
         self.button_press = False
-        logger.debug(f"RUN PARAMS: {self._params}")
+        logger.debug("RUN PARAMS: %s", self._params)
 
     def saveMetadata(self) -> TaskMetaData:
-        logger.debug(f"PARAMS: {self._params}")
+        logger.debug("PARAMS: %s", self._params)
         return self._params
 
     def update_data(self, data: tuple[str, str]) -> None:
@@ -560,7 +570,7 @@ class N_back(bases.StimulusBase):
         # self._params["n_back_type"] = self.type
         # self._params["real"] = self.is_real
 
-    def intertrial_instructions(self):
+    def intertrial_instructions(self) -> list[visual.TextStim]:
         texts = []
         string = (
             "You will now have a 10 second break.\n"
@@ -575,7 +585,7 @@ class N_back(bases.StimulusBase):
         )
         return texts
 
-    def practice_instructions(self):
+    def practice_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "practice_welcome"
@@ -611,7 +621,7 @@ class N_back(bases.StimulusBase):
             )
         return texts
 
-    def real_instructions(self):
+    def real_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "task_instructions"

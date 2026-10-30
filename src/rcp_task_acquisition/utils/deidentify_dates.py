@@ -27,14 +27,14 @@ _regex_date = re.compile(
 
 
 def set_all_times(path: Path, dt):
-    if win_os.win32con is None:
-        warnings.warn("set_all_times not available here")
-        return
-        raise RuntimeError("Cannot yet use elsewhere than on Windows")
-
     pywintypes = win_os.pywintypes
     win32con = win_os.win32con
     win32file = win_os.win32file
+
+    if pywintypes is None or win32con is None or win32file is None:
+        warnings.warn("set_all_times not available here")
+        return
+        raise RuntimeError("Cannot yet use elsewhere than on Windows")
 
     ts = dt.timestamp()
     os.utime(path, (ts, ts))  # accessed + modified
@@ -137,7 +137,7 @@ class DateDeidentification:
             rel = rel.parent
             if rel == rel.parent:  # Path(".")
                 break
-        logger.debug(f"deid_data: {self.deid_data_dir}")
+        logger.debug("deid_data: %s", self.deid_data_dir)
 
     def deidentify_all_data(self, *, dry_run: bool = True):
         if dry_run:

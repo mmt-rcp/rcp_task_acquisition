@@ -102,7 +102,7 @@ class ProcessWithLogging(Process):
             # before call it.
         # logger.info("target: %s", target)
         # logger.debug("args=%s, kwargs=%s")
-        logger.notice(
+        logger.debug(
             "%s: starting target=%s args=%s kwargs=%s", self.name, target, self._args, self._kwargs
         )
         try:

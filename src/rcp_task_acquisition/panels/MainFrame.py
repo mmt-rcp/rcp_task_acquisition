@@ -89,6 +89,7 @@ class MainFrame(wx.Frame):
         self.labjack_scan_rate: float | None = None
         self.hardware_test = False
         self.exit_stimulus = False
+        self.participant = None
 
         self.warning = WarningHandler()
 
@@ -99,7 +100,7 @@ class MainFrame(wx.Frame):
         screenSizes = [
             display.GetGeometry().GetSize() for display in displays
         ]  # Gets the size of each display
-        logger.debug(f"screenSizes: {screenSizes}")
+        logger.debug("screenSizes: %s", screenSizes)
         # index = 1 # For display 1.
         if len(screenSizes) != 2:
             self.warning.update_error(WarnCat.DISPLAY).display()
@@ -211,6 +212,8 @@ class MainFrame(wx.Frame):
                 self._show_patient_cams(toggled)
             else:
                 self.widget_panel.show_patient_cams_button.Show(toggled)
+                self.widget_panel.Fit()  # need it otherwise the button appears on top before drawn at correct place
+                self.widget_panel.Update()
                 if not toggled:
                     self._show_patient_cams(False)
 
@@ -370,7 +373,6 @@ class MainFrame(wx.Frame):
             self.task_active = True
             self.count = 0
             self.finish.value = 0
-            # self.msgq.put(StimulusMessage.INITIALIZE)
             is_success = self.lj.start_labjack()
             if not is_success:
                 self.task_button.SetValue(False)
@@ -379,7 +381,8 @@ class MainFrame(wx.Frame):
             self.labjack_stream_button.SetValue(True)
             self.labjack_stream_button.Enable(False)
             self.labjack_stream_button.SetLabel("Stop Labjack")
-            self.date_string = datetime.datetime.utcnow().strftime("%Y%m%d")
+            self.prepare_file(self.task, self.participant)
+            self.create_file()
             lj_path = os.path.join(self.sess_dir, self.path_base + "_labjack.txt")
             msg = f"P{self.path_base}x"
             self.lj.add_csv(lj_path, self.serial_device, msg)
@@ -394,9 +397,6 @@ class MainFrame(wx.Frame):
                 self.trial_panel.update_trial(trial, syllable)
             self.trial_panel.start_new_trial()
             self.trial_panel.show()
-            # self.update_metadata()
-            # self.create_metadata()
-            self.create_file()
             # if not self.rest_timer.IsRunning():
             #     self.rest_timer.Start(1000)
         else:
@@ -430,17 +430,27 @@ class MainFrame(wx.Frame):
 
     def trial_event(self) -> None:
         """called on initialize or stop of single trial"""
-        logger.debug("trial_event(): video_status=%s", self.video_status.value)
+        vid_stat_val = self.video_status.value
+        vid_stat: str | VideoStatus
+        try:
+            vid_stat = VideoStatus(vid_stat_val)
+        except ValueError:
+            vid_stat = f"Unknown ({vid_stat_val}"
+        logger.debug(
+            "trial_event(): trial_but=%s video_status=%s", self.trial_button.GetValue(), vid_stat
+        )
         if self.trial_button.GetValue():
             logger.debug("in trial button")
             time.sleep(1)
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
-            if self.video_status.value == VideoStatus.PAUSED:
+            if vid_stat == VideoStatus.PAUSED:
+                self.video_lock.clear()
                 self.video_status.value = VideoStatus.STOP
                 self.video_lock.wait()
-            if self.video_status.value == VideoStatus.FINISHED:
+                self.video_lock.clear()
+            if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
                 self.video_status.value = VideoStatus.NOT_PLAYING
                 self.trial_panel.stop_video()
@@ -453,7 +463,7 @@ class MainFrame(wx.Frame):
 
             if isinstance(self.trial_panel, VerbalFluencyPanel) and self.trial_panel.first:
                 self.count = 0
-                self.trial_button.SetLabel("Start Trial")
+                self.trial_button.SetLabel("Begin Trial")
                 self.trial_panel.switch_panel()
                 data = self.trial_panel.get_trials()
                 self._update_data(data)
@@ -544,7 +554,7 @@ class MainFrame(wx.Frame):
             self.liveTimer.Stop()
             self.finish.value = 0
             self.trial_panel.update_values()
-            self.trial_button.SetLabel("Start Trial")
+            self.trial_button.SetLabel("Begin Trial")
             self.rest_timer.Stop()
             self.update_task_metadata()
 
@@ -566,7 +576,7 @@ class MainFrame(wx.Frame):
             self.video_status.value = VideoStatus.STOP
             self.trial_panel.stop_video()
             self.rest_timer.Stop()
-            logger.debug(f"done stopping: {self.video_status.value}")
+            logger.debug("done stopping: %s", self.video_status.value)
 
     def pause_instructions(self, event: wx.Event) -> None:
         geo = event.GetEventObject()
@@ -831,7 +841,8 @@ class MainFrame(wx.Frame):
         task_item_cfg = task_panel_cls.task_trial_item_config
         if task_item_cfg is None:
             code_path_part = task
-            logger.warning("unexpected task with None task_trial_item_config: %s", task)
+            if not issubclass(task_panel_cls, CalibrationPanel):
+                logger.warning("unexpected task with None task_trial_item_config: %s", task)
         else:
             code_path_part = task_item_cfg.path_part
         ctx = self._rcp_context
@@ -840,7 +851,7 @@ class MainFrame(wx.Frame):
         date_string = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
         self.date_string = date_string
 
-        if "calibrate" in task:
+        if issubclass(task_panel_cls, CalibrationPanel):
             calibrate_path = Path(user_cfg.RawDataDir).parent
             base_dir = self.base_dir = Path(calibrate_path, "CalibrationData", date_string)
             prev_expt_list = [p for p in base_dir.glob("*")]
@@ -856,8 +867,6 @@ class MainFrame(wx.Frame):
             self.metapath = Path(self.sess_dir, meta_name)
         else:
             base_dir = self.base_dir = Path(ctx.user_config.RawDataDir, part.id, date_string)
-            # if not base_dir.exists():
-            #     base_dir.mkdir(parents=True, exist_ok=True)
             prev_expt_list = (
                 [v for v in base_dir.glob("*") if v.is_dir()] if base_dir.exists() else []
             )
@@ -868,6 +877,7 @@ class MainFrame(wx.Frame):
             self.path_base = f"{part.id}_{date_string}_{self.sess_string}_{unit_ref}"
             meta_name = f"{self.path_base}_metadata.yaml"
             self.metapath = Path(self.sess_dir, meta_name)
+        logger.notice("prepared new metapath: %s", self.metapath)
 
     def create_file(self) -> None:
         if not self.sess_dir.exists():
@@ -995,8 +1005,10 @@ class MainFrame(wx.Frame):
                 self.task_button.SetLabel("Stop Recording")
                 self.trial_panel.reset(0)
                 self.trial_panel.show()
+                self.prepare_file(self.task, self.participant)
             # else:
             #     self.create_file()
+
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.set_crop.Enable(False)
             self.minRec.Enable(False)

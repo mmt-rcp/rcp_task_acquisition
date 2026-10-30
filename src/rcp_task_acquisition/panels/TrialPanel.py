@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
-    def __init__(self, parent: wx.Panel, *, patient_monitor: int = 0) -> None:
+    def __init__(self, parent: wx.Window, *, patient_monitor: int = 0) -> None:
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0
@@ -40,8 +40,10 @@ class TrialPanel(wx.Panel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
-        if type(self) is TrialPanel:
-            self.continue_button.Show()
+        # if type(self) is TrialPanel:
+        #     self.continue_button.Show()
+        # else:
+        #     self.continue_button.Hide()
 
         # for camera views on patient screen:
         self.im: list[AxesImage] = []

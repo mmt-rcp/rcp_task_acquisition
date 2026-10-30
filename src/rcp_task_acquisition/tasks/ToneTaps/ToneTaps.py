@@ -1,3 +1,4 @@
+import copy
 import time
 from multiprocessing import sharedctypes
 from typing import Any
@@ -41,6 +42,7 @@ class ToneTapsClosed(bases.StimulusBase):
         self.first_tap = True
         self.press_count: sharedctypes.Synchronized[int] = press_count
         self.instructions_dict = IVRY_TAPS_VIDEO_PATHS
+        self.params = copy.deepcopy(PARAMS)
 
     def present(self, test=True) -> None:
         # Initialize the message text
@@ -64,26 +66,26 @@ class ToneTapsClosed(bases.StimulusBase):
 
         nPlayed = 0
         self.trial_count += 1
-        PARAMS["hand_used"][f"trial_{self.trial_count}"] = self.hand
+        self.params["hand_used"][f"trial_{self.trial_count}"] = self.hand
         self.play_tone()
         self.press_count.value = 0
 
         # start phase
         gToneTime = GLOBAL_CLOCK.getTime()
-        playTime: float = PARAMS["tone_delay"]
+        playTime: float = self.params["tone_delay"]
         clock = core.Clock()
-        while self.press_count.value <= PARAMS["tone_number_per_trial"] - 1:
+        while self.press_count.value <= self.params["tone_number_per_trial"] - 1:
             if GLOBAL_CLOCK.getTime() - gToneTime > playTime:
                 # self.play_tone()
                 self.play_tap()
                 # self.stream.write(self.output_bytes)
 
                 nPlayed += 1
-                playTime += PARAMS["inter_tone_interval"]
+                playTime += self.params["inter_tone_interval"]
                 self.timer.value = int(clock.getTime())
             if self.finish.value == 2:
                 break
-        if self.press_count.value <= PARAMS["tone_number_per_trial"]:
+        if self.press_count.value <= self.params["tone_number_per_trial"]:
             while True:
                 if self.finish.value == 2:
                     break
@@ -91,7 +93,7 @@ class ToneTapsClosed(bases.StimulusBase):
                     self.play_tap()
 
                     nPlayed += 1
-                    playTime += PARAMS["inter_tone_interval"]
+                    playTime += self.params["inter_tone_interval"]
                     break
                     self.timer.value = int(clock.getTime())
         if self.finish.value != 2:
@@ -101,12 +103,12 @@ class ToneTapsClosed(bases.StimulusBase):
             self.display.flip()
 
         # continuation phase
-        while (GLOBAL_CLOCK.getTime() - gToneTime) < (PARAMS["total_time_before_cutoff"]):
+        while (GLOBAL_CLOCK.getTime() - gToneTime) < (self.params["total_time_before_cutoff"]):
             if self.finish.value == 2:
                 break
             self.timer.value = int(clock.getTime())
             time.sleep(0.005)
-            if self.press_count.value >= 31 + PARAMS["tone_number_per_trial"]:
+            if self.press_count.value >= 31 + self.params["tone_number_per_trial"]:
                 break
 
         self.play_tone()
@@ -151,8 +153,8 @@ class ToneTapsClosed(bases.StimulusBase):
         # metadata = MetadataPanel()
         # if metadata.show() == wx.ID_OK:
         #     data = metadata.data
-        #     data["parameters"] = PARAMS
+        #     data["parameters"] = self.params
         #     logger.debug(data)
-        PARAMS["number_trials"] = self.trial_count
+        self.params["number_trials"] = self.trial_count
 
-        return PARAMS
+        return self.params

@@ -7,11 +7,16 @@ from pathlib import Path
 import rcp_task_acquisition
 from rcp_task_acquisition.utils.logger import get_logger
 
-git: types.ModuleType | None = None
-try:
-    import git
-except ModuleNotFoundError:
-    git = None
+
+def _import():
+    try:
+        import git as mod
+    except ModuleNotFoundError:
+        return None
+    return mod
+
+
+git = _import()
 
 
 logger = get_logger(__name__)

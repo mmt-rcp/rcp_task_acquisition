@@ -154,7 +154,7 @@ class StimulusThread(ProcessWithLogging):
         minutes = math.floor(tElapsed / 60)
         seconds = tElapsed % 60
         min_string = f"{math.floor(tElapsed / 60)} minutes, " if minutes > 0 else ""
-        logger.info(f"Stimulus protocol completed in {min_string}{seconds:.2f} seconds")
+        logger.info("Stimulus protocol completed in %s%.2f seconds", min_string, seconds)
         if self.finish.value != 2:
             self.finish.value = 1
         else:
@@ -298,7 +298,7 @@ class StimulusThread(ProcessWithLogging):
         # task_cfg = ctx.tasks_config[self.task]
         results = stimuli.saveMetadata()  # TODO: not sure what's going on
         json_str = json.dumps(results)
-        logger.debug(f"jsonstr: {json_str}")
+        logger.debug("jsonstr: %s", json_str)
         self.resultsq.put(json_str)
 
     def close_window(self) -> None:

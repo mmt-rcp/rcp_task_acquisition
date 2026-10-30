@@ -68,7 +68,7 @@ class LabjackFrontend:
         self.labjack_choices = self.graph_panel.get_graph_choices()
         self.labjack_timer = timer
         self.press_count = press_count
-        logger.debug(f"button {self.button_list}")
+        logger.debug("button %s", self.button_list)
         self.graph_panel.set_constants(self.constants)
         for choice in self.labjack_choices:
             choice.Bind(wx.EVT_CHOICE, self._update_graph_list)
@@ -109,10 +109,10 @@ class LabjackFrontend:
         self.extended_list = []  # nothing append to it, but it's fed in an output list,
         # which is "consumed" downstream.
         for index, item in enumerate(self.labjack_list):
-            logger.info(f"self.all_hardware: {item}")
+            logger.info("self.all_hardware: %s", item)
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
-                logger.debug(f"hardware: {self.labjack_list[index]}")
+                logger.debug("hardware: %s", self.labjack_list[index])
                 if "Accessory" in self.hardware[index]:
                     self.button_list.append((int(item[-1]), "f"))
             elif "E" in item:
@@ -126,7 +126,11 @@ class LabjackFrontend:
             else:
                 self.analog_list.append(item)
         logger.info(
-            f"digital: {self.digital_list}, extended: {self.extended_list}, Analog: {self.analog_list}, button: {self.button_list}"
+            "digital: %s, extended: %s, Analog: %s, button: %s",
+            self.digital_list,
+            self.extended_list,
+            self.analog_list,
+            self.button_list,
         )
         self.inputs_list = (self.analog_list, self.digital_list, self.extended_list)
         logger.debug(self.button_list)

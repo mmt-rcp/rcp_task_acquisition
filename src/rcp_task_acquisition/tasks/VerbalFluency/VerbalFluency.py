@@ -44,7 +44,7 @@ class VerbalFluency(bases.StimulusBase):
 
     def update_data(self, data: str) -> None:
         choices = data
-        logger.debug(f"choices: {choices}")
+        logger.debug("choices: %s", choices)
         if isinstance(choices, str):
             self.trial_word = choices
             return

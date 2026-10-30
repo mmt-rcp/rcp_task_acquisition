@@ -176,6 +176,7 @@ class HardwarePanel(wx.Panel):
             if hardware not in self.row_list:
                 user_input_list.append(hardware.value)
 
+        logger.debug("creating hardware list: %s", self.row_list)
         for hard_name in self.row_list:
             in_use = wx.CheckBox(box, id=wx.ID_ANY)
             in_use.Bind(wx.EVT_CHECKBOX, self.update_options)
@@ -226,7 +227,6 @@ class HardwarePanel(wx.Panel):
                 border=self.border,
             )
             vertical_pos += 1
-            logger.debug(f"hardware:  {hard_name}")
             new_hardware = HardwareRow(
                 name, in_use, labjack, voltage_ranges
             )  # min_graph, max_graph, voltage_ranges)

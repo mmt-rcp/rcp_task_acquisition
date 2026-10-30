@@ -14,8 +14,8 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         "vowel_space", "Vowel Space", "vowelspacearea", VowelSpace
     )
 
-    def __init__(self, parent: wx.Panel):
-        super().__init__(parent)
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = None
         self.repeat = True
         self.seconds = 0
@@ -66,7 +66,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def add_video_panel(self, static_box_sizer):
+    def add_video_panel(self, static_box_sizer) -> wx.GridBagSizer:
         self.syllable_video_title = wx.StaticText(self, label="Phrase Instructions:")
         self.syllable_start_video_button = wx.ToggleButton(
             self, label="Start Video", size=(self.button_width * 2, -1)
@@ -102,7 +102,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
         return static_box_sizer
 
-    def is_finish(self):
+    def is_finish(self) -> None:
         self.finish_text.SetLabel("Task Finished! Press 'End Task' to save data.")
         self.current_text.SetLabel("")
         self.trial_text.SetLabel("")
@@ -131,7 +131,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.continue_button.SetLabel("Stop Trial")
         self.next_button.Enable(False)
 
-    def update_trial(self, trial: int, syllable: str):
+    def update_trial(self, trial: int, syllable: str) -> None:
         """
         Updating with the current syllable
         Trials are 0-indexed so we add 1 here to be in a better format for showing
@@ -169,7 +169,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
                 self.syllable_pause_video_button,
             ]
 
-    def start_video(self):
+    def start_video(self) -> None:
         self.get_buttons()
         # self.next_button.Enable(False)
         self.continue_button.Enable(False)
@@ -180,7 +180,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.other_buttons[0].Enable(False)
         self.other_buttons[1].Enable(False)
 
-    def stop_video(self):
+    def stop_video(self) -> None:
         self.video_buttons[0].SetLabel("Start Video")
         self.video_buttons[0].SetValue(False)
         if self.video_buttons[1].GetValue():
@@ -193,10 +193,10 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         # self.next_button.Enable(True)
         self.continue_button.Enable(True)
 
-    def pause_video(self):
+    def pause_video(self) -> None:
         self.video_buttons[1].SetLabel("Resume Video")
 
-    def resume_video(self):
+    def resume_video(self) -> None:
         self.video_buttons[1].SetLabel("Pause Video")
 
     # def next_trial(self, event):
