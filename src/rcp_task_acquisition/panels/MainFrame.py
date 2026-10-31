@@ -234,8 +234,8 @@ class MainFrame(wx.Frame):
 
         # labjack setup
         self.ctrl_panel.create_plot(PLOT_LENGTH)
-        self.labjack_stream_button = self.ctrl_panel.get_graph_button()
-        self.labjack_choices = self.ctrl_panel.get_graph_choices()
+        self.labjack_stream_button = self.ctrl_panel.labjack_stream_button
+        self.labjack_choices = self.ctrl_panel.labjack_choices
 
         self.labjack_timer = wx.Timer(self, wx.ID_ANY)
         self.lj = LabjackFrontend(
@@ -612,6 +612,31 @@ class MainFrame(wx.Frame):
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
+    def _set_to_live(self):
+        if not self.liveTimer.IsRunning():
+            self.cams.live_start()
+            self.liveTimer.Start(150)
+            self.play.SetLabel("Stop")
+            self.hardware_button.SetLabel("End Test")
+        self.set_crop.Enable(False)
+        self.rec.Enable(False)
+        self.minRec.Enable(False)
+        self.secRec.Enable(False)
+        self.update_settings.Enable(False)
+
+    def _stop_hardware_test(self):
+        self.cam_test.value = False
+        self.hardware_test = False
+        self.focus_test.Enable(True)
+        self.focus_test.SetValue(False)
+        self.contrast_test.SetValue(False)
+        self.contrast_test.Enable(True)
+        self.set_focus()
+        self.set_contrast()
+        self.finish.value = 2
+        self.hardware_test_panel.Hide()
+        self.hardware_test = False
+
     def liveFeed(self) -> None:
         button_label = self.play.GetLabel()
         if button_label == "Abort":
@@ -640,16 +665,7 @@ class MainFrame(wx.Frame):
                     self.labjack_stream_button.SetValue(True)
                     self.labjack_stream_button.Enable(False)
                     self.labjack_stream_button.SetLabel("Stop Labjack")
-            if not self.liveTimer.IsRunning():
-                self.cams.live_start()
-                self.liveTimer.Start(150)
-                self.play.SetLabel("Stop")
-                self.hardware_button.SetLabel("End Test")
-            self.set_crop.Enable(False)
-            self.rec.Enable(False)
-            self.minRec.Enable(False)
-            self.secRec.Enable(False)
-            self.update_settings.Enable(False)
+            self._set_to_live()
 
         else:
             self.shared.value = -1
@@ -659,17 +675,7 @@ class MainFrame(wx.Frame):
             self.play.SetLabel("Live")
             self.hardware_button.SetLabel("Hardware Test")
             if self.hardware_test:
-                self.cam_test.value = False
-                self.hardware_test = False
-                self.focus_test.Enable(True)
-                self.focus_test.SetValue(False)
-                self.contrast_test.SetValue(False)
-                self.contrast_test.Enable(True)
-                self.set_focus()
-                self.set_contrast()
-                self.finish.value = 2
-                self.hardware_test_panel.Hide()
-                self.hardware_test = False
+                self._stop_hardware_test()
                 if self.task_active:
                     self.labjack_scan_rate = self.lj.stop_labjack()
                     self.labjack_stream_button.Enable(True)
@@ -697,16 +703,7 @@ class MainFrame(wx.Frame):
                     self.labjack_stream_button.SetValue(True)
                     self.labjack_stream_button.Enable(False)
                     self.labjack_stream_button.SetLabel("Stop Labjack")
-            if not self.liveTimer.IsRunning():
-                self.cams.live_start()
-                self.liveTimer.Start(150)
-                self.play.SetLabel("Stop")
-                self.hardware_button.SetLabel("End Test")
-            self.set_crop.Enable(False)
-            self.rec.Enable(False)
-            self.minRec.Enable(False)
-            self.secRec.Enable(False)
-            self.update_settings.Enable(False)
+            self._set_to_live()
             self.task_button.Enable(False)
         else:
             self.shared.value = -1
@@ -716,17 +713,7 @@ class MainFrame(wx.Frame):
             self.play.SetLabel("Live")
             self.hardware_button.SetLabel("Hardware Test")
             if self.hardware_test:
-                self.cam_test.value = False
-                self.hardware_test = False
-                self.focus_test.Enable(True)
-                self.focus_test.SetValue(False)
-                self.contrast_test.SetValue(False)
-                self.contrast_test.Enable(True)
-                self.set_focus()
-                self.set_contrast()
-                self.finish.value = 2
-                self.hardware_test_panel.Hide()
-                self.hardware_test = False
+                self._stop_hardware_test()
                 if not self.task_active:
                     self.labjack_scan_rate = self.lj.stop_labjack()
                     self.labjack_stream_button.Enable(True)

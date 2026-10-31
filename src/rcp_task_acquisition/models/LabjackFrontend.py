@@ -65,7 +65,7 @@ class LabjackFrontend:
         self.scan_rate = Value(ctypes.c_float, 0)
         self.hardware_test = hardware_test
         self.graph_panel = ctrl_panel
-        self.labjack_choices = self.graph_panel.get_graph_choices()
+        self.labjack_choices = self.graph_panel.labjack_choices
         self.labjack_timer = timer
         self.press_count = press_count
         logger.debug("button %s", self.button_list)
@@ -205,8 +205,7 @@ class LabjackFrontend:
         if proc.is_alive():
             logger.warning("labjack process still alive, terminating")
             proc.terminate()
-            proc.join(3)
-        proc.join(0)
+            proc.join(1)
         self.labjack_process = None
 
     def labjack_event(self, event: wx.Event) -> None:

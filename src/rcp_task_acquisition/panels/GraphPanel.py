@@ -258,12 +258,6 @@ class GraphPanel(wx.Panel):
 
         self.constants[index].set_ydata(y_points)
 
-    def get_graph_button(self) -> wx.ToggleButton:
-        return self.labjack_stream_button
-
-    def get_graph_choices(self) -> list[wx.Choice]:
-        return self.labjack_choices
-
     def set_visible(self, index: int, is_visible: bool = True) -> None:
         self.lines[index].set_visible(is_visible)
 
