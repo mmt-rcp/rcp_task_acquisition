@@ -1,11 +1,11 @@
-import matplotlib
+import matplotlib.axes
 import numpy as np
 import wx
 from matplotlib import patches
 
 from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import CropTupleType
+from rcp_task_acquisition.utils.typing import CropTupleT, FrameDimsTupleT
 
 logger = get_logger(__name__)
 
@@ -13,8 +13,9 @@ logger = get_logger(__name__)
 class Crop:
     def __init__(self) -> None:
         self.croprec: list[matplotlib.patches.Rectangle] = []
-        self.croproi: list[CropTupleType] = []
+        self.croproi: list[CropTupleT] = []
         self.set_crop = None
+        self.frmDims: FrameDimsTupleT = (0, 0, 0, 0)
 
     def set_key_crop(self, axes, keyCode) -> None:
         if self.cropAxes is None:
@@ -59,10 +60,12 @@ class Crop:
     def drawROI(self, axes) -> None:
         # if self.set_crop.GetValue():
         ndx = axes.index(self.cropAxes)
-        self.croprec[ndx].set_x(self.croproi[ndx][0])
-        self.croprec[ndx].set_y(self.croproi[ndx][2])
-        self.croprec[ndx].set_width(self.croproi[ndx][1])
-        self.croprec[ndx].set_height(self.croproi[ndx][3])
+        rec = self.croprec[ndx]
+        roi = self.croproi[ndx]
+        rec.set_x(roi[0])
+        rec.set_y(roi[2])
+        rec.set_width(roi[1])
+        rec.set_height(roi[3])
         # if not self.croproi[ndx][0] == 0:
         #     self.croprec[ndx].set_alpha(0.6)
         # self.figure.canvas.draw()
@@ -71,11 +74,11 @@ class Crop:
         self.cropAxes = event.inaxes
         ndx = axes.index(event.inaxes)
         s = cam_list[ndx]
-        self.croproi[ndx] = cam_config[s].crop
+        croproi = self.croproi[ndx] = cam_config[s].crop
         roi_x = event.xdata
         roi_y = event.ydata
-        x_center = self.croproi[ndx][1] / 2
-        y_center = self.croproi[ndx][3] / 2
+        x_center = croproi[1] / 2
+        y_center = croproi[3] / 2
         logger.info("x: %s, y: %s", roi_x, roi_y)
         logger.info("dimensions: %s", self.frmDims)
         logger.info("center x = %s, center y = %s", x_center, y_center)
@@ -88,32 +91,31 @@ class Crop:
             roi_y = self.frmDims[1] - y_center
         self.croproi[ndx] = np.asarray(
             [
-                roi_x - self.croproi[ndx][1] / 2,
-                self.croproi[ndx][1],
-                roi_y - self.croproi[ndx][3] / 2,
-                self.croproi[ndx][3],
+                roi_x - croproi[1] / 2,
+                croproi[1],
+                roi_y - croproi[3] / 2,
+                croproi[3],
             ],
             int,
         )
-        logger.info(self.croproi)
+        logger.info("croproi: %s", self.croproi)
         # self.drawROI()
 
-    def update_crop(self, index, axis, frmDims) -> None:
+    def update_crop(self, index: int, axis: matplotlib.axes.Axes, frmDims: FrameDimsTupleT) -> None:
         self.frmDims = frmDims
         cpt = self.croproi[index]
-        rec = [
-            patches.Rectangle(
-                (cpt[0], cpt[2]),
-                cpt[1],
-                cpt[3],
-                fill=False,
-                ec=[0.25, 0.25, 0.75],
-                linewidth=2,
-                linestyle="-",
-                alpha=0.0,
-            )
-        ]
-        self.croprec.append(axis.add_patch(rec[0]))
+        rec = patches.Rectangle(
+            (cpt[0], cpt[2]),
+            cpt[1],
+            cpt[3],
+            fill=False,
+            ec=[0.25, 0.25, 0.75],
+            linewidth=2,
+            linestyle="-",
+            alpha=0.0,
+        )
+        rec_patched = axis.add_patch(rec)
+        self.croprec.append(rec_patched)  # type: ignore
 
-    def add_crop(self, crop: CropTupleType) -> None:
+    def add_crop(self, crop: CropTupleT) -> None:
         self.croproi.append(crop)
