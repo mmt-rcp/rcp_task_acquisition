@@ -11,7 +11,7 @@ from ruamel.yaml.comments import CommentedMap
 import dacite
 
 from rcp_task_acquisition.utils.logging import get_verbose_logger
-from rcp_task_acquisition.utils.typing import CropTupleType
+from rcp_task_acquisition.utils.typing import CropTupleT
 
 logger = get_verbose_logger(__name__)
 
@@ -112,7 +112,7 @@ class CamConfig:
 class CameraConfig:
     serial: str = ""
     ismaster: bool = False
-    crop: CropTupleType = (0, 0, 0, 0)
+    crop: CropTupleT = (0, 0, 0, 0)
     exposure: float | None = None
     bin: int = 1
     gain: float | None = None

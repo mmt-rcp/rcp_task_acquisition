@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from rcp_task_acquisition.utils.config import CameraConfig, CameraItem
-from rcp_task_acquisition.utils.typing import SharedArray, SharedInt
+from rcp_task_acquisition.utils.typing import SharedArray, SharedInt, FrameDimsTupleT
 
 
 @dataclass
@@ -28,7 +28,7 @@ class CamSettings:
     size: int
     shape: list[int]
     bin_val: int
-    frame_dims: list[int]
+    frame_dims: FrameDimsTupleT
     decrease_val: int
     actual_framerate: float
     exposure: None | float

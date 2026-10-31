@@ -15,7 +15,7 @@ from rcp_task_acquisition.utils.config import CameraConfig, RcpUserConfig
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
 from rcp_task_acquisition.utils.run_context import RcpRunContext
-from rcp_task_acquisition.utils.typing import SharedArray, SharedInt
+from rcp_task_acquisition.utils.typing import SharedArray, SharedInt, FrameDimsTupleT
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         camq_p2read: multiprocessing.Queue,
         camID: str,
         idList: list[str],
-        frmdim: list[int],
+        frmdim: FrameDimsTupleT,
         aq: SharedInt,
         frm: SharedInt,
         array4feed: SharedArray,

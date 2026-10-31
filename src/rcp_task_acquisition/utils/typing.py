@@ -15,7 +15,10 @@ SharedArray = sharedctypes.SynchronizedArray
 #
 
 
-CropTupleType: typing.TypeAlias = tuple[int, int, int, int]
+CropTupleT: typing.TypeAlias = tuple[int, int, int, int]
+
+FrameDimsTupleT: typing.TypeAlias = tuple[int, int, int, int]
+
 
 HardwareListsType: typing.TypeAlias = tuple[
     tuple[str, ...],  # hardware list
