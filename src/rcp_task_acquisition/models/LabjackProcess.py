@@ -26,7 +26,7 @@ class LabJackDataStream(ProcessWithLogging):
         labjack_arr: sharedctypes.SynchronizedArray,
         create_csv: SharedBool,
         folder_queue: multiprocessing.Queue,
-        labjack_list: list,
+        labjack_list: list[str],
         graph_indices: tuple[SharedInt, SharedInt, SharedInt],
         button_pressed: SharedBool,
         inputs: tuple[list[str], list[int], list[int]],
