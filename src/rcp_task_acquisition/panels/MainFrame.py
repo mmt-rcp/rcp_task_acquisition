@@ -611,7 +611,7 @@ class MainFrame(wx.Frame):
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
-    def _set_to_live(self):
+    def _set_to_live(self) -> None:
         if not self.liveTimer.IsRunning():
             self.cams.live_start()
             self.liveTimer.Start(150)
@@ -623,7 +623,7 @@ class MainFrame(wx.Frame):
         self.secRec.Enable(False)
         self.update_settings.Enable(False)
 
-    def _stop_hardware_test(self):
+    def _stop_hardware_test(self) -> None:
         self.cam_test.value = False
         self.hardware_test = False
         self.focus_test.Enable(True)
