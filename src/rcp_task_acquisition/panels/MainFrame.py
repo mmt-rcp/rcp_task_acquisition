@@ -441,7 +441,6 @@ class MainFrame(wx.Frame):
         )
         if self.trial_button.GetValue():
             logger.debug("in trial button")
-            time.sleep(1)
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
