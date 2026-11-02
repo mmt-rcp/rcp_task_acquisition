@@ -356,7 +356,7 @@ class CamerasFrontend:
             )
             self.multi_cameras[cam_d.serial] = multi_cam
             multi_cam.start()
-        time.sleep(1)
+        # time.sleep(1)
         logger.notice("Starting initialisation of cameras")
         for cam in self._cam_by_idx:
             initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
@@ -422,6 +422,7 @@ class CamerasFrontend:
             cam_d = self.cam_dict.get(cam_id)
             if cam_d is None:
                 return
+            logger.verbose("requesting camera stop to %s", cam_d.name)
             cam_d.camq.put(CameraCommand.STOP, timeout=1)
             update = cam_d.camq_p2read.get(timeout=2)
             if update != "done" and isinstance(update, str) and update.isdigit():
@@ -442,7 +443,6 @@ class CamerasFrontend:
             except Exception as err:
                 cam_errors[camID] = err
 
-        logger.warning(error_message)
         error = ""
         if error_message:
             if error == "":
@@ -474,8 +474,9 @@ class CamerasFrontend:
 
             # self.recSet.append(self.cam_dict[camID].camq_p2read.get())
             try:
-                self.aqW.append(cam_d.camq_p2read.get(timeout=1))
-                self.aqH.append(cam_d.camq_p2read.get(timeout=1))
+                width, height = cam_d.camq_p2read.get(timeout=1)
+                self.aqW.append(width)
+                self.aqH.append(height)
             except Exception as err:
                 logger.error("could not read W/H: %s", err)
                 errors[cam_d.name] = err
