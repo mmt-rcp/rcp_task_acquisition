@@ -141,13 +141,13 @@ class MainFrame(wx.Frame):
         self.image_panel.updateImage()
         self.image_panel.canvas.mpl_connect("button_press_event", self.onClick)
 
-        self.ctrl_panel = GraphPanel(vSplitter, self.gui_size)
+        self.graph_panel = GraphPanel(vSplitter, self.gui_size)
         self.controls_panel = ControlsPanel(
-            topSplitter, self.ctrl_panel, psychopy_monitor, screenSizes[psychopy_monitor]
+            topSplitter, self.graph_panel, psychopy_monitor, screenSizes[psychopy_monitor]
         )
 
         vSplitter.SplitHorizontally(
-            self.image_panel, self.ctrl_panel, sashPosition=int(self.gui_size[1] * 0.6)
+            self.image_panel, self.graph_panel, sashPosition=int(self.gui_size[1] * 0.6)
         )
         topSplitter.SplitVertically(
             vSplitter, self.controls_panel, sashPosition=int(self.gui_size[0] * 0.78)
@@ -174,7 +174,7 @@ class MainFrame(wx.Frame):
         ) = self.controls_panel.get_cam_handles()
 
         self.contrast_test, self.focus_test, self.hardware_test_panel = (
-            self.ctrl_panel.get_hardware_handles()
+            self.graph_panel.get_hardware_handles()
         )
 
         self.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
@@ -183,7 +183,7 @@ class MainFrame(wx.Frame):
         self.participant_monitor = self.controls_panel.get_monitor()
         self.cams = CamerasFrontend(
             self.serial_device,
-            self.ctrl_panel,
+            self.graph_panel,
             self.image_panel,
             self.contrast_test,
             self.focus_test,
@@ -225,14 +225,14 @@ class MainFrame(wx.Frame):
         )
 
         # labjack setup
-        self.ctrl_panel.create_plot(PLOT_LENGTH)
-        self.labjack_stream_button = self.ctrl_panel.labjack_stream_button
-        self.labjack_choices = self.ctrl_panel.labjack_choices
+        self.graph_panel.create_plot(PLOT_LENGTH)
+        self.labjack_stream_button = self.graph_panel.labjack_stream_button
+        self.labjack_choices = self.graph_panel.labjack_choices
 
         self.labjack_timer = wx.Timer(self, wx.ID_ANY)
         self.lj = LabjackFrontend(
             PLOT_LENGTH,
-            self.ctrl_panel,
+            self.graph_panel,
             self.labjack_timer,
             self.button_pressed,
             self.press_count,
@@ -584,9 +584,9 @@ class MainFrame(wx.Frame):
             self.contrast_test.Enable(False)
             self.cam_test.value = True
             self.cams.update_focus()
-            self.ctrl_panel.setup_test_legend()
+            self.graph_panel.setup_test_legend()
         else:
-            self.ctrl_panel.remove_hardware()
+            self.graph_panel.remove_hardware()
             self.contrast_test.Enable(True)
             self.cams.update_focus(False)
             self.cam_test.value = False
@@ -595,10 +595,10 @@ class MainFrame(wx.Frame):
         if self.contrast_test.GetValue():
             self.focus_test.Enable(False)
             self.cam_test.value = True
-            self.ctrl_panel.setup_test_legend()
+            self.graph_panel.setup_test_legend()
             self.cams.update_contrast()
         else:
-            self.ctrl_panel.remove_hardware()
+            self.graph_panel.remove_hardware()
             self.focus_test.Enable(True)
             self.cams.update_contrast(False)
             self.cam_test.value = False
@@ -936,7 +936,7 @@ class MainFrame(wx.Frame):
             self.controls_panel.Close(True)
         except Exception as err:
             logger.debug("error close task panel: %s", err, exc_info=True)
-        self.ctrl_panel.Close(True)
+        self.graph_panel.Close(True)
         self.statusbar.SetStatusText("")
         self.Close()
 
