@@ -37,7 +37,6 @@ class CameraCommand(str, enum.Enum):
 
 
 class CamCtx:
-    record = False
     ismaster = False
     isunconnected = False
     is_decreased = False
@@ -105,10 +104,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         # self.actual_exposure = None
         # self.actual_frame_rate = None
         # self.video_thread = None
-        self.fps: float = 0
-        self.width: int = 0
-        self.height: int = 0
         self.dwnsmplfac = dwnsmplfac
+        self.async_writer: AsyncFFmpegGPUWriter | None = None
 
         self._command_handlers: dict[str, Callable] = {
             CameraCommand.INIT_S: self._cmd_InitS,
@@ -235,41 +232,40 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.cam_list.Clear()
         ctx.system.ReleaseInstance()  # Release instance
 
-    def _cmd_Release(self, ctx: CamCtx):
+    def _cmd_Release(self, ctx: CamCtx) -> None:
         self._execute_release(ctx)
         self.camq_p2read.put("done")
 
     def _cmd_recordPrep(self, ctx: CamCtx) -> None:
-        path_base = self.camq.get()
+        path_base = self.camq.get(timeout=1)
+        logger.debug("using base_path=%s", path_base)
+        if self.async_writer is not None:
+            logger.verbose("async_writer already running")
+            self.camq_p2read.put("done")
+            return
         write_frame_rate = ctx.record_frame_rate
         s_node_map = ctx.cam.GetTLStreamNodeMap()
         handling_mode = PySpin.CEnumerationPtr(s_node_map.GetNode("StreamBufferHandlingMode"))
         if not PySpin.IsAvailable(handling_mode) or not PySpin.IsWritable(handling_mode):
             logger.warning("Unable to set Buffer Handling mode (node retrieval). Aborting...\n")
+            self.camq_p2read.put("done-failed")
             return
         handling_mode_entry = handling_mode.GetEntryByName("OldestFirst")
         handling_mode.SetIntValue(handling_mode_entry.GetValue())
-        logger.debug("using base_path=%s", path_base)
-
-        self.height = ctx.aqH
-        self.width = ctx.aqW
-        self.fps = round(write_frame_rate, 2)
-
+        fps = round(write_frame_rate, 2)
         self.video_file = path_base + ".mp4"
         ctx.file_path = f"{path_base}_timestamps.txt"
-
         self.async_writer = AsyncFFmpegGPUWriter(
             video_file=self.video_file,
             timestamp_file=ctx.file_path,
-            fps=self.fps,
-            width=self.width,
-            height=self.height,
+            fps=fps,
+            width=ctx.aqW,
+            height=ctx.aqH,
             max_queue=512,
             qp=23,
         )
         ctx.start_time = 0
         ctx.capture_duration = 0
-        ctx.record = True
         self.camq_p2read.put("done")
 
     def _cmd_Start(self, ctx: CamCtx) -> None:
@@ -283,6 +279,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
         p0 = time.perf_counter()
         img_count_idx = -1
+
+        async_writer = self.async_writer
 
         while self.aq.value > 0:
             try:
@@ -306,7 +304,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             if img_count_idx < 5:
                 logger.debug("img #%s: frame_id=%s ts=%s", img_count_idx, frame_id, timestamp_secs)
 
-            if ctx.record:
+            if async_writer is not None:
                 if ctx.start_time == 0:
                     ctx.start_time = timestamp
                     capture_duration = 0
@@ -318,7 +316,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 # frame_bgr = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR).copy()
 
                 # ok = self.async_writer.write(frame_results, frame_id, capture_duration)
-                self.async_writer.write(frame_bits, frame_id, capture_duration)
+                async_writer.write(frame_bits, frame_id, capture_duration)
                 # if not ok:
                 #     logger.error(f"{self.camID}: async writer queue full; dropped frame {frame_id}")
 
@@ -356,16 +354,21 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
         after_data = self.camq.get(timeout=2)
         logger.debug("after_data: %s", after_data)
-        if ctx.record:
-            self.async_writer.close()
+        if after_data == CameraCommand.STOP:
+            self._cmd_Stop(ctx)
 
-            if self.async_writer.dropped_by_writer:
+    def _cmd_Stop(self, ctx: CamCtx) -> None:
+        cam = ctx.cam
+        async_writer = self.async_writer
+        if async_writer is not None:
+            async_writer.close()
+            self.async_writer = None
+            if async_writer.dropped_by_writer:
                 logger.error(
                     "%s: writer dropped %s frames because the queue filled",
                     self.camID,
-                    self.async_writer.dropped_by_writer,
+                    async_writer.dropped_by_writer,
                 )
-
             (dropped_frame, total_frames, files_len) = identify_dropped_frames(
                 ctx.file_path, self.framerate
             )
@@ -377,11 +380,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 dropped_frame,
                 files_len,
             )
-            # logger.debug(f"{dropped_frame} of camera frames dropped for {self.camID}")
-            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.camID)
-
-            self.camq_p2read.put(percentage_dropped)
-            ctx.record = False
+            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.cam_name)
+            self.camq_p2read.put(percentage_dropped, timeout=3)
 
         cam.EndAcquisition()
         cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
@@ -392,10 +392,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.LineInverter.SetValue(True)
             cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
             cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
-        self.camq_p2read.put("done")
-
-    def _cmd_Stop(self, ctx: CamCtx) -> None:
-        self.camq_p2read.put("done")
+        self.camq_p2read.put("done", timeout=3)
 
     def _cmd_TrigOff(self, ctx: CamCtx) -> None:
         pass  # TODO
@@ -709,12 +706,3 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         else:
             cam.TriggerActivation.SetValue(PySpin.TriggerActivation_AnyEdge)
         cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
-
-    def prepare_writers(self) -> None:
-        video_file = self.video_file
-        self.video_writer = cv2.VideoWriter(
-            video_file,
-            cv2.VideoWriter_fourcc("m", "p", "4", "v"),  # type: ignore  # noqa
-            self.fps,
-            (self.width, self.height),
-        )

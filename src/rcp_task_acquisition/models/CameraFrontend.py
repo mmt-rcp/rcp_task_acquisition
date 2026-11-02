@@ -424,11 +424,14 @@ class CamerasFrontend:
                 return
             logger.verbose("requesting camera stop to %s", cam_d.name)
             cam_d.camq.put(CameraCommand.STOP, timeout=1)
-            update = cam_d.camq_p2read.get(timeout=2)
-            if update != "done" and isinstance(update, str) and update.isdigit():
-                if int(update) > threshold:
-                    error_message.append(f"{update}% of camera frames dropped for {camID}")
-                cam_d.camq_p2read.get(timeout=1)
+            ret = cam_d.camq_p2read.get(timeout=2)
+            if ret != "done":
+                assert isinstance(ret, int)
+                if ret > threshold:
+                    error_message.append(f"{ret}% of camera frames dropped for {cam_d.name}")
+                ret = cam_d.camq_p2read.get(timeout=1)
+                if ret != "done":
+                    logger.warning("unexpected response to cam stop: %s", ret)
 
         cam_errors = {}
         for camID in self.secondary_cams:
