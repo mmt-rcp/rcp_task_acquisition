@@ -470,6 +470,8 @@ class CamerasFrontend:
             except Exception as err:
                 logger.error("%s: could not update settings: %s", cam_d.name, err)
                 errors[cam_d.name] = err
+                self.aqW.append(0)
+                self.aqH.append(0)
                 continue
                 # raise ValueError("Cameras unresponsive")
             message = "crop" if self.crop else "full"
@@ -478,11 +480,14 @@ class CamerasFrontend:
             # self.recSet.append(self.cam_dict[camID].camq_p2read.get())
             try:
                 width, height = cam_d.camq_p2read.get(timeout=1)
-                self.aqW.append(width)
-                self.aqH.append(height)
             except Exception as err:
                 logger.error("could not read W/H: %s", err)
                 errors[cam_d.name] = err
+                self.aqW.append(0)
+                self.aqH.append(0)
+            else:
+                self.aqW.append(width)
+                self.aqH.append(height)
         if errors:
             raise RuntimeError(f"{errors}")
 
