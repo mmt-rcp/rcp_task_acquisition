@@ -141,16 +141,16 @@ class MainFrame(wx.Frame):
         self.image_panel.updateImage()
         self.image_panel.canvas.mpl_connect("button_press_event", self.onClick)
 
-        self.graph_panel = GraphPanel(vSplitter, self.gui_size)
-        self.controls_panel = ControlsPanel(
-            topSplitter, self.graph_panel, psychopy_monitor, screenSizes[psychopy_monitor]
+        graph_panel = self.graph_panel = GraphPanel(vSplitter, self.gui_size)
+        controls_panel = self.controls_panel = ControlsPanel(
+            topSplitter, graph_panel, psychopy_monitor, screenSizes[psychopy_monitor]
         )
 
         vSplitter.SplitHorizontally(
-            self.image_panel, self.graph_panel, sashPosition=int(self.gui_size[1] * 0.6)
+            self.image_panel, graph_panel, sashPosition=int(self.gui_size[1] * 0.6)
         )
         topSplitter.SplitVertically(
-            vSplitter, self.controls_panel, sashPosition=int(self.gui_size[0] * 0.78)
+            vSplitter, controls_panel, sashPosition=int(self.gui_size[0] * 0.78)
         )
 
         topSplitter.SetSashGravity(1)
@@ -161,10 +161,10 @@ class MainFrame(wx.Frame):
 
         # Add Buttons to the WidgetPanel and bind them to their respective functions.
 
-        self.graph_panel.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
-        self.graph_panel.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
+        graph_panel.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
+        graph_panel.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
 
-        self.participant_monitor = self.controls_panel.get_monitor()
+        self.participant_monitor = controls_panel.get_monitor()
         self.cams = CamerasFrontend(
             self.serial_device,
             self.graph_panel,
@@ -173,9 +173,9 @@ class MainFrame(wx.Frame):
             rcp_context=rcp_context,
         )
 
-        self.trial_panel = self.controls_panel.get_task_panel("")  # to have smth to start with
+        self.trial_panel = controls_panel.get_task_panel("")  # to have smth to start with
 
-        cam_panel = self.controls_panel.cam_panel
+        cam_panel = controls_panel.cam_panel
         cam_panel.init.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.initCams())
         cam_panel.update_settings.Bind(wx.EVT_BUTTON, lambda _: self.cams.updateSettings())
         cam_panel.play.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.liveFeed())
@@ -184,37 +184,35 @@ class MainFrame(wx.Frame):
 
         def handle_hardware_test(event: wx.Event):
             self.disable_gui(event)
-            toggled = self.controls_panel.hardware_button.GetValue()
+            toggled = controls_panel.hardware_button.GetValue()
             if isinstance(self.trial_panel, CalibrationPanel):
                 self._show_patient_cams(toggled)
             else:
-                self.controls_panel.show_patient_cams_button.Show(toggled)
-                self.controls_panel.Fit()  # need it otherwise the button appears on top before drawn at correct place
-                self.controls_panel.Update()
+                controls_panel.show_patient_cams_button.Show(toggled)
+                controls_panel.Fit()  # need it otherwise the button appears on top before drawn at correct place
+                controls_panel.Update()
                 if not toggled:
                     self._show_patient_cams(False)
 
-        self.controls_panel.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, handle_hardware_test)
-        self.controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
-        self.controls_panel.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
+        controls_panel.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, handle_hardware_test)
+        controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
+        controls_panel.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
         self.cam_test = Value(ctypes.c_bool, False)
         self.liveTimer = wx.Timer(self, wx.ID_ANY)
-        self.controls_panel.show_patient_cams_button.Bind(
+        controls_panel.show_patient_cams_button.Bind(
             wx.EVT_TOGGLEBUTTON,
-            lambda _: self._show_patient_cams(
-                self.controls_panel.show_patient_cams_button.GetValue()
-            ),
+            lambda _: self._show_patient_cams(controls_panel.show_patient_cams_button.GetValue()),
         )
 
         # labjack setup
-        self.graph_panel.create_plot(PLOT_LENGTH)
-        self.labjack_stream_button = self.graph_panel.labjack_stream_button
-        self.labjack_choices = self.graph_panel.labjack_choices
+        graph_panel.create_plot(PLOT_LENGTH)
+        self.labjack_stream_button = graph_panel.labjack_stream_button
+        self.labjack_choices = graph_panel.labjack_choices
 
         self.labjack_timer = wx.Timer(self, wx.ID_ANY)
         self.lj = LabjackFrontend(
             PLOT_LENGTH,
-            self.graph_panel,
+            graph_panel,
             self.labjack_timer,
             self.button_pressed,
             self.press_count,
@@ -255,7 +253,7 @@ class MainFrame(wx.Frame):
             cam0, cam1 = self.cams.camera_settings[ptr : ptr + 2]
             self.trial_panel.update_cams_viewed([cam0, cam1])
 
-        self.controls_panel.camera_toggle.Bind(wx.EVT_BUTTON, on_update_cameras_viewed)
+        controls_panel.camera_toggle.Bind(wx.EVT_BUTTON, on_update_cameras_viewed)
         # set up stimulus thread
 
         self.video_status = Value(ctypes.c_int, 0)
@@ -291,14 +289,15 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_SIZE, self.on_resize)
 
     def _show_patient_cams(self, show: bool = True) -> None:
+        controls_panel = self.controls_panel
         if show:
             self.msgq.put(StimulusMessage.HIDE_WINDOW)
-            self.controls_panel.task_panel.patient_frame.Show()
+            controls_panel.task_panel.patient_frame.Show()
         else:
             self.msgq.put(StimulusMessage.SHOW_WINDOW)
-            self.controls_panel.task_panel.patient_frame.Hide()
-        with wx.EventBlocker(self.controls_panel.show_patient_cams_button):
-            self.controls_panel.show_patient_cams_button.SetValue(show)
+            controls_panel.task_panel.patient_frame.Hide()
+        with wx.EventBlocker(controls_panel.show_patient_cams_button):
+            controls_panel.show_patient_cams_button.SetValue(show)
 
     def _update_task(self, task):
         self.msgq.put(StimulusMessage.UPDATE_TASK)
@@ -562,26 +561,28 @@ class MainFrame(wx.Frame):
             self.trial_panel.resume_video()
 
     def set_focus(self) -> None:
-        if self.graph_panel.focus_test.GetValue():
-            self.graph_panel.contrast_test.Enable(False)
+        graph_panel = self.graph_panel
+        if graph_panel.focus_test.GetValue():
+            graph_panel.contrast_test.Enable(False)
             self.cam_test.value = True
             self.cams.update_focus()
-            self.graph_panel.setup_test_legend()
+            graph_panel.setup_test_legend()
         else:
-            self.graph_panel.remove_hardware()
-            self.graph_panel.contrast_test.Enable(True)
+            graph_panel.remove_hardware()
+            graph_panel.contrast_test.Enable(True)
             self.cams.update_focus(False)
             self.cam_test.value = False
 
     def set_contrast(self) -> None:
-        if self.graph_panel.contrast_test.GetValue():
-            self.graph_panel.focus_test.Enable(False)
+        graph_panel = self.graph_panel
+        if graph_panel.contrast_test.GetValue():
+            graph_panel.focus_test.Enable(False)
             self.cam_test.value = True
-            self.graph_panel.setup_test_legend()
+            graph_panel.setup_test_legend()
             self.cams.update_contrast()
         else:
-            self.graph_panel.remove_hardware()
-            self.graph_panel.focus_test.Enable(True)
+            graph_panel.remove_hardware()
+            graph_panel.focus_test.Enable(True)
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
@@ -604,14 +605,15 @@ class MainFrame(wx.Frame):
     def _stop_hardware_test(self) -> None:
         self.cam_test.value = False
         self.hardware_test = False
-        self.graph_panel.focus_test.Enable(True)
-        self.graph_panel.focus_test.SetValue(False)
-        self.graph_panel.contrast_test.SetValue(False)
-        self.graph_panel.contrast_test.Enable(True)
+        graph_panel = self.graph_panel
+        graph_panel.focus_test.Enable(True)
+        graph_panel.focus_test.SetValue(False)
+        graph_panel.contrast_test.SetValue(False)
+        graph_panel.contrast_test.Enable(True)
         self.set_focus()
         self.set_contrast()
         self.finish.value = 2
-        self.graph_panel.hardware_panel.Hide()
+        graph_panel.hardware_panel.Hide()
         self.hardware_test = False
 
     def liveFeed(self) -> None:
@@ -673,8 +675,10 @@ class MainFrame(wx.Frame):
     def hardwareFeed(self, event: wx.Event) -> None:
         # clicked_button = event.GetEventObject()
         # button_label = clicked_button.GetLabel()
+        controls_panel = self.controls_panel
+        cam_panel = controls_panel.cam_panel
         self.Enable()
-        if self.controls_panel.hardware_button.GetValue():
+        if controls_panel.hardware_button.GetValue():
             self.hardware_test = True
             self.graph_panel.hardware_panel.Show()
             self.msgq.put(StimulusMessage.HARDWARE_TEST)
@@ -688,14 +692,14 @@ class MainFrame(wx.Frame):
                     self.labjack_stream_button.Enable(False)
                     self.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
-            self.controls_panel.session_button.Enable(False)
+            controls_panel.session_button.Enable(False)
         else:
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
             self.cams.live_stop()
-            self.controls_panel.cam_panel.play.SetLabel("Live")
-            self.controls_panel.hardware_button.SetLabel("Hardware Test")
+            cam_panel.play.SetLabel("Live")
+            controls_panel.hardware_button.SetLabel("Hardware Test")
             if self.hardware_test:
                 self._stop_hardware_test()
                 if not self.task_active:
@@ -705,12 +709,12 @@ class MainFrame(wx.Frame):
                         self.labjack_stream_button.SetValue(False)
                         self.labjack_stream_button.SetLabel("Stream Labjack")
                         self.labjack_stream_button.Enable(True)
-            self.controls_panel.cam_panel.set_crop.Enable(True)
-            self.controls_panel.cam_panel.rec.Enable(True)
-            self.controls_panel.cam_panel.minRec.Enable(True)
-            self.controls_panel.cam_panel.secRec.Enable(True)
-            self.controls_panel.cam_panel.update_settings.Enable(True)
-            self.controls_panel.session_button.Enable(True)
+            cam_panel.set_crop.Enable(True)
+            cam_panel.rec.Enable(True)
+            cam_panel.minRec.Enable(True)
+            cam_panel.secRec.Enable(True)
+            cam_panel.update_settings.Enable(True)
+            controls_panel.session_button.Enable(True)
 
     def create_metadata(self) -> None:
         logger.verbose("create_metadata called")
