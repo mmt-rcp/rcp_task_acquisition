@@ -9,6 +9,7 @@ import ruamel.yaml.comments
 from ruamel.yaml.comments import CommentedMap
 
 import dacite
+from typing_extensions import Any
 
 from rcp_task_acquisition.utils.logging import get_verbose_logger
 from rcp_task_acquisition.utils.typing import CropTupleT
@@ -428,7 +429,7 @@ def save_rcp_user_config(config: RcpUserConfig, file_path: Path) -> None:
         save_rcp_user_config_buffer(config, fh)
 
 
-def save_rcp_tasks_config_buffer(config: RcpTasksGroupConfig, buffer: typing.TextIO) -> None:
+def save_rcp_tasks_config_buffer(config: RcpTasksGroupConfig, buffer: typing.IO[Any]) -> None:
     dct = to_raw_recursive(config)
     yaml.safe_dump(
         dct,

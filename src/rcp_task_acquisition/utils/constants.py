@@ -10,15 +10,18 @@ REPO_BASE_DIR = CODE_DIR.parent.parent  # top repo dir
 
 if platform.system() == "Windows":
     DEFAULT_CONFIG_DIR_PATH = Path("C:/Users/Public/Documents/rcp_config")
-    DEFAULT_RAW_DATA_DIR = Path(r"D:\RawDataLocal")
+    DEFAULT_RAW_DATA_DIR = Path("D:/RawDataLocal")
 else:
-    DEFAULT_CONFIG_DIR_PATH = Path.home().joinpath(".config/rcp_task_acquisition")
-    DEFAULT_RAW_DATA_DIR = Path.home().joinpath("RawDataLocal")
+    DEFAULT_CONFIG_DIR_PATH = Path.home() / ".config/rcp_task_acquisition"
+    DEFAULT_RAW_DATA_DIR = Path.home() / "RawDataLocal"
 
 
-CODE_CONFIG_DIR_PATH = Path(REPO_BASE_DIR, "config_files")
-DEFAULT_USER_CONFIG_PATH = Path(DEFAULT_CONFIG_DIR_PATH, "userdata.yaml")
-DEFAULT_TASKS_CONFIG_PATH = Path(DEFAULT_CONFIG_DIR_PATH, "taskconfig.yaml")
+DEFAULT_USER_CONFIG_FILE_NAME = Path("userdata.yaml")
+DEFAULT_TASKS_CONFIG_FILE_NAME = Path("taskconfig.yaml")
+
+CODE_CONFIG_DIR_PATH = REPO_BASE_DIR / "config_files"
+DEFAULT_USER_CONFIG_PATH = DEFAULT_CONFIG_DIR_PATH / DEFAULT_USER_CONFIG_FILE_NAME
+DEFAULT_TASKS_CONFIG_PATH = DEFAULT_CONFIG_DIR_PATH / DEFAULT_TASKS_CONFIG_FILE_NAME
 
 
 STIM_CONFIG_FILE_NAME = "visualStimulusConfig.yaml"
