@@ -176,20 +176,6 @@ class ControlsPanel(wx.Panel):
 
         return self.task_sizer
 
-    def get_cam_handles(self):
-        return (
-            self.cam_panel.init,
-            self.cam_panel.reset,
-            self.cam_panel.update_settings,
-            self.cam_panel.play,
-            self.cam_panel.rec,
-            self.cam_panel.exposure_button,
-            self.cam_panel.set_crop,
-            self.cam_panel.crop,
-            self.cam_panel.minRec,
-            self.cam_panel.secRec,
-        )
-
     def update_task(self, task: str) -> None:
         logger.verbose("update_task: %s", task)
         task_title = task.replace("_", " ").title()

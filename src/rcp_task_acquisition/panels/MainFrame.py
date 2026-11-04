@@ -160,18 +160,6 @@ class MainFrame(wx.Frame):
         self.SetSizer(sizer)
 
         # Add Buttons to the WidgetPanel and bind them to their respective functions.
-        (
-            self.init,
-            self.reset,
-            self.update_settings,
-            self.play,
-            self.rec,
-            self.exposure_button,
-            self.set_crop,
-            self.crop,
-            self.minRec,
-            self.secRec,
-        ) = self.controls_panel.get_cam_handles()
 
         self.contrast_test, self.focus_test, self.hardware_test_panel = (
             self.graph_panel.get_hardware_handles()
@@ -193,9 +181,12 @@ class MainFrame(wx.Frame):
 
         self.trial_panel = self.controls_panel.get_task_panel("")  # to have smth to start with
 
-        self.init.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.initCams())
-        self.update_settings.Bind(wx.EVT_BUTTON, lambda _: self.cams.updateSettings())
-        self.play.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.liveFeed())
+        cam_panel = self.controls_panel.cam_panel
+        cam_panel.init.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.initCams())
+        cam_panel.update_settings.Bind(wx.EVT_BUTTON, lambda _: self.cams.updateSettings())
+        cam_panel.play.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.liveFeed())
+        cam_panel.rec.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
+        cam_panel.exposure_button.Bind(wx.EVT_BUTTON, lambda _: self.cams.get_exposure())
 
         def handle_hardware_test(event: wx.Event):
             self.disable_gui(event)
@@ -210,9 +201,6 @@ class MainFrame(wx.Frame):
                     self._show_patient_cams(False)
 
         self.controls_panel.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, handle_hardware_test)
-
-        self.rec.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
-        self.exposure_button.Bind(wx.EVT_BUTTON, lambda _: self.cams.get_exposure())
         self.controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
         self.controls_panel.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
         self.cam_test = Value(ctypes.c_bool, False)
@@ -603,17 +591,21 @@ class MainFrame(wx.Frame):
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
+    def _set_cam_panel_enable(self, enabled: bool) -> None:
+        cam_panel = self.controls_panel.cam_panel
+        cam_panel.set_crop.Enable(enabled)
+        cam_panel.rec.Enable(enabled)
+        cam_panel.minRec.Enable(enabled)
+        cam_panel.secRec.Enable(enabled)
+        cam_panel.update_settings.Enable(enabled)
+
     def _set_to_live(self) -> None:
         if not self.liveTimer.IsRunning():
             self.cams.live_start()
             self.liveTimer.Start(150)
-            self.play.SetLabel("Stop")
+            self.controls_panel.cam_panel.play.SetLabel("Stop")
             self.controls_panel.hardware_button.SetLabel("End Test")
-        self.set_crop.Enable(False)
-        self.rec.Enable(False)
-        self.minRec.Enable(False)
-        self.secRec.Enable(False)
-        self.update_settings.Enable(False)
+        self._set_cam_panel_enable(False)
 
     def _stop_hardware_test(self) -> None:
         self.cam_test.value = False
@@ -629,18 +621,19 @@ class MainFrame(wx.Frame):
         self.hardware_test = False
 
     def liveFeed(self) -> None:
-        button_label = self.play.GetLabel()
+        cam_panel = self.controls_panel.cam_panel
+        button_label = cam_panel.play.GetLabel()
         if button_label == "Abort":
-            self.rec.SetValue(False)
+            cam_panel.rec.SetValue(False)
             self.recordCam()
             if wx.MessageBox(
                 "Are you sure?", caption="Abort", style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
             ):
                 shutil.rmtree(self.sess_dir)
                 time.sleep(5)
-            self.play.SetValue(False)
+            cam_panel.play.SetValue(False)
             self.shared.value = -1
-        elif self.play.GetValue() == True or button_label == "Hardware Test":
+        elif cam_panel.play.GetValue() == True or button_label == "Hardware Test":
             if button_label == "Hardware Test":
                 self.Enable()
                 self.hardware_test = True
@@ -663,7 +656,7 @@ class MainFrame(wx.Frame):
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
             self.cams.live_stop()
-            self.play.SetLabel("Live")
+            cam_panel.play.SetLabel("Live")
             self.controls_panel.hardware_button.SetLabel("Hardware Test")
             if self.hardware_test:
                 self._stop_hardware_test()
@@ -674,7 +667,13 @@ class MainFrame(wx.Frame):
                         self.labjack_stream_button.SetValue(False)
                         self.labjack_stream_button.SetLabel("Stream Labjack")
                     self.labjack_stream_button.Enable(True)
-            buttons = [self.set_crop, self.rec, self.minRec, self.secRec, self.update_settings]
+            buttons = [
+                cam_panel.set_crop,
+                cam_panel.rec,
+                cam_panel.minRec,
+                cam_panel.secRec,
+                cam_panel.update_settings,
+            ]
             self.enable_group(buttons, False)
 
     def hardwareFeed(self, event: wx.Event) -> None:
@@ -701,7 +700,7 @@ class MainFrame(wx.Frame):
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
             self.cams.live_stop()
-            self.play.SetLabel("Live")
+            self.controls_panel.cam_panel.play.SetLabel("Live")
             self.controls_panel.hardware_button.SetLabel("Hardware Test")
             if self.hardware_test:
                 self._stop_hardware_test()
@@ -712,11 +711,11 @@ class MainFrame(wx.Frame):
                         self.labjack_stream_button.SetValue(False)
                         self.labjack_stream_button.SetLabel("Stream Labjack")
                         self.labjack_stream_button.Enable(True)
-            self.set_crop.Enable(True)
-            self.rec.Enable(True)
-            self.minRec.Enable(True)
-            self.secRec.Enable(True)
-            self.update_settings.Enable(True)
+            self.controls_panel.cam_panel.set_crop.Enable(True)
+            self.controls_panel.cam_panel.rec.Enable(True)
+            self.controls_panel.cam_panel.minRec.Enable(True)
+            self.controls_panel.cam_panel.secRec.Enable(True)
+            self.controls_panel.cam_panel.update_settings.Enable(True)
             self.controls_panel.session_button.Enable(True)
 
     def create_metadata(self) -> None:
@@ -865,48 +864,45 @@ class MainFrame(wx.Frame):
     def initCams(self) -> bool:  # NB: but return value unused/unchecked in all callers
         logger.verbose("initCams()")
         # self.trial_panel.Show()
-        if self.init.GetValue():
+        cam_panel = self.controls_panel.cam_panel
+        if cam_panel.init.GetValue():
             success = self.cams.initialize()
             if not success:
                 logger.error("cams initialize failed")
                 return False
             self.trial_panel.prepare_cams(self.cams.camera_settings[:2])
-            self.init.SetLabel("Release")
-            self.exposure_button.Enable(True)
-            self.play.Enable(True)
-            self.rec.Enable(True)
-            self.minRec.Enable(True)
-            self.secRec.Enable(True)
-            self.update_settings.Enable(True)
-            self.crop.Enable(False)
-            self.reset.Enable(False)
+            self.controls_panel.cam_panel.init.SetLabel("Release")
+            self.controls_panel.cam_panel.exposure_button.Enable(True)
+            self.controls_panel.cam_panel.play.Enable(True)
+            self.controls_panel.cam_panel.rec.Enable(True)
+            self.controls_panel.cam_panel.minRec.Enable(True)
+            self.controls_panel.cam_panel.secRec.Enable(True)
+            self.controls_panel.cam_panel.update_settings.Enable(True)
+            self.controls_panel.cam_panel.crop.Enable(False)
+            self.controls_panel.cam_panel.reset.Enable(False)
             self.Enable(True)
 
             self.controls_panel.session_button.Enable(True)
             self.image_panel.draw()
         else:
-            self.init.SetLabel("Enable")
+            self.controls_panel.cam_panel.init.SetLabel("Enable")
             self.cams.deinitialize()
             # if self.serSuccess:
             #     self.ser.close()
-            if self.rec.GetValue():
-                self.rec.SetValue(False)
+            if self.controls_panel.cam_panel.rec.GetValue():
+                self.controls_panel.cam_panel.rec.SetValue(False)
                 self.recordCam()
-            if self.play.GetValue():
-                self.play.SetValue(False)
+            if self.controls_panel.cam_panel.play.GetValue():
+                self.controls_panel.cam_panel.play.SetValue(False)
                 self.liveFeed()
-            if self.set_crop.GetValue():
-                self.set_crop.SetValue(False)
+            if self.controls_panel.cam_panel.set_crop.GetValue():
+                self.controls_panel.cam_panel.set_crop.SetValue(False)
 
             self.image_panel.draw()
-            self.set_crop.Enable(False)
-            self.play.Enable(False)
-            self.rec.Enable(False)
-            self.minRec.Enable(False)
-            self.secRec.Enable(False)
-            self.crop.Enable(True)
-            self.reset.Enable(True)
-            self.update_settings.Enable(False)
+            self._set_cam_panel_enable(False)
+            self.controls_panel.cam_panel.crop.Enable(True)
+            self.controls_panel.cam_panel.reset.Enable(True)
+            self.controls_panel.cam_panel.update_settings.Enable(False)
             # self.cams.deinitThreads()
         return True
 
@@ -948,11 +944,11 @@ class MainFrame(wx.Frame):
         self.video_status.value = VideoStatus.STOP
         if self.recording:
             self.cams.stop_recording()
-        if self.play.GetValue():
-            self.play.SetValue(False)
+        if self.controls_panel.cam_panel.play.GetValue():
+            self.controls_panel.cam_panel.play.SetValue(False)
             self.liveFeed()
-        if self.rec.GetValue():
-            self.rec.SetValue(False)
+        if self.controls_panel.cam_panel.rec.GetValue():
+            self.controls_panel.cam_panel.rec.SetValue(False)
             self.recordCam()
         # If running a task
         if self.controls_panel.hardware_button.GetValue():
@@ -961,18 +957,18 @@ class MainFrame(wx.Frame):
         if self.controls_panel.session_button.GetValue():
             self.controls_panel.session_button.SetValue(False)
             self.run_task()
-        if self.init.GetValue():
-            self.init.SetValue(False)
+        if self.controls_panel.cam_panel.init.GetValue():
+            self.controls_panel.cam_panel.init.SetValue(False)
             self.initCams()
         self.trial_panel.Hide()
         return super().Hide()
 
     def update_crop(self, event):
-        value = bool(self.crop.GetValue())
+        value = bool(self.controls_panel.cam_panel.crop.GetValue())
         self.cams.update_crop(value)
 
     def recordCam(self) -> None:
-        is_rec = self.rec.GetValue()
+        is_rec = self.controls_panel.cam_panel.rec.GetValue()
         is_task = self.controls_panel.session_button.GetValue()
         logger.verbose("recordCam(): rec=%s task_button=%s", is_rec, is_task)
         if is_rec or is_task:
@@ -988,27 +984,27 @@ class MainFrame(wx.Frame):
             #     self.create_file()
 
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
-            self.set_crop.Enable(False)
-            self.minRec.Enable(False)
-            self.secRec.Enable(False)
-            self.exposure_button.Enable(False)
-            self.update_settings.Enable(False)
-            self.rec.SetLabel("Stop")
-            self.play.SetLabel("Abort")
+            self.controls_panel.cam_panel.set_crop.Enable(False)
+            self.controls_panel.cam_panel.minRec.Enable(False)
+            self.controls_panel.cam_panel.secRec.Enable(False)
+            self.controls_panel.cam_panel.exposure_button.Enable(False)
+            self.controls_panel.cam_panel.update_settings.Enable(False)
+            self.controls_panel.cam_panel.rec.SetLabel("Stop")
+            self.controls_panel.cam_panel.play.SetLabel("Abort")
             self.liveTimer.Start(150)
         else:
             if not self.recording:
                 return
             self.recording = False
             self.cams.stop_recording()
-            self.rec.SetLabel("Record")
-            self.play.SetLabel("Live")
+            self.controls_panel.cam_panel.rec.SetLabel("Record")
+            self.controls_panel.cam_panel.play.SetLabel("Live")
             self.liveTimer.Stop()
-            self.set_crop.Enable(True)
-            self.minRec.Enable(True)
-            self.exposure_button.Enable(True)
-            self.secRec.Enable(True)
-            self.update_settings.Enable(True)
+            self.controls_panel.cam_panel.set_crop.Enable(True)
+            self.controls_panel.cam_panel.minRec.Enable(True)
+            self.controls_panel.cam_panel.exposure_button.Enable(True)
+            self.controls_panel.cam_panel.secRec.Enable(True)
+            self.controls_panel.cam_panel.update_settings.Enable(True)
             if self.calibrate:
                 self.controls_panel.session_button.SetLabel("Record Cameras")
                 self.trial_panel.rest_timer.Stop()
@@ -1021,7 +1017,7 @@ class MainFrame(wx.Frame):
                 # remove any files that arent the calibraated files
 
     def onClick(self, event: wx.Event) -> None:
-        if self.set_crop.GetValue():
+        if self.controls_panel.cam_panel.set_crop.GetValue():
             cameras = self._rcp_context.user_config.cameras
             self.cam_crop.adjust_crop(
                 event, self.image_panel.axes, [cam_item.value for cam_item in cameras], cameras
@@ -1036,14 +1032,14 @@ class MainFrame(wx.Frame):
             pass
             # Write the new parameters to the user config file
             # TODO: dead: refering to attributes never assigned
-            # if self.set_crop.GetValue():
+            # if self.controls_panel.cam_panel.set_crop.GetValue():
             #     self.cam_crop.create_crop(self.cam_config, self.camStrList, self.cam_config)
             # file_utils.write_config(self.user_cfg)
-            # self.set_crop.SetValue(False)
+            # self.controls_panel.cam_panel.set_crop.SetValue(False)
             # self.widget_panel.Enable(True)
-            # self.play.SetFocus()
+            # self.controls_panel.cam_panel.play.SetFocus()
         # Modify existing ROI parameters
-        elif self.set_crop.GetValue() == True and keyCode in (
+        elif self.controls_panel.cam_panel.set_crop.GetValue() == True and keyCode in (
             wx.WXK_UP,
             wx.WXK_DOWN,
             wx.WXK_LEFT,
@@ -1107,41 +1103,42 @@ class MainFrame(wx.Frame):
         )
         # logger.debug(hardware_lists)
         self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.frames)
-        self.init.SetValue(True)
-        self.controls_panel.update_task(task)
-        self.trial_panel: TrialPanel = self.controls_panel.get_trial_panel()
-        self.trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
-        self.trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
+        controls_panel = self.controls_panel
+        controls_panel.cam_panel.init.SetValue(True)
+        controls_panel.update_task(task)
+        trial_panel = self.trial_panel = controls_panel.get_trial_panel()
+        trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
+        trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         self.initCams()
         self.lj.update_hardware(hardware_lists)
         self.press_count.value = 0
-        self.video_start, self.video_pause = self.trial_panel.get_video_buttons()
-        if isinstance(self.trial_panel, CalibrationPanel):
+        self.video_start, self.video_pause = trial_panel.get_video_buttons()
+        if isinstance(trial_panel, CalibrationPanel):
             self.calibrate = True
-            self.controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
-            self.controls_panel.session_button.SetLabel("Record Cameras")
+            controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
+            controls_panel.session_button.SetLabel("Record Cameras")
         else:
             self.calibrate = False
-            self.controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
-            self.controls_panel.session_button.SetLabel("Start Task")
+            controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
+            controls_panel.session_button.SetLabel("Start Task")
         if self.task == "all_hardware":
-            self.controls_panel.session_button.Enable(False)
+            controls_panel.session_button.Enable(False)
         else:
-            self.controls_panel.session_button.Enable(True)
+            controls_panel.session_button.Enable(True)
         if self.video_start is not None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
             self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
-            if isinstance(self.trial_panel, (DdkPanel, VowelSpacePanel)):
-                self.trial_panel.syllable_start_video_button.Bind(
+            if isinstance(trial_panel, (DdkPanel, VowelSpacePanel)):
+                trial_panel.syllable_start_video_button.Bind(
                     wx.EVT_TOGGLEBUTTON, self.play_instructions
                 )
-                self.trial_panel.syllable_pause_video_button.Bind(
+                trial_panel.syllable_pause_video_button.Bind(
                     wx.EVT_TOGGLEBUTTON, self.pause_instructions
                 )
-            if isinstance(self.trial_panel, VowelSpacePanel):
-                self.trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
+            if isinstance(trial_panel, VowelSpacePanel):
+                trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
         self.participant_monitor.update_screen()
-        self.trial_panel.add_timer(self.stimulus_timer)
+        trial_panel.add_timer(self.stimulus_timer)
         self.msgq.put(StimulusMessage.INITIALIZE)
         self.Show()  # NB: we are in the method `def show(...)` : lower-case s
 
