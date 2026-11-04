@@ -169,8 +169,6 @@ class MainFrame(wx.Frame):
             self.serial_device,
             self.graph_panel,
             self.image_panel,
-            self.graph_panel.contrast_test,
-            self.graph_panel.focus_test,
             self.participant_monitor,
             rcp_context=rcp_context,
         )

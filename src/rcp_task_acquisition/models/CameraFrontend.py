@@ -34,8 +34,6 @@ class CamerasFrontend:
         serial: SerialDevice,
         panel: GraphPanel,
         image_panel: ImagePanel,
-        contrast_test: wx.ToggleButton,
-        focus_test: wx.ToggleButton,
         monitor: MonitorPanel,
         *,
         rcp_context: RcpRunContext,
@@ -50,8 +48,6 @@ class CamerasFrontend:
         self.cam_crop = Crop()
         self.ctrl_panel = panel
         self.image_panel = image_panel
-        self.contrast_test = contrast_test
-        self.focus_test = focus_test
         self.warning = WarningHandler()
         self.trial = 0
         self.session = 0
@@ -280,9 +276,9 @@ class CamerasFrontend:
         # self.participant_monitor.update_screen()
         # already done in separate timer
         if self.hardware_test:
-            if self.focus_test.GetValue():
+            if self.ctrl_panel.focus_test.GetValue():
                 self.update_focus()
-            elif self.contrast_test.GetValue():
+            elif self.ctrl_panel.contrast_test.GetValue():
                 self.update_contrast()
         # self.image_panel.figure.canvas.draw()
 
