@@ -407,8 +407,7 @@ class HardwarePanel(wx.Panel):
 
         return camera_sizer
 
-    def hardware_radio_pressed(self, event: wx.Event) -> None:
-        # update to show active hardware
+    def _set_hardware_true(self) -> None:
         self.select_protocol = False
         for hardware in self.hardware_list:
             if hardware.in_use_all:
@@ -418,7 +417,11 @@ class HardwarePanel(wx.Panel):
             if camera.in_use_all:
                 camera.in_use.SetValue(True)
             camera.in_use.Enable(True)
-        self.update_options(event)
+
+    def hardware_radio_pressed(self, event: wx.Event) -> None:
+        # update to show active hardware
+        self._set_hardware_true()
+        self._update_options()
 
     def task_radio_pressed(self, event: wx.Event) -> None:
         # update to show available hardware for task
@@ -453,6 +456,9 @@ class HardwarePanel(wx.Panel):
         self._update_lists(self.camera_list, is_labjack=False)
 
     def update_options(self, event: wx.Event) -> None:
+        self._update_options()
+
+    def _update_options(self) -> None:
         for hardware in self.hardware_list:
             if self.hardware_radio.GetValue():
                 if hardware.in_use.GetValue():
@@ -722,16 +728,8 @@ class HardwarePanel(wx.Panel):
     def reset_hardware(self) -> None:
         if not self.hardware_radio.GetValue():
             self.hardware_radio.SetValue(True)
-            self.select_protocol = False
-            for hardware in self.hardware_list:
-                if hardware.in_use_all:
-                    hardware.in_use.SetValue(True)
-                hardware.in_use.Enable(True)
-            for camera in self.camera_list:
-                if camera.in_use_all:
-                    camera.in_use.SetValue(True)
-                camera.in_use.Enable(True)
-            self.update_options(None)
+            self._set_hardware_true()
+            self._update_options()
 
     def get_task(self) -> str:
         return self.task
