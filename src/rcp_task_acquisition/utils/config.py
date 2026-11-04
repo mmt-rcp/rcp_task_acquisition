@@ -279,7 +279,8 @@ def load_rcp_user_config_buffer(buffer, *, strict_only=True) -> tuple[RcpUserCon
         else:
             try:
                 cfg = _load(strict=False)
-            except Exception:  # noqa
+            except Exception as err2:  # noqa
+                logger.error("failed load config without strict: %s", err2)
                 cfg = None
         if cfg is None:
             raise err
@@ -339,7 +340,12 @@ def load_rcp_tasks_config_buffer(buffer: typing.TextIO) -> tuple[RcpTasksGroupCo
     return cfg.tasks, commented_config
 
 
-def load_rcp_config(config_dir: Path):
+def load_rcp_config(
+    config_dir: Path,
+) -> tuple[
+    tuple[RcpUserConfig, CommentedMap],
+    tuple[RcpTasksGroupConfig, CommentedMap],
+]:
     logger.notice("loading configs from directory %s", config_dir)
     user_data = load_rcp_user_config(config_dir.joinpath("userdata.yaml"))
     tasks_data = load_rcp_tasks_config(config_dir.joinpath("taskconfig.yaml"))
