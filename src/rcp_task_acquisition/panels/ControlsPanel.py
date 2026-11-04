@@ -163,37 +163,18 @@ class ControlsPanel(wx.Panel):
 
         vertical_position += 1
 
-        self.quit = wx.Button(
+        self.quit_button = wx.Button(
             self, id=wx.ID_ANY, label="Exit to Launch Menu", size=(int(button_width * 4 + 15), -1)
         )
         self.task_sizer.Add(
-            self.quit, pos=(vertical_position, 0), span=(0, 4), flag=wx.LEFT, border=white_space
+            self.quit_button,
+            pos=(vertical_position, 0),
+            span=(0, 4),
+            flag=wx.LEFT,
+            border=white_space,
         )
 
         return self.task_sizer
-
-    def get_cam_handles(self):
-        return (
-            self.cam_panel.init,
-            self.cam_panel.reset,
-            self.cam_panel.update_settings,
-            self.cam_panel.play,
-            self.cam_panel.rec,
-            self.cam_panel.exposure_button,
-            self.cam_panel.set_crop,
-            self.cam_panel.crop,
-            self.cam_panel.minRec,
-            self.cam_panel.secRec,
-        )
-
-    def get_task_handles(self):
-        return (
-            self.camera_toggle,
-            self.hardware_button,
-            self.session_button,
-            self.quit,
-            self.tens_button,
-        )
 
     def update_task(self, task: str) -> None:
         logger.verbose("update_task: %s", task)

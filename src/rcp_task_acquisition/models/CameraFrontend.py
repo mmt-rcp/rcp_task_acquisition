@@ -34,8 +34,6 @@ class CamerasFrontend:
         serial: SerialDevice,
         panel: GraphPanel,
         image_panel: ImagePanel,
-        contrast_test: wx.ToggleButton,
-        focus_test: wx.ToggleButton,
         monitor: MonitorPanel,
         *,
         rcp_context: RcpRunContext,
@@ -50,8 +48,6 @@ class CamerasFrontend:
         self.cam_crop = Crop()
         self.ctrl_panel = panel
         self.image_panel = image_panel
-        self.contrast_test = contrast_test
-        self.focus_test = focus_test
         self.warning = WarningHandler()
         self.trial = 0
         self.session = 0
@@ -280,9 +276,9 @@ class CamerasFrontend:
         # self.participant_monitor.update_screen()
         # already done in separate timer
         if self.hardware_test:
-            if self.focus_test.GetValue():
+            if self.ctrl_panel.focus_test.GetValue():
                 self.update_focus()
-            elif self.contrast_test.GetValue():
+            elif self.ctrl_panel.contrast_test.GetValue():
                 self.update_contrast()
         # self.image_panel.figure.canvas.draw()
 
@@ -356,7 +352,7 @@ class CamerasFrontend:
             )
             self.multi_cameras[cam_d.serial] = multi_cam
             multi_cam.start()
-        time.sleep(1)
+        # time.sleep(1)
         logger.notice("Starting initialisation of cameras")
         for cam in self._cam_by_idx:
             initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
@@ -422,12 +418,16 @@ class CamerasFrontend:
             cam_d = self.cam_dict.get(cam_id)
             if cam_d is None:
                 return
+            logger.verbose("requesting camera stop to %s", cam_d.name)
             cam_d.camq.put(CameraCommand.STOP, timeout=1)
-            update = cam_d.camq_p2read.get(timeout=2)
-            if update != "done" and isinstance(update, str) and update.isdigit():
-                if int(update) > threshold:
-                    error_message.append(f"{update}% of camera frames dropped for {camID}")
-                cam_d.camq_p2read.get(timeout=1)
+            ret = cam_d.camq_p2read.get(timeout=2)
+            if ret != "done":
+                assert isinstance(ret, int)
+                if ret > threshold:
+                    error_message.append(f"{ret}% of camera frames dropped for {cam_d.name}")
+                ret = cam_d.camq_p2read.get(timeout=1)
+                if ret != "done":
+                    logger.warning("unexpected response to cam stop: %s", ret)
 
         cam_errors = {}
         for camID in self.secondary_cams:
@@ -442,7 +442,6 @@ class CamerasFrontend:
             except Exception as err:
                 cam_errors[camID] = err
 
-        logger.warning(error_message)
         error = ""
         if error_message:
             if error == "":
@@ -467,6 +466,8 @@ class CamerasFrontend:
             except Exception as err:
                 logger.error("%s: could not update settings: %s", cam_d.name, err)
                 errors[cam_d.name] = err
+                self.aqW.append(0)
+                self.aqH.append(0)
                 continue
                 # raise ValueError("Cameras unresponsive")
             message = "crop" if self.crop else "full"
@@ -474,11 +475,15 @@ class CamerasFrontend:
 
             # self.recSet.append(self.cam_dict[camID].camq_p2read.get())
             try:
-                self.aqW.append(cam_d.camq_p2read.get(timeout=1))
-                self.aqH.append(cam_d.camq_p2read.get(timeout=1))
+                width, height = cam_d.camq_p2read.get(timeout=1)
             except Exception as err:
                 logger.error("could not read W/H: %s", err)
                 errors[cam_d.name] = err
+                self.aqW.append(0)
+                self.aqH.append(0)
+            else:
+                self.aqW.append(width)
+                self.aqH.append(height)
         if errors:
             raise RuntimeError(f"{errors}")
 

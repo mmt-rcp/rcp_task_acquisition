@@ -65,7 +65,7 @@ class LabjackFrontend:
         self.scan_rate = Value(ctypes.c_float, 0)
         self.hardware_test = hardware_test
         self.graph_panel = ctrl_panel
-        self.labjack_choices = self.graph_panel.get_graph_choices()
+        self.labjack_choices = self.graph_panel.labjack_choices
         self.labjack_timer = timer
         self.press_count = press_count
         logger.debug("button %s", self.button_list)
@@ -74,11 +74,11 @@ class LabjackFrontend:
             choice.Bind(wx.EVT_CHOICE, self._update_graph_list)
         self.handshake = Value(ctypes.c_int, False)
         self.serial_state = 0
-        self.labjack_process: LabJackDataStream
+        self.labjack_process: LabJackDataStream | None = None
         self.msg = ""
 
     def labjack_stream(self, even: wx.Event) -> None:
-        labjack_button = self.graph_panel.get_graph_button()
+        labjack_button = self.graph_panel.labjack_stream_button
         if labjack_button.GetValue():
             labjack_button.SetLabel("Stop Labjack")
             self.stop_labjack()
@@ -137,14 +137,17 @@ class LabjackFrontend:
         self._update_graph_list("")
 
     def start_labjack(self) -> bool:
-        if not self.labjack_is_finished.value:
-            logger.info("labjack is currently runninng")
+        proc = self.labjack_process
+        if proc is not None and proc.is_alive() and not self.labjack_is_finished.value:
+            logger.info("labjack is currently running")
             return True
-        logger.debug(self.hardware)
-        logger.debug(self.hardware_indices)
+        if proc is not None:
+            self._close_labjack()
+        logger.debug("hardware: %s", self.hardware)
+        logger.debug("hard indices: %s", self.hardware_indices)
         self.scan_rate.value = 0
         self.labjack_is_finished.value = False
-        self.labjack_process = LabJackDataStream(
+        proc = self.labjack_process = LabJackDataStream(
             self.array_length,
             self.labjack_is_finished,
             self.labjack_arr,
@@ -162,22 +165,16 @@ class LabjackFrontend:
             self.scan_rate,
             self.handshake,
         )
-
-        if self.labjack_process.is_successful():
-            self.labjack_process.start()
-            self.labjack_timer.Start(200)
-            return True
-        else:
+        if not proc.is_successful():
             # Warning("labjack").display()
-            labjack_button = self.graph_panel.get_graph_button()
+            labjack_button = self.graph_panel.labjack_stream_button
             labjack_button.SetValue(False)
             return False
+        proc.start()
+        self.labjack_timer.Start(200)
+        return True
 
     def stop_labjack(self) -> float:
-
-        self.labjack_is_finished.value = True
-        self.labjack_is_csv.value = False
-        self.stream_started.value = False
         self.labjack_timer.Stop()
         for index, lj_input in enumerate(self.hardware_indices):
             self.graph_panel.update_yaxis([np.nan] * self.array_length, index, lj_input.value)
@@ -186,26 +183,30 @@ class LabjackFrontend:
                 [np.nan] * self.array_length, index, self.constant_index[index]
             )
         new_arr = np.empty(80000 * (len(self.hardware_indices) + 3))
-
         new_arr.fill(np.nan)
-
         labjack_arr = self.labjack_arr.get_obj()
         np.frombuffer(labjack_arr, dtype=ctypes.c_double).reshape(  # type: ignore
             # eventual todo: cannot get type hint right yet with shared array and np.frombuffer(...)
             len(new_arr.flatten())
         )[:] = new_arr.flatten()
         self.graph_panel.draw()
-        try:
-            labjack_proc = self.labjack_process
-            labjack_proc.join(3)
-            if labjack_proc.is_alive():
-                logger.warning("labjack process still alive, terminating")
-                labjack_proc.terminate()
-                labjack_proc.join(2)
-        except Exception as err:
-            logger.info("No open Labjack process: %s", err)
-        logger.info("labjack_stopped")
+        self._close_labjack()
+        logger.info("labjack stopped")
         return self.scan_rate.value
+
+    def _close_labjack(self):
+        self.labjack_is_finished.value = True
+        self.labjack_is_csv.value = False
+        self.stream_started.value = False
+        proc = self.labjack_process
+        if proc is None:
+            return
+        proc.join(1)
+        if proc.is_alive():
+            logger.warning("labjack process still alive, terminating")
+            proc.terminate()
+            proc.join(1)
+        self.labjack_process = None
 
     def labjack_event(self, event: wx.Event) -> None:
         if not self.labjack_is_finished.value and self.stream_started.value:

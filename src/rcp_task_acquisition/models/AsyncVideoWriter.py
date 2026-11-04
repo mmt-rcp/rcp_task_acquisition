@@ -1,4 +1,5 @@
 import os
+import queue
 import subprocess
 import threading
 from pathlib import Path
@@ -12,103 +13,6 @@ import numpy as np
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-class AsyncVideoWriter:
-    # unused.
-
-    STOP = object()
-
-    def __init__(
-        self, video_file, timestamp_file, fps, width, height, max_queue=512, fourcc="mp4v"
-    ) -> None:  # type: ignore
-        self.video_file = video_file
-        self.timestamp_file = timestamp_file
-        self.fps = fps
-        self.width = width
-        self.height = height
-        self.max_queue = max_queue
-        self.fourcc = fourcc
-        self.q: Queue[Any] = Queue(maxsize=max_queue)
-        self.ready = Event()
-        self.error: BaseException | None = None
-        self.stop_event = Event()
-        self.dropped_by_writer = 0
-
-        self.thread = Thread(target=self._worker, daemon=False)
-        self.thread.start()
-        self.ready.wait()
-
-        if self.error is not None:
-            raise self.error
-
-    def write(self, frame_bgr, frame_id, timestamp_delta):
-        """
-        Non-blocking enqueue. If the queue fills, record that the writer
-        could not keep up rather than blocking acquisition.
-        """
-        try:
-            self.q.put_nowait((frame_bgr, frame_id, timestamp_delta))
-            return True
-        except Full:
-            self.dropped_by_writer += 1
-            return False
-
-    def _worker(self):
-        writer = None
-        f = None
-
-        try:
-            writer = cv2.VideoWriter(
-                self.video_file,
-                cv2.VideoWriter_fourcc(*self.fourcc),  # type: ignore
-                self.fps,
-                (self.width, self.height),
-            )
-
-            if not writer.isOpened():
-                raise RuntimeError(f"Could not open video writer: {self.video_file}")
-
-            f = open(self.timestamp_file, "w")
-            f.write("frame_id,timestamp\n")
-            self.ready.set()
-
-            while not self.stop_event.is_set() or not self.q.empty():
-                try:
-                    frame_bgr, frame_id, timestamp_delta = self.q.get(timeout=0.1)
-                except Empty:
-                    continue
-
-                try:
-                    writer.write(frame_bgr)
-                    f.write(f"{frame_id},{round(timestamp_delta)}\n")
-                finally:
-                    self.q.task_done()
-        except Exception as err:
-            self.ready.set()
-            self.error = err
-            logger.exception("Async video writer failed: %s", err)
-
-        finally:
-            if f is not None:
-                f.flush()
-                os.fsync(f.fileno())
-                f.close()
-            if writer is not None:
-                writer.release()
-
-    def close(self):
-
-        self.stop_event.set()
-        # self.q.put(self.STOP)
-        self.q.join()
-        self.thread.join()
-
-        if self.error is not None:
-            raise self.error
-        # self.thread.join()
-        # self.f.close()
-        # self.writer.release()# -*- coding: utf-8 -*-
 
 
 class AsyncFFmpegGPUWriter:
@@ -211,26 +115,25 @@ class AsyncFFmpegGPUWriter:
             self.ready.set()
 
             while True:
-                item = self.q.get()
                 try:
-                    if item is self.STOP:
-                        return
-
+                    item = self.q.get(timeout=1)
+                except queue.Empty:
+                    continue
+                if item is self.STOP:
+                    self.q.task_done()
+                    break
+                try:
                     frame_bgr, frame_id, timestamp_delta = item
-
                     # ffmpeg expects exactly width*height*3 bytes per frame.
                     # proc.stdin.write(frame_bgr.tobytes())
                     # proc.stdin.write(memoryview(frame_bgr))
                     proc.stdin.write(frame_bgr)  # type: ignore
                     f.write(f"{frame_id},{round(timestamp_delta)}\n")
-
                 finally:
                     self.q.task_done()
-
-        except Exception as e:
-            self.error = e
+        except Exception as err:
+            logger.exception("Error while processing: %s", err)
             self.ready.set()
-
         finally:
             if proc is not None and proc.stdin is not None:
                 try:
@@ -241,9 +144,8 @@ class AsyncFFmpegGPUWriter:
             if proc is not None:
                 stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
                 ret = proc.wait()
-
-                if ret != 0 and self.error is None:
-                    self.error = RuntimeError(f"ffmpeg exited with code {ret}\n{stderr[-4000:]}")
+                if ret != 0:
+                    logger.error("ffmpeg exited with code %s ; stderr=%s", ret, stderr[-4000:])
 
             if f is not None:
                 f.flush()
@@ -251,9 +153,14 @@ class AsyncFFmpegGPUWriter:
                 f.close()
 
     def close(self):
-        self.q.put(self.STOP)
-        self.q.join()
-        self.thread.join()
-
-        if self.error is not None:
-            raise self.error
+        logger.verbose("closing video writer")
+        if self.thread.is_alive():
+            try:
+                self.q.put(self.STOP, timeout=5)
+            except Full:
+                logger.warning("video writer queue full")
+            else:
+                self.q.join()
+        self.thread.join(timeout=5)
+        if self.thread.is_alive():
+            logger.warning("writer thread still alive but continuing")

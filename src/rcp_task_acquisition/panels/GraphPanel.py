@@ -201,9 +201,6 @@ class GraphPanel(wx.Panel):
         panel.Fit()
         return panel
 
-    def get_hardware_handles(self):
-        return self.contrast_test, self.focus_test, self.hardware_panel
-
     def plot_constants(self, arr_size: int) -> None:
 
         y_coords = list(np.array([np.nan] * arr_size))
@@ -257,12 +254,6 @@ class GraphPanel(wx.Panel):
         y_points = (((y_points - min_old) * (max_new - min_new)) / (max_old - min_old)) + min_new
 
         self.constants[index].set_ydata(y_points)
-
-    def get_graph_button(self) -> wx.ToggleButton:
-        return self.labjack_stream_button
-
-    def get_graph_choices(self) -> list[wx.Choice]:
-        return self.labjack_choices
 
     def set_visible(self, index: int, is_visible: bool = True) -> None:
         self.lines[index].set_visible(is_visible)

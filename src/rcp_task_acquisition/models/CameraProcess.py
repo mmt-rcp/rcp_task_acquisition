@@ -37,7 +37,6 @@ class CameraCommand(str, enum.Enum):
 
 
 class CamCtx:
-    record = False
     ismaster = False
     isunconnected = False
     is_decreased = False
@@ -105,10 +104,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         # self.actual_exposure = None
         # self.actual_frame_rate = None
         # self.video_thread = None
-        self.fps: float = 0
-        self.width: int = 0
-        self.height: int = 0
         self.dwnsmplfac = dwnsmplfac
+        self.async_writer: AsyncFFmpegGPUWriter | None = None
 
         self._command_handlers: dict[str, Callable] = {
             CameraCommand.INIT_S: self._cmd_InitS,
@@ -125,6 +122,10 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             CameraCommand.STOP: self._cmd_Stop,
             CameraCommand.RECORD_PREP: self._cmd_recordPrep,
         }
+
+    def _put_response(self, data, *, timeout=3):
+        # using default timeout of 3s so to not hang in case the main process fails to read it after any command.
+        self.camq_p2read.put(data, timeout=timeout)
 
     def run(self) -> None:
         ctx = CamCtx()
@@ -162,19 +163,20 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 # could even use more, given nothing else to check/wait on here.
             except Empty:
                 continue
+            self._handle_cmd(ctx, msg)
 
-            logger.notice("handling msg/cmd: %s", msg)
-            handle = self._command_handlers.get(msg, None)  # type: ignore
-            if handle is None:
-                logger.warning("Unhandled command: %s", msg)
-                continue
-
-            try:
-                handle(ctx)
-            except Exception as err:
-                logger.exception("failed executing %s: %s", msg, err)
-                if msg != CameraCommand.UPDATE_SETTINGS:
-                    self.camq_p2read.put("done")
+    def _handle_cmd(self, ctx, msg):
+        logger.notice("handling msg/cmd: %s", msg)
+        handle = self._command_handlers.get(msg, None)  # type: ignore
+        if handle is None:
+            logger.warning("Unhandled command: %s", msg)
+            return
+        try:
+            handle(ctx)
+        except Exception as err:
+            logger.exception("failed executing %s: %s", msg, err)
+            if msg != CameraCommand.UPDATE_SETTINGS:
+                self._put_response("done")
 
     def _init_spin(self, ctx: CamCtx) -> None:
         ctx.method = "none"
@@ -198,7 +200,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam = ctx.cam
         cam.Init()
         self.create_primary(cam)
-        self.camq_p2read.put("done")
+        self._put_response("done")
         while cam.TLStream.StreamOutputBufferCount() > 0:
             _image = cam.GetNextImage(100)
             _image.Release()
@@ -207,7 +209,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam = ctx.cam
         cam.Init()
         self.create_secondary(cam, ctx.is_decreased)
-        self.camq_p2read.put("done")
+        self._put_response("done")
         while cam.TLStream.StreamOutputBufferCount() > 0:
             _image = cam.GetNextImage(100)
             _image.Release()
@@ -227,7 +229,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         while cam.TLStream.StreamOutputBufferCount() > 0:
             _image = cam.GetNextImage(100)
             _image.Release()
-        self.camq_p2read.put("done")
+        self._put_response("done")
 
     def _execute_release(self, ctx: CamCtx) -> None:
         ctx.cam.DeInit()
@@ -237,55 +239,61 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.cam_list.Clear()
         ctx.system.ReleaseInstance()  # Release instance
 
-    def _cmd_Release(self, ctx: CamCtx):
+    def _cmd_Release(self, ctx: CamCtx) -> None:
         self._execute_release(ctx)
-        self.camq_p2read.put("done")
+        self._put_response("done")
 
     def _cmd_recordPrep(self, ctx: CamCtx) -> None:
-        path_base = self.camq.get()
+        path_base = self.camq.get(timeout=1)
+        logger.debug("using base_path=%s", path_base)
+        if self.async_writer is not None:
+            logger.verbose("async_writer already running")
+            self._put_response("done")
+            return
         write_frame_rate = ctx.record_frame_rate
         s_node_map = ctx.cam.GetTLStreamNodeMap()
         handling_mode = PySpin.CEnumerationPtr(s_node_map.GetNode("StreamBufferHandlingMode"))
         if not PySpin.IsAvailable(handling_mode) or not PySpin.IsWritable(handling_mode):
             logger.warning("Unable to set Buffer Handling mode (node retrieval). Aborting...\n")
+            self._put_response("done-failed")
             return
         handling_mode_entry = handling_mode.GetEntryByName("OldestFirst")
         handling_mode.SetIntValue(handling_mode_entry.GetValue())
-        logger.debug("using base_path=%s", path_base)
-
-        self.height = ctx.aqH
-        self.width = ctx.aqW
-        self.fps = round(write_frame_rate, 2)
-
+        fps = round(write_frame_rate, 2)
         self.video_file = path_base + ".mp4"
         ctx.file_path = f"{path_base}_timestamps.txt"
-
         self.async_writer = AsyncFFmpegGPUWriter(
             video_file=self.video_file,
             timestamp_file=ctx.file_path,
-            fps=self.fps,
-            width=self.width,
-            height=self.height,
+            fps=fps,
+            width=ctx.aqW,
+            height=ctx.aqH,
             max_queue=512,
             qp=23,
         )
         ctx.start_time = 0
         ctx.capture_duration = 0
-        ctx.record = True
-        self.camq_p2read.put("done")
+        self._put_response("done")
 
     def _cmd_Start(self, ctx: CamCtx) -> None:
         cam = ctx.cam
         cam.BeginAcquisition()
         if ctx.ismaster or ctx.isunconnected:
             self.frm.value = 0
-            self.camq.get()
+            data = self.camq.get(timeout=3)
+            logger.debug("master got data: %s", data)
             cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
 
         p0 = time.perf_counter()
         img_count_idx = -1
 
-        while self.aq.value > 0:
+        async_writer = self.async_writer
+
+        while True:
+            aq_val = self.aq.value
+            if aq_val <= 0:
+                logger.verbose("aq value <= 0: %s", aq_val)
+                break
             try:
                 image_result = cam.GetNextImage(100)  # trying with timeout
             except PySpin.SpinnakerException as err:
@@ -307,7 +315,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             if img_count_idx < 5:
                 logger.debug("img #%s: frame_id=%s ts=%s", img_count_idx, frame_id, timestamp_secs)
 
-            if ctx.record:
+            if async_writer is not None:
                 if ctx.start_time == 0:
                     ctx.start_time = timestamp
                     capture_duration = 0
@@ -319,7 +327,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 # frame_bgr = cv2.cvtColor(frame_results, cv2.COLOR_RGB2BGR).copy()
 
                 # ok = self.async_writer.write(frame_results, frame_id, capture_duration)
-                self.async_writer.write(frame_bits, frame_id, capture_duration)
+                async_writer.write(frame_bits, frame_id, capture_duration)
                 # if not ok:
                 #     logger.error(f"{self.camID}: async writer queue full; dropped frame {frame_id}")
 
@@ -339,7 +347,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 # # avi.Append(image_result)
                 # f.write("%s,%s\n" % (frame_id, round(capture_duration)))
 
-            if self.aq.value == 1:
+            if aq_val == 1:
                 # Live feed array
                 if self.frmGrab.value == 0:
                     frame_results = image_result.GetNDArray().copy()
@@ -355,17 +363,27 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             if ctx.ismaster:
                 self.frm.value += 1
 
-        self.camq.get()
-        if ctx.record:
-            self.async_writer.close()
+        after_data = self.camq.get(timeout=2)
+        if after_data != CameraCommand.STOP:
+            logger.error(
+                "Received unexpected %s after acquire ; aq_val=%s. but still processing",
+                after_data,
+                aq_val,
+            )
+        self._handle_cmd(ctx, after_data)
 
-            if self.async_writer.dropped_by_writer:
+    def _cmd_Stop(self, ctx: CamCtx) -> None:
+        cam = ctx.cam
+        async_writer = self.async_writer
+        if async_writer is not None:
+            async_writer.close()
+            self.async_writer = None
+            if async_writer.dropped_by_writer:
                 logger.error(
                     "%s: writer dropped %s frames because the queue filled",
                     self.camID,
-                    self.async_writer.dropped_by_writer,
+                    async_writer.dropped_by_writer,
                 )
-
             (dropped_frame, total_frames, files_len) = identify_dropped_frames(
                 ctx.file_path, self.framerate
             )
@@ -377,11 +395,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 dropped_frame,
                 files_len,
             )
-            # logger.debug(f"{dropped_frame} of camera frames dropped for {self.camID}")
-            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.camID)
-
-            self.camq_p2read.put(percentage_dropped)
-            ctx.record = False
+            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.cam_name)
+            self._put_response(percentage_dropped)
 
         cam.EndAcquisition()
         cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
@@ -392,10 +407,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.LineInverter.SetValue(True)
             cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
             cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
-        self.camq_p2read.put("done")
-
-    def _cmd_Stop(self, ctx: CamCtx) -> None:
-        self.camq_p2read.put("done")
+        self._put_response("done")
+        logger.success("successfully stopped acquisition")
 
     def _cmd_TrigOff(self, ctx: CamCtx) -> None:
         pass  # TODO
@@ -405,16 +418,14 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             self._cmd_updateSettings_part1(ctx)
         except Exception as err:
             logger.exception("update_settings part1 failed: %s", err)
-            self.camq_p2read.put(-1, timeout=1)
-            self.camq_p2read.put(30, timeout=1)
-            self.camq_p2read.put(30, timeout=1)
+            self._put_response(-1, timeout=1)
+            self._put_response((30, 30), timeout=1)
             return
         try:
             self._cmd_updateSettings_part2(ctx)
         except Exception as err:
             logger.exception("update_settings part1 failed: %s", err)
-            self.camq_p2read.put(30, timeout=1)
-            self.camq_p2read.put(30, timeout=1)
+            self._put_response((30, 30), timeout=1)
 
     def _cmd_updateSettings_part1(self, ctx: CamCtx) -> None:
         cam = ctx.cam
@@ -530,7 +541,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             logger.warning("ISP Enable node is not available or read-only.")
 
         # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
-        self.camq_p2read.put("done", timeout=1)
+        self._put_response("done")
 
     def _cmd_updateSettings_part2(self, ctx: CamCtx) -> None:
         method = self.camq.get(timeout=3)
@@ -541,7 +552,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         nodemap = cam.GetNodeMap()
         node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
         node_height = PySpin.CIntegerPtr(nodemap.GetNode("Height"))
-        if ctx.method == "crop":
+        if method == "crop":
             roi = self.frmdim
             logger.debug("roi: %s", self.frmdim)
             ctx.record_frame_rate = self.framerate  # int(user_cfg['cam_config']['framerate'])
@@ -549,7 +560,6 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
             width_max = node_width.GetMax()
 
-            logger.debug("node_width:%s", width_max)
             width_to_set = np.floor(width_max / roi[3] * cam_cfg.crop[1] / 4) * 4
             if PySpin.IsAvailable(node_width) and PySpin.IsWritable(node_width):
                 node_width.SetValue(int(width_to_set))
@@ -563,7 +573,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 node_height.SetValue(int(height_to_set))
             else:
                 logger.warning("Height not available...")
-            logger.debug("node height: %s", height_max)
+            logger.debug("node max width x max height: %s x %s", width_max, height_max)
             # Apply offset X
             node_offset_x = PySpin.CIntegerPtr(nodemap.GetNode("OffsetX"))
             offset_x = np.floor(width_max / roi[3] * cam_cfg.crop[0] / 4) * 4
@@ -587,7 +597,6 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             ctx.aqH = int(self.frmdim[1] * self.dwnsmplfac)
             ctx.record_frame_rate = 10
 
-        frame_results = np.zeros([ctx.aqH, ctx.aqW, 3], "ubyte")
         ctx.frameSml = np.zeros(
             [int(ctx.aqH / self.dwnsmplfac), int(ctx.aqW / self.dwnsmplfac), 3], "ubyte"
         )
@@ -605,22 +614,24 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.AcquisitionFrameRate.SetValue(ctx.frmrate_time_to_set)
         exposure_time_to_set = cam.ExposureTime.GetValue()
         logger.info(
-            "max fr: %s, record: %s, self.framerate: %s",
+            "max fr: %s, record: %s, framerate: %s exposure: %s",
             max_frmrate,
             ctx.record_frame_rate,
             self.framerate,
+            exposure_time_to_set,
         )
-        logger.info("exposure: %s", exposure_time_to_set)
         # ctx.record_frame_rate = cam.AcquisitionFrameRate.GetValue()
 
         cam.AcquisitionFrameRateEnable.SetValue(False)
         if cam.ExposureAuto.GetAccessMode() != PySpin.RW:
             logger.warning("Unable to disable automatic exposure. Aborting...")
+            self._put_response((0, 0))
             return
         # cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
         cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
         if cam.ExposureTime.GetAccessMode() != PySpin.RW:
             logger.warning("Unable to set exposure time. Aborting...")
+            self._put_response((0, 0))
             return
         # # Ensure desired exposure time does not exceed the maximum
         ctx.max_exposure = cam.ExposureTime.GetMax()
@@ -651,8 +662,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         applied_width = node_width.GetValue()
         applied_height = node_height.GetValue()
         logger.success("updated with %s x %s (W/H)", applied_width, applied_height)
-        self.camq_p2read.put(applied_width, timeout=3)
-        self.camq_p2read.put(applied_height, timeout=3)
+        self._put_response((applied_width, applied_height))
 
     def _cmd_setExposure(self, ctx: CamCtx) -> None:
         ctx.cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
@@ -665,8 +675,9 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.current_exposure_time = min(ctx.current_exposure_time, ctx.max_exposure)
         # current_exposure_time = 1.1*max_exposure
         cam.ExposureTime.SetValue(ctx.current_exposure_time)
-        logger.debug("exposure: %s", cam.ExposureTime.GetValue())
-        self.camq_p2read.put(cam.ExposureTime.GetValue())
+        exposure_time = cam.ExposureTime.GetValue()
+        logger.verbose("exposure time set to %s", exposure_time)
+        self._put_response(exposure_time)
 
     def _cmd_setBalance(self, ctx: CamCtx) -> None:
         ctx.cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Continuous)
@@ -683,7 +694,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.AcquisitionFrameRate.SetValue(ctx.frmrate_time_to_set)
         if ctx.ismaster:
             ctx.record_frame_rate = cam.AcquisitionFrameRate.GetValue()
-            self.camq_p2read.put(ctx.record_frame_rate)
+            self._put_response(ctx.record_frame_rate)
         logger.info("Frame rate %s: %s", ctx.camStr, self.framerate)
 
     def create_primary(self, cam: PySpin.Camera) -> None:
@@ -711,12 +722,3 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         else:
             cam.TriggerActivation.SetValue(PySpin.TriggerActivation_AnyEdge)
         cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
-
-    def prepare_writers(self) -> None:
-        video_file = self.video_file
-        self.video_writer = cv2.VideoWriter(
-            video_file,
-            cv2.VideoWriter_fourcc("m", "p", "4", "v"),  # type: ignore  # noqa
-            self.fps,
-            (self.width, self.height),
-        )

@@ -32,7 +32,7 @@ class SwitchPanel:
 
         self.disable_timer = wx.Timer(self.launch_panel.panel, wx.ID_ANY)
 
-        self.task_frame.quit.Bind(wx.EVT_BUTTON, self._on_disable_panel)
+        self.task_frame.controls_panel.quit_button.Bind(wx.EVT_BUTTON, self._on_disable_panel)
         self.task_frame.Bind(wx.EVT_CLOSE, self._on_disable_panel)
 
         self.launch_panel.Show()
@@ -62,7 +62,7 @@ class SwitchPanel:
         # if launch panel showing, switching to show task panel & vice versa
         if self.active_panel == ActivePanel.LAUNCH:
             self.task_frame.Enable()
-            self.task_frame.quit.SetLabel("Exit to Launch Menu")
+            self.task_frame.controls_panel.quit_button.SetLabel("Exit to Launch Menu")
             self.task_frame.init_and_show(self.launch_panel.metadata)
             self.launch_panel.Hide()
         else:
@@ -95,7 +95,7 @@ class SwitchPanel:
             self.launch_panel.enable_gui(False)
         else:
             self.task_frame.msgq.put(StimulusMessage.SHOW_WINDOW)
-            self.task_frame.quit.SetLabel("Loading...")
+            self.task_frame.controls_panel.quit_button.SetLabel("Loading...")
             self.task_frame.Hide()
             self.task_frame.Disable()
 
