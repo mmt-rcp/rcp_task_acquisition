@@ -159,17 +159,20 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 # could even use more, given nothing else to check/wait on here.
             except Empty:
                 continue
-            logger.notice("handling msg/cmd: %s", msg)
-            handle = self._command_handlers.get(msg, None)  # type: ignore
-            if handle is None:
-                logger.warning("Unhandled command: %s", msg)
-                continue
-            try:
-                handle(ctx)
-            except Exception as err:
-                logger.exception("failed executing %s: %s", msg, err)
-                if msg != CameraCommand.UPDATE_SETTINGS:
-                    self.camq_p2read.put("done")
+            self._handle_cmd(ctx, msg)
+
+    def _handle_cmd(self, ctx, msg):
+        logger.notice("handling msg/cmd: %s", msg)
+        handle = self._command_handlers.get(msg, None)  # type: ignore
+        if handle is None:
+            logger.warning("Unhandled command: %s", msg)
+            return
+        try:
+            handle(ctx)
+        except Exception as err:
+            logger.exception("failed executing %s: %s", msg, err)
+            if msg != CameraCommand.UPDATE_SETTINGS:
+                self.camq_p2read.put("done")
 
     def _init_spin(self, ctx: CamCtx) -> None:
         ctx.method = "none"
@@ -282,7 +285,11 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
         async_writer = self.async_writer
 
-        while self.aq.value > 0:
+        while True:
+            aq_val = self.aq.value
+            if aq_val <= 0:
+                logger.verbose("aq value <= 0: %s", aq_val)
+                break
             try:
                 image_result = cam.GetNextImage(100)  # trying with timeout
             except PySpin.SpinnakerException as err:
@@ -336,7 +343,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 # # avi.Append(image_result)
                 # f.write("%s,%s\n" % (frame_id, round(capture_duration)))
 
-            if self.aq.value == 1:
+            if aq_val == 1:
                 # Live feed array
                 if self.frmGrab.value == 0:
                     frame_results = image_result.GetNDArray().copy()
@@ -353,9 +360,13 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                 self.frm.value += 1
 
         after_data = self.camq.get(timeout=2)
-        logger.debug("after_data: %s", after_data)
-        if after_data == CameraCommand.STOP:
-            self._cmd_Stop(ctx)
+        if after_data != CameraCommand.STOP:
+            logger.error(
+                "Received unexpected %s after acquire ; aq_val=%s. but still processing",
+                after_data,
+                aq_val,
+            )
+        self._handle_cmd(ctx, after_data)
 
     def _cmd_Stop(self, ctx: CamCtx) -> None:
         cam = ctx.cam
@@ -393,6 +404,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
             cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
         self.camq_p2read.put("done", timeout=3)
+        logger.success("successfully stopped acquisition")
 
     def _cmd_TrigOff(self, ctx: CamCtx) -> None:
         pass  # TODO
