@@ -163,6 +163,7 @@ class MainFrame(wx.Frame):
 
         graph_panel.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
         graph_panel.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
+        graph_panel.labjack_stream_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
 
         self.participant_monitor = controls_panel.get_monitor()
         self.cams = CamerasFrontend(
@@ -206,8 +207,6 @@ class MainFrame(wx.Frame):
 
         # labjack setup
         graph_panel.create_plot(PLOT_LENGTH)
-        self.labjack_stream_button = graph_panel.labjack_stream_button
-        self.labjack_choices = graph_panel.labjack_choices
 
         self.labjack_timer = wx.Timer(self, wx.ID_ANY)
         self.lj = LabjackFrontend(
@@ -220,7 +219,6 @@ class MainFrame(wx.Frame):
         )
 
         self.Bind(wx.EVT_TIMER, self.lj.labjack_event, self.labjack_timer)
-        self.labjack_stream_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
 
         # set up cam things
         self.x1 = 0
@@ -330,70 +328,69 @@ class MainFrame(wx.Frame):
                 cam.frmGrab.value = 0  # only after, when fully consumed,
                 # to get eventually a more recent one on next turn.
 
-    @property
-    def trial_button(self) -> wx.ToggleButton:
-        return self.trial_panel.continue_button
-
     def on_resize(self, event: wx.Event) -> None:
         wx.CallAfter(self.image_panel.reset_sizing)
         event.Skip()
         # pass
 
     def run_task(self) -> None:
-        logger.verbose("run_task called task_but=%s", self.controls_panel.session_button.GetValue())
+        graph_panel = self.graph_panel
+        controls_panel = self.controls_panel
+        trial_panel = self.trial_panel
+        logger.verbose("run_task called task_but=%s", controls_panel.session_button.GetValue())
         self.Enable()
-        if self.controls_panel.session_button.GetValue():
+        if controls_panel.session_button.GetValue():
             self.task_active = True
             self.count = 0
             self.finish.value = 0
             is_success = self.lj.start_labjack()
             if not is_success:
-                self.controls_panel.session_button.SetValue(False)
+                controls_panel.session_button.SetValue(False)
                 return
 
-            self.labjack_stream_button.SetValue(True)
-            self.labjack_stream_button.Enable(False)
-            self.labjack_stream_button.SetLabel("Stop Labjack")
+            graph_panel.labjack_stream_button.SetValue(True)
+            graph_panel.labjack_stream_button.Enable(False)
+            graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self.prepare_file(self.task, self.participant)
             self.create_file()
             lj_path = os.path.join(self.sess_dir, self.path_base + "_labjack.txt")
             msg = f"P{self.path_base}x"
             self.lj.add_csv(lj_path, self.serial_device, msg)
             self.startingSession = True
-            self.controls_panel.session_button.SetLabel("End Task")
+            controls_panel.session_button.SetLabel("End Task")
             # self.hardware_button.Enable(False)
-            if isinstance(self.trial_panel, VowelSpacePanel):
+            if isinstance(trial_panel, VowelSpacePanel):
                 self.msgq.put(StimulusMessage.VOWEL_SPACE)
                 trial_info = self.resultsq.get()
                 trial, syllable, finish = trial_info
-                self.trial_panel.repeat = True
-                self.trial_panel.update_trial(trial, syllable)
-            self.trial_panel.start_new_trial()
-            self.trial_panel.show()
+                trial_panel.repeat = True
+                trial_panel.update_trial(trial, syllable)
+            trial_panel.start_new_trial()
+            trial_panel.show()
             # if not self.rest_timer.IsRunning():
             #     self.rest_timer.Start(1000)
         else:
             self.task_active = False
             self.serial_device.write("A")
             time.sleep(3)
-            if self.trial_button.GetValue():
-                self.trial_button.SetValue(False)
+            if trial_panel.continue_button.GetValue():
+                trial_panel.continue_button.SetValue(False)
                 self.trial_event()
             if self.recording:
                 self.cams.stop_recording()
             self.video_status.value = VideoStatus.STOP
-            self.controls_panel.session_button.SetLabel("Start Task")
-            self.controls_panel.hardware_button.Enable(True)
+            controls_panel.session_button.SetLabel("Start Task")
+            controls_panel.hardware_button.Enable(True)
             self.trial_panel.hide()
             self.msgq.put(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
 
             self.finish.value = 0
-            self.labjack_stream_button.Enable(True)
-            if self.labjack_stream_button.GetValue():
-                self.labjack_stream_button.SetValue(False)
-                self.labjack_stream_button.SetLabel("Stream Labjack")
-            self.labjack_stream_button.Enable(True)
+            graph_panel.labjack_stream_button.Enable(True)
+            if graph_panel.labjack_stream_button.GetValue():
+                graph_panel.labjack_stream_button.SetValue(False)
+                graph_panel.labjack_stream_button.SetLabel("Stream Labjack")
+            graph_panel.labjack_stream_button.Enable(True)
             self.end_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
             self.end_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.finalize_metadata()
@@ -403,6 +400,7 @@ class MainFrame(wx.Frame):
 
     def trial_event(self) -> None:
         """called on initialize or stop of single trial"""
+        trial_panel = self.trial_panel
         vid_stat_val = self.video_status.value
         vid_stat: str | VideoStatus
         try:
@@ -410,9 +408,11 @@ class MainFrame(wx.Frame):
         except ValueError:
             vid_stat = f"Unknown ({vid_stat_val}"
         logger.debug(
-            "trial_event(): trial_but=%s video_status=%s", self.trial_button.GetValue(), vid_stat
+            "trial_event(): trial_but=%s video_status=%s",
+            trial_panel.continue_button.GetValue(),
+            vid_stat,
         )
-        if self.trial_button.GetValue():
+        if trial_panel.continue_button.GetValue():
             logger.debug("in trial button")
             self.count += 1
             self.cams.trial = self.count
@@ -425,7 +425,7 @@ class MainFrame(wx.Frame):
             if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
                 self.video_status.value = VideoStatus.NOT_PLAYING
-                self.trial_panel.stop_video()
+                trial_panel.stop_video()
 
             if not self.rest_timer.IsRunning():
                 logger.debug("in trial_event starting rest_timer")
@@ -433,24 +433,24 @@ class MainFrame(wx.Frame):
             self.finish.value = 0
             logger.debug("started timer")
 
-            if isinstance(self.trial_panel, VerbalFluencyPanel) and self.trial_panel.first:
+            if isinstance(trial_panel, VerbalFluencyPanel) and trial_panel.first:
                 self.count = 0
-                self.trial_button.SetLabel("Begin Trial")
-                self.trial_panel.switch_panel()
-                data = self.trial_panel.get_trials()
+                trial_panel.continue_button.SetLabel("Begin Trial")
+                trial_panel.switch_panel()
+                data = trial_panel.get_trials()
                 self._update_data(data)
                 logger.debug("verbal_ fluency first panel")
                 return
 
             try:
-                data = self.trial_panel.get_result()
+                data = trial_panel.get_result()
                 self._update_data(data)
             except Exception as err:
                 logger.exception("Error requesting update data and get result: %s", err)
-                self.results_list.append(self.trial_panel.get_result())
+                self.results_list.append(trial_panel.get_result())
 
-            self.trial_panel.run_trial(self.count)
-            self.trial_button.SetLabel("Stop Trial")
+            trial_panel.run_trial(self.count)
+            trial_panel.continue_button.SetLabel("Stop Trial")
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.liveTimer.Start(150)
             self.msgq.put(StimulusMessage.RUN_TASK)
@@ -459,26 +459,26 @@ class MainFrame(wx.Frame):
             self.finish.value = 2
 
             self.rest_timer.Stop()
-            if isinstance(self.trial_panel, SaraPanel):
-                self.trial_panel.show_scoring()
-            elif isinstance(self.trial_panel, VerbalFluencyPanel):
-                self.trial_panel.update_values()
+            if isinstance(trial_panel, SaraPanel):
+                trial_panel.show_scoring()
+            elif isinstance(trial_panel, VerbalFluencyPanel):
+                trial_panel.update_values()
                 logger.debug("ending verbal fluency")
-            elif isinstance(self.trial_panel, VowelSpacePanel):
-                self.trial_panel.repeat_trial_button.Enable(True)
-                self.trial_button.SetLabel("Repeat Trial")
-                self.trial_panel.repeat_trial_button.SetValue(False)
+            elif isinstance(trial_panel, VowelSpacePanel):
+                trial_panel.repeat_trial_button.Enable(True)
+                trial_panel.continue_button.SetLabel("Repeat Trial")
+                trial_panel.repeat_trial_button.SetValue(False)
                 self.cams.stop_recording()
                 self.liveTimer.Stop()
                 # self.rest_timer.Stop()
-                self.trial_panel.next_button.Enable(True)
+                trial_panel.next_button.Enable(True)
                 self.update_task_metadata()
                 return
             self.participant_monitor.update_screen()
             self.cams.stop_recording()
-            self.trial_button.SetLabel("Begin Trial")
-            self.trial_panel.reset(self.count)
-            self.trial_panel.end_trial()
+            trial_panel.continue_button.SetLabel("Begin Trial")
+            trial_panel.reset(self.count)
+            trial_panel.end_trial()
             self.liveTimer.Stop()
             self.update_task_metadata()
             logger.debug("ending entire trial")
@@ -489,7 +489,7 @@ class MainFrame(wx.Frame):
         self.msgq.put(StimulusMessage.VOWEL_SPACE)
         trial_info = self.resultsq.get()
         trial, syllable, finish = trial_info
-        self.trial_button.SetLabel("Begin Trial")
+        self.trial_panel.continue_button.SetLabel("Begin Trial")
         self.trial_panel.update_trial(trial, syllable)
         if finish:
             self.trial_panel.is_finish()
@@ -526,7 +526,7 @@ class MainFrame(wx.Frame):
             self.liveTimer.Stop()
             self.finish.value = 0
             self.trial_panel.update_values()
-            self.trial_button.SetLabel("Begin Trial")
+            self.trial_panel.continue_button.SetLabel("Begin Trial")
             self.rest_timer.Stop()
             self.update_task_metadata()
 
@@ -618,6 +618,7 @@ class MainFrame(wx.Frame):
 
     def liveFeed(self) -> None:
         cam_panel = self.controls_panel.cam_panel
+        graph_panel = self.graph_panel
         button_label = cam_panel.play.GetLabel()
         if button_label == "Abort":
             cam_panel.rec.SetValue(False)
@@ -633,7 +634,7 @@ class MainFrame(wx.Frame):
             if button_label == "Hardware Test":
                 self.Enable()
                 self.hardware_test = True
-                self.graph_panel.hardware_panel.Show()
+                graph_panel.hardware_panel.Show()
                 if self.task_active:
                     is_success = True
                 else:
@@ -642,9 +643,9 @@ class MainFrame(wx.Frame):
                 if not is_success:
                     logger.error("Error loading labjack_stream")
                 else:
-                    self.labjack_stream_button.SetValue(True)
-                    self.labjack_stream_button.Enable(False)
-                    self.labjack_stream_button.SetLabel("Stop Labjack")
+                    graph_panel.labjack_stream_button.SetValue(True)
+                    graph_panel.labjack_stream_button.Enable(False)
+                    graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
 
         else:
@@ -658,11 +659,11 @@ class MainFrame(wx.Frame):
                 self._stop_hardware_test()
                 if self.task_active:
                     self.labjack_scan_rate = self.lj.stop_labjack()
-                    self.labjack_stream_button.Enable(True)
-                    if self.labjack_stream_button.GetValue():
-                        self.labjack_stream_button.SetValue(False)
-                        self.labjack_stream_button.SetLabel("Stream Labjack")
-                    self.labjack_stream_button.Enable(True)
+                    graph_panel.labjack_stream_button.Enable(True)
+                    if graph_panel.labjack_stream_button.GetValue():
+                        graph_panel.labjack_stream_button.SetValue(False)
+                        graph_panel.labjack_stream_button.SetLabel("Stream Labjack")
+                    graph_panel.labjack_stream_button.Enable(True)
             buttons = [
                 cam_panel.set_crop,
                 cam_panel.rec,
@@ -677,6 +678,7 @@ class MainFrame(wx.Frame):
         # button_label = clicked_button.GetLabel()
         controls_panel = self.controls_panel
         cam_panel = controls_panel.cam_panel
+        graph_panel = self.graph_panel
         self.Enable()
         if controls_panel.hardware_button.GetValue():
             self.hardware_test = True
@@ -688,9 +690,9 @@ class MainFrame(wx.Frame):
                 if not is_success:
                     logger.error("Error loading labjack_stream")
                 else:
-                    self.labjack_stream_button.SetValue(True)
-                    self.labjack_stream_button.Enable(False)
-                    self.labjack_stream_button.SetLabel("Stop Labjack")
+                    graph_panel.labjack_stream_button.SetValue(True)
+                    graph_panel.labjack_stream_button.Enable(False)
+                    graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
             controls_panel.session_button.Enable(False)
         else:
@@ -704,11 +706,11 @@ class MainFrame(wx.Frame):
                 self._stop_hardware_test()
                 if not self.task_active:
                     self.labjack_scan_rate = self.lj.stop_labjack()
-                    self.labjack_stream_button.Enable(True)
-                    if self.labjack_stream_button.GetValue():
-                        self.labjack_stream_button.SetValue(False)
-                        self.labjack_stream_button.SetLabel("Stream Labjack")
-                        self.labjack_stream_button.Enable(True)
+                    graph_panel.labjack_stream_button.Enable(True)
+                    if graph_panel.labjack_stream_button.GetValue():
+                        graph_panel.labjack_stream_button.SetValue(False)
+                        graph_panel.labjack_stream_button.SetLabel("Stream Labjack")
+                        graph_panel.labjack_stream_button.Enable(True)
             cam_panel.set_crop.Enable(True)
             cam_panel.rec.Enable(True)
             cam_panel.minRec.Enable(True)
@@ -965,16 +967,26 @@ class MainFrame(wx.Frame):
         value = bool(self.controls_panel.cam_panel.crop.GetValue())
         self.cams.update_crop(value)
 
+    def _set_cam_p_for_record_enabled(self, enabled: bool) -> None:
+        cam_panel = self.controls_panel.cam_panel
+        cam_panel.set_crop.Enable(enabled)
+        cam_panel.minRec.Enable(enabled)
+        cam_panel.exposure_button.Enable(enabled)
+        cam_panel.secRec.Enable(enabled)
+        cam_panel.update_settings.Enable(enabled)
+
     def recordCam(self) -> None:
-        is_rec = self.controls_panel.cam_panel.rec.GetValue()
-        is_task = self.controls_panel.session_button.GetValue()
+        controls_panel = self.controls_panel
+        cam_panel = controls_panel.cam_panel
+        is_rec = cam_panel.rec.GetValue()
+        is_task = controls_panel.session_button.GetValue()
         logger.verbose("recordCam(): rec=%s task_button=%s", is_rec, is_task)
         if is_rec or is_task:
             if self.recording:
                 return
             self.recording = True
             if self.calibrate:
-                self.controls_panel.session_button.SetLabel("Stop Recording")
+                controls_panel.session_button.SetLabel("Stop Recording")
                 self.trial_panel.reset(0)
                 self.trial_panel.show()
                 self.prepare_file(self.task, self.participant)
@@ -982,29 +994,22 @@ class MainFrame(wx.Frame):
             #     self.create_file()
 
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
-            self.controls_panel.cam_panel.set_crop.Enable(False)
-            self.controls_panel.cam_panel.minRec.Enable(False)
-            self.controls_panel.cam_panel.secRec.Enable(False)
-            self.controls_panel.cam_panel.exposure_button.Enable(False)
-            self.controls_panel.cam_panel.update_settings.Enable(False)
-            self.controls_panel.cam_panel.rec.SetLabel("Stop")
-            self.controls_panel.cam_panel.play.SetLabel("Abort")
+            cam_panel.set_crop.Enable(False)
+            self._set_cam_p_for_record_enabled(False)
+            cam_panel.rec.SetLabel("Stop")
+            cam_panel.play.SetLabel("Abort")
             self.liveTimer.Start(150)
         else:
             if not self.recording:
                 return
             self.recording = False
             self.cams.stop_recording()
-            self.controls_panel.cam_panel.rec.SetLabel("Record")
-            self.controls_panel.cam_panel.play.SetLabel("Live")
+            cam_panel.rec.SetLabel("Record")
+            cam_panel.play.SetLabel("Live")
             self.liveTimer.Stop()
-            self.controls_panel.cam_panel.set_crop.Enable(True)
-            self.controls_panel.cam_panel.minRec.Enable(True)
-            self.controls_panel.cam_panel.exposure_button.Enable(True)
-            self.controls_panel.cam_panel.secRec.Enable(True)
-            self.controls_panel.cam_panel.update_settings.Enable(True)
+            self._set_cam_p_for_record_enabled(True)
             if self.calibrate:
-                self.controls_panel.session_button.SetLabel("Record Cameras")
+                controls_panel.session_button.SetLabel("Record Cameras")
                 self.trial_panel.rest_timer.Stop()
                 # self.trial_panel.hide()  # this also cancel the task/trial 1s timer
                 if "face" not in self.task:
@@ -1151,7 +1156,7 @@ class MainFrame(wx.Frame):
             self.Bind(wx.EVT_TIMER, lambda _: self.run_task(), self.disable_timer)
         if handle == self.controls_panel.hardware_button:
             self.Bind(wx.EVT_TIMER, self.hardwareFeed, self.disable_timer)
-        if handle == self.labjack_stream_button:
+        if handle == self.graph_panel.labjack_stream_button:
             self.Bind(wx.EVT_TIMER, self.labjack_stream, self.disable_timer)
         self.Disable()
         self.disable_timer.StartOnce(80)
