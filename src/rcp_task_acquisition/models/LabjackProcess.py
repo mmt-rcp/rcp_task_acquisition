@@ -37,9 +37,9 @@ class LabJackDataStream(ProcessWithLogging):
         stream_started: SharedBool,
         scan_rate: SharedFloat,
         handshake: SharedInt,
-    ):
+    ) -> None:
         self.is_success = True
-        self.voltage_range = {}
+        self.voltage_range: dict[str, tuple[float, float]] = {}
         for index, val in enumerate(labjack_list):
             if "A" in val:
                 self.voltage_range[val] = voltage_ranges[index]
@@ -91,13 +91,15 @@ class LabJackDataStream(ProcessWithLogging):
 
         input_names: list[str] = []
         work_voltage_ranges: list[float] = []
-        for key in self.voltage_range:
+        for key, volt_range in self.voltage_range.items():
             input_names.append(f"{key}_RANGE")
-            work_voltage_ranges.append(float(self.voltage_range[key][1]))
+            work_voltage_ranges.append(volt_range[1])
+
         input_names.append("STREAM_CLOCK_SOURCE")
         work_voltage_ranges.append(0)
         self.input_names = input_names
         self.voltage_ranges = work_voltage_ranges
+        logger.verbose("voltages_ranges: %s", self.voltage_ranges)
         self.handle: Optional[int] = None  # ljm handle ; it's a fd basically
 
     def _disconnect(self):
