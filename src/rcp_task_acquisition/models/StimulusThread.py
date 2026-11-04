@@ -55,6 +55,8 @@ class StimulusThread(Process):
         resultsq,
         stimulus_timer,
         event_lock,
+        grasp_ready,
+        grasp_count,
     ):
         super().__init__()
         self.msgq = msgq
@@ -73,6 +75,8 @@ class StimulusThread(Process):
         self.alive = True
         self.task = task
         self.video_lock = event_lock
+        self.grasp_ready = grasp_ready
+        self.grasp_count = grasp_count
 
     def run(self):
         self.window = Window(screen=self.screenConfig, fullScreen=True)
@@ -196,6 +200,9 @@ class StimulusThread(Process):
             extra_args.append(self.button)
         elif self.task == "tone_taps_closed":
             extra_args.append(self.press_count)
+        elif self.task == "reach_grasp":
+            extra_args.append(self.grasp_ready)
+            extra_args.append(self.grasp_count)
         #
         self.stimulus = base_cls(base_vars, *extra_args)
         #

@@ -48,6 +48,8 @@ class MainFrame(wx.Frame):
         self.cam_cfg = {}
         self.trial_button = None
         self.button_pressed = Value(ctypes.c_bool, False)
+        self.grasp_ready = [Value(ctypes.c_bool, False), Value(ctypes.c_float, 0)]
+        self.grasp_count = Value(ctypes.c_int, 0)
         self.recording = False
         self.press_count = Value(ctypes.c_int, 0)
         self.stimulus_timer = Value(ctypes.c_int, 0)
@@ -187,6 +189,7 @@ class MainFrame(wx.Frame):
             self.button_pressed,
             self.press_count,
             self.cam_test,
+            self.grasp_ready,
         )
 
         self.Bind(wx.EVT_TIMER, self.lj.labjack_event, self.labjack_timer)
@@ -239,6 +242,8 @@ class MainFrame(wx.Frame):
             self.resultsq,
             self.stimulus_timer,
             self.video_lock,
+            self.grasp_ready,
+            self.grasp_count,
         )
         self.startingSession = False
         self.rest_timer = wx.Timer(self)
@@ -980,7 +985,8 @@ class MainFrame(wx.Frame):
             pass
         self.trial_button.Bind(wx.EVT_TOGGLEBUTTON, self.trial_event)
         self.initCams(event)
-        self.lj.update_hardware(hardware_lists)
+        is_reach = True if "reach" in self.task else False
+        self.lj.update_hardware(hardware_lists, is_reach)
         self.press_count.value = 0
         self.video_start, self.video_pause = self.trial_panel.get_video_buttons()
         if "calibrate" in self.task:

@@ -36,6 +36,8 @@ class LabJackDataStream(Process):
         stream_started,
         scan_rate,
         handshake,
+        grasp_ready,
+        grasp_task,
     ):
         self.is_success = True
         self.voltage_range = {}
@@ -53,6 +55,10 @@ class LabJackDataStream(Process):
         self.extended_inputs = inputs[2]
         self.stream_started = stream_started
         self.actualscanRate = scan_rate
+        self.grasp_task = grasp_task
+        self.grasp_ready = grasp_ready[0]
+        self.grasp_index = None
+        self.rest_time = grasp_ready[1]
         self.handshake = handshake
         for item in self.extended_inputs:
             self.digital_inputs.append(item + 8)
@@ -173,6 +179,15 @@ class LabJackDataStream(Process):
             new_list = np.unpackbits(ints.view(np.uint8), bitorder="little").reshape(
                 16, SCANS_PER_READ, order="F"
             )  # [::-1]
+
+            if self.grasp_task:
+                if self.grasp_index == None:
+                    self.grasp_index = self.analog_inputs.index("AIN7")
+                if not np.all(new_list[1]):
+                    if new_list[1][0] != 0:
+                        idx = len(new_list[1]) - int(np.argmax(new_list[1] == 1))
+                        self.rest_time.value = (1 / self.actualscanRate.value) * idx
+                        self.grasp_ready.value = True
 
             if self.button_list:
                 for button in self.button_list:

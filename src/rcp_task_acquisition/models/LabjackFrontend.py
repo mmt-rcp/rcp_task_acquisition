@@ -19,7 +19,15 @@ logger = get_logger("./models/LabjackFrontend")
 
 class LabjackFrontend:
     def __init__(
-        self, array_length, ctrl_panel, timer, args, button_pressed, press_count, hardware_test
+        self,
+        array_length,
+        ctrl_panel,
+        timer,
+        args,
+        button_pressed,
+        press_count,
+        hardware_test,
+        grasp_ready,
     ):
 
         self.constants = []
@@ -41,6 +49,7 @@ class LabjackFrontend:
         self.button_list = []
         self.extended_list = []
         self.array_length = array_length
+        self.grasp_ready = grasp_ready
         for index, item in enumerate(self.labjack_list):
             if "F" in item:
                 self.digital_list.append(int(item[-1]))
@@ -81,11 +90,12 @@ class LabjackFrontend:
             labjack_button.SetLabel("Stream Labjack")
             labjack_button.SetValue(False)
 
-    def update_hardware(self, hardware_lists):
+    def update_hardware(self, hardware_lists, is_grasp):
         self.all_hardware = hardware_lists
         self.graph_panel.update_graph(hardware_lists)
         self.constant_index = []
         self.constants = []
+        self.is_grasp = is_grasp
         if list(hardware_lists[1]):
             for index, constant in enumerate(PLOT_CONSTANTS):
                 hardware_index = list(hardware_lists[0]).index(constant)
@@ -153,6 +163,8 @@ class LabjackFrontend:
             self.stream_started,
             self.scan_rate,
             self.handshake,
+            self.grasp_ready,
+            self.is_grasp,
         )
 
         if self.labjack_process.is_successful():
