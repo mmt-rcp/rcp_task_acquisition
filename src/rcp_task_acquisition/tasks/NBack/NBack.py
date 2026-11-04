@@ -460,7 +460,7 @@ class N_back(bases.StimulusBase):
                 self.display.flip()
                 # time.sleep(5)
                 time.sleep(0.05)
-            while self.button.value:
+            while self.button.value and self.finish.value == 0:
                 time.sleep(0.05)
             if self.finish.value == 2:
                 self.display.flip()
