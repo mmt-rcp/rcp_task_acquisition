@@ -161,20 +161,16 @@ class MainFrame(wx.Frame):
 
         # Add Buttons to the WidgetPanel and bind them to their respective functions.
 
-        self.contrast_test, self.focus_test, self.hardware_test_panel = (
-            self.graph_panel.get_hardware_handles()
-        )
-
-        self.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
-        self.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
+        self.graph_panel.focus_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_focus())
+        self.graph_panel.contrast_test.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.set_contrast())
 
         self.participant_monitor = self.controls_panel.get_monitor()
         self.cams = CamerasFrontend(
             self.serial_device,
             self.graph_panel,
             self.image_panel,
-            self.contrast_test,
-            self.focus_test,
+            self.graph_panel.contrast_test,
+            self.graph_panel.focus_test,
             self.participant_monitor,
             rcp_context=rcp_context,
         )
@@ -568,26 +564,26 @@ class MainFrame(wx.Frame):
             self.trial_panel.resume_video()
 
     def set_focus(self) -> None:
-        if self.focus_test.GetValue():
-            self.contrast_test.Enable(False)
+        if self.graph_panel.focus_test.GetValue():
+            self.graph_panel.contrast_test.Enable(False)
             self.cam_test.value = True
             self.cams.update_focus()
             self.graph_panel.setup_test_legend()
         else:
             self.graph_panel.remove_hardware()
-            self.contrast_test.Enable(True)
+            self.graph_panel.contrast_test.Enable(True)
             self.cams.update_focus(False)
             self.cam_test.value = False
 
     def set_contrast(self) -> None:
-        if self.contrast_test.GetValue():
-            self.focus_test.Enable(False)
+        if self.graph_panel.contrast_test.GetValue():
+            self.graph_panel.focus_test.Enable(False)
             self.cam_test.value = True
             self.graph_panel.setup_test_legend()
             self.cams.update_contrast()
         else:
             self.graph_panel.remove_hardware()
-            self.focus_test.Enable(True)
+            self.graph_panel.focus_test.Enable(True)
             self.cams.update_contrast(False)
             self.cam_test.value = False
 
@@ -610,14 +606,14 @@ class MainFrame(wx.Frame):
     def _stop_hardware_test(self) -> None:
         self.cam_test.value = False
         self.hardware_test = False
-        self.focus_test.Enable(True)
-        self.focus_test.SetValue(False)
-        self.contrast_test.SetValue(False)
-        self.contrast_test.Enable(True)
+        self.graph_panel.focus_test.Enable(True)
+        self.graph_panel.focus_test.SetValue(False)
+        self.graph_panel.contrast_test.SetValue(False)
+        self.graph_panel.contrast_test.Enable(True)
         self.set_focus()
         self.set_contrast()
         self.finish.value = 2
-        self.hardware_test_panel.Hide()
+        self.graph_panel.hardware_panel.Hide()
         self.hardware_test = False
 
     def liveFeed(self) -> None:
@@ -637,7 +633,7 @@ class MainFrame(wx.Frame):
             if button_label == "Hardware Test":
                 self.Enable()
                 self.hardware_test = True
-                self.hardware_test_panel.Show()
+                self.graph_panel.hardware_panel.Show()
                 if self.task_active:
                     is_success = True
                 else:
@@ -682,7 +678,7 @@ class MainFrame(wx.Frame):
         self.Enable()
         if self.controls_panel.hardware_button.GetValue():
             self.hardware_test = True
-            self.hardware_test_panel.Show()
+            self.graph_panel.hardware_panel.Show()
             self.msgq.put(StimulusMessage.HARDWARE_TEST)
             if not self.task_active:
                 is_success = self.lj.start_labjack()

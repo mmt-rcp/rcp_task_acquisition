@@ -201,9 +201,6 @@ class GraphPanel(wx.Panel):
         panel.Fit()
         return panel
 
-    def get_hardware_handles(self):
-        return self.contrast_test, self.focus_test, self.hardware_panel
-
     def plot_constants(self, arr_size: int) -> None:
 
         y_coords = list(np.array([np.nan] * arr_size))
