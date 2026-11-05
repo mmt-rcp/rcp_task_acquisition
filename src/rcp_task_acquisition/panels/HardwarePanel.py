@@ -427,24 +427,21 @@ class HardwarePanel(wx.Panel):
         # update to show available hardware for task
         self.select_protocol = True
 
-        for hardware in self.hardware_list:
-            if not hardware.in_use.GetValue():
-                hardware.in_use.Enable(False)
-                hardware.name.Enable(False)
+        def set_item(item):
+            if not item.in_use.GetValue():
+                item.in_use.Enable(False)
+                item.name.Enable(False)
             else:
-                hardware.in_use_all = True
-                hardware.name.Enable(True)
-            hardware.in_use.SetValue(False)
+                item.in_use_all = True
+                item.name.Enable(True)
+            item.in_use.SetValue(False)
+
+        for hardware in self.hardware_list:
+            set_item(hardware)
             hardware.voltage_range.Enable(False)
             hardware.labjack.Enable(False)
         for camera in self.camera_list:
-            if not camera.in_use.GetValue():
-                camera.in_use.Enable(False)
-                camera.name.Enable(False)
-            else:
-                camera.in_use_all = True
-                camera.name.Enable(True)
-            camera.in_use.SetValue(False)
+            set_item(camera)
             camera.serial.Enable(False)
             camera.is_primary.Enable(False)
             # camera.gig_e.Enable(False)
