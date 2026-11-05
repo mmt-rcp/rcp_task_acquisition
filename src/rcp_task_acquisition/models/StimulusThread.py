@@ -104,6 +104,9 @@ class StimulusThread(ProcessWithLogging):
         }
         self._reentrant_check_commands = 0
 
+    def _send_to_main_proc(self, data, *, timeout=3):
+        self.resultsq.put(data, timeout=timeout)
+
     def _get_from_command_queue(self, *, timeout: float = 3):
         return self.msgq.get(timeout=timeout)
 
@@ -177,7 +180,7 @@ class StimulusThread(ProcessWithLogging):
             return
         results = stimulus.get_trial()
         logger.debug("vowel_space result: %s", results)
-        self.resultsq.put(results)
+        self._send_to_main_proc(results)
 
     def _handle_play_instructions(self) -> None:
         msg = self._get_from_command_queue()
@@ -300,9 +303,7 @@ class StimulusThread(ProcessWithLogging):
         # ctx = self._rcp_context
         # task_cfg = ctx.tasks_config[self.task]
         results = stimuli.saveMetadata()  # TODO: not sure what's going on
-        json_str = json.dumps(results)
-        logger.debug("jsonstr: %s", json_str)
-        self.resultsq.put(json_str)
+        self._send_to_main_proc(results)
 
     def close_window(self) -> None:
         self.alive = False

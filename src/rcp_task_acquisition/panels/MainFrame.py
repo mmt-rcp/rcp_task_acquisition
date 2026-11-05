@@ -810,11 +810,7 @@ class MainFrame(wx.Frame):
 
     def update_task_metadata(self) -> None:
         self.put_to_stimulus(StimulusMessage.SEND_METADATA)
-        try:
-            trial_data = json.loads(self.get_from_stimulus())
-        except Exception as err:
-            logger.error("update task metadata error: %s", err)
-            trial_data = None
+        trial_data = self.get_from_stimulus()
         metadata = file_utils.read_metadata(self.metapath)
         logger.debug("%s yaml loaded sections: %r", self.metapath, tuple(metadata))
         metadata["trial_data"] = trial_data
