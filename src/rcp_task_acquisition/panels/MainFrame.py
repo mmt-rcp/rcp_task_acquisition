@@ -318,13 +318,7 @@ class MainFrame(wx.Frame):
         for cam in cams.cam_dict.values():
             if cam.frmGrab.value == 1:
                 cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
-                dims = cam.frame_size
-                frame = cam.frameBuff[0 : dims.dispSize].reshape([dims.h, dims.w, 3])
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                for f in range(3):
-                    cam.frame[dims.y1 : dims.y2, dims.x1 : dims.x2, f] = frame[:, :, f]
-                cam.frame_size = dims
-
+                cam.apply_new_dims(cam.frame_size)
                 self.cams.on_cam_update(cam, cam.frame)
                 if cam.idx == cams.cam_pointer:
                     self.trial_panel.on_camera_frame_update(0, cam.frame)

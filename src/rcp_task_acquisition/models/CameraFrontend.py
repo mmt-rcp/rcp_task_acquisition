@@ -205,11 +205,7 @@ class CamerasFrontend:
                 dispSize=dimensions[3] * dimensions[1] * 3,
             )
 
-            frame = cam.frameBuff[0 : new_dims.dispSize].reshape([new_dims.h, new_dims.w, 3])
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            for f in range(3):
-                cam.frame[new_dims.y1 : new_dims.y2, new_dims.x1 : new_dims.x2, f] = frame[:, :, f]
-            cam.frame_size = new_dims
+            cam.apply_new_dims(new_dims)
 
         cam0, cam1 = self._cam_by_idx[self.cam_pointer : self.cam_pointer + 2]
         self.im[0].set_data(cam0.frame)
