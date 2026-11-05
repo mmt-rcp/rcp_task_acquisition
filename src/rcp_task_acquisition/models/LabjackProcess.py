@@ -38,7 +38,6 @@ class LabJackDataStream(ProcessWithLogging):
         scan_rate: SharedFloat,
         handshake: SharedInt,
     ) -> None:
-        self.is_success = True
         self.voltage_range: dict[str, tuple[float, float]] = {}
         for index, val in enumerate(labjack_list):
             if "A" in val:
@@ -289,6 +288,3 @@ class LabJackDataStream(ProcessWithLogging):
         self.session_file = ""
         self.labjack_csv = ""
         self.numpy_arr[:] = np.nan
-
-    def is_successful(self) -> bool:
-        return self.is_success

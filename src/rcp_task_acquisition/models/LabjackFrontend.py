@@ -165,11 +165,6 @@ class LabjackFrontend:
             self.scan_rate,
             self.handshake,
         )
-        if not proc.is_successful():
-            # Warning("labjack").display()
-            labjack_button = self.graph_panel.labjack_stream_button
-            labjack_button.SetValue(False)
-            return False
         proc.start()
         self.labjack_timer.Start(200)
         return True
