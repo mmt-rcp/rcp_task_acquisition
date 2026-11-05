@@ -286,7 +286,7 @@ class MainFrame(wx.Frame):
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_SIZE, self.on_resize)
 
-    def put_to_stimulus(self, data, *, timeout=3):
+    def put_to_stimulus(self, data, *, timeout=3) -> None:
         self.msgq.put(data, timeout=timeout)
 
     def _show_patient_cams(self, show: bool = True) -> None:
@@ -300,11 +300,11 @@ class MainFrame(wx.Frame):
         with wx.EventBlocker(controls_panel.show_patient_cams_button):
             controls_panel.show_patient_cams_button.SetValue(show)
 
-    def _update_task(self, task):
+    def _update_task(self, task) -> None:
         self.put_to_stimulus(StimulusMessage.UPDATE_TASK)
         self.put_to_stimulus(task)
 
-    def _update_data(self, data):
+    def _update_data(self, data) -> None:
         self.put_to_stimulus(StimulusMessage.UPDATE_DATA)
         self.put_to_stimulus(data)
 
@@ -1020,7 +1020,7 @@ class MainFrame(wx.Frame):
                         if "Face" in p.name:
                             logger.debug("removing %s", p)
                             p.unlink(missing_ok=True)
-                # remove any files that arent the calibraated files
+                # remove any files that aren't the calibrated files
 
     def onClick(self, event: wx.Event) -> None:
         if self.controls_panel.cam_panel.set_crop.GetValue():
@@ -1045,7 +1045,7 @@ class MainFrame(wx.Frame):
             # self.widget_panel.Enable(True)
             # self.controls_panel.cam_panel.play.SetFocus()
         # Modify existing ROI parameters
-        elif self.controls_panel.cam_panel.set_crop.GetValue() == True and keyCode in (
+        elif self.controls_panel.cam_panel.set_crop.GetValue() and keyCode in (
             wx.WXK_UP,
             wx.WXK_DOWN,
             wx.WXK_LEFT,
