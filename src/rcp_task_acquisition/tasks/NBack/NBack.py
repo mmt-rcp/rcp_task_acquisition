@@ -500,8 +500,6 @@ class N_back(bases.StimulusBase):
                     "Initial_Fixation_Shown",
                 )
                 if not self.is_real:
-                    if self.button.value:
-                        self.button_press
                     if self.button_press:
                         if answer_list[index][t_index] == Answer.DIFFERENT:
                             timeData, fixFlipTime = self.showAndLog(
