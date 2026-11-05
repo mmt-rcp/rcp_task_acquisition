@@ -259,7 +259,7 @@ class MainFrame(wx.Frame):
         self.msgq: multiprocessing.Queue[Any] = multiprocessing.Queue()
 
         self.finish = Value(ctypes.c_byte, 0)
-        self.resultsq: Queue[Any] = Queue()
+        self.resultsq: Queue[Any] = Queue()  # output from stimulus patient window process
         self.video_lock = Event()
         self.thread = StimulusThread(
             self.msgq,
@@ -288,6 +288,9 @@ class MainFrame(wx.Frame):
 
     def put_to_stimulus(self, data, *, timeout=3) -> None:
         self.msgq.put(data, timeout=timeout)
+
+    def get_from_stimulus(self, *, timeout=3):
+        return self.resultsq.get(timeout=timeout)
 
     def _show_patient_cams(self, show: bool = True) -> None:
         controls_panel = self.controls_panel
@@ -363,7 +366,7 @@ class MainFrame(wx.Frame):
             # self.hardware_button.Enable(False)
             if isinstance(trial_panel, VowelSpacePanel):
                 self.put_to_stimulus(StimulusMessage.VOWEL_SPACE)
-                trial_info = self.resultsq.get()
+                trial_info = self.get_from_stimulus()
                 trial, syllable, finish = trial_info
                 trial_panel.repeat = True
                 trial_panel.update_trial(trial, syllable)
@@ -489,7 +492,7 @@ class MainFrame(wx.Frame):
         assert isinstance(self.trial_panel, VowelSpacePanel)
         self._update_data(False)
         self.put_to_stimulus(StimulusMessage.VOWEL_SPACE)
-        trial_info = self.resultsq.get()
+        trial_info = self.get_from_stimulus()
         trial, syllable, finish = trial_info
         self.trial_panel.continue_button.SetLabel("Begin Trial")
         self.trial_panel.update_trial(trial, syllable)
@@ -808,7 +811,7 @@ class MainFrame(wx.Frame):
     def update_task_metadata(self) -> None:
         self.put_to_stimulus(StimulusMessage.SEND_METADATA)
         try:
-            trial_data = json.loads(self.resultsq.get())
+            trial_data = json.loads(self.get_from_stimulus())
         except Exception as err:
             logger.error("update task metadata error: %s", err)
             trial_data = None
