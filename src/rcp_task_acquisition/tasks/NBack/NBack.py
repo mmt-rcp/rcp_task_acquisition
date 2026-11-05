@@ -90,6 +90,22 @@ def _all_stimuli_paths() -> list[str]:
     return LETTERS  # paths
 
 
+def _exec_step4(cfg, sequence_numbers):
+    """Return True if too many repeats"""
+    has_too_many_repeats = False
+    for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
+        # Check if stimulus repeats more than allowed consecutive times
+        consecutive_same = True
+        for j in range(1, cfg.MAX_CONSECUTIVE_REPEATS + 1):
+            if sequence_numbers[i] != sequence_numbers[i + j]:
+                consecutive_same = False
+                break
+        if consecutive_same:
+            has_too_many_repeats = True
+            break
+    return has_too_many_repeats
+
+
 def _create_deterministic_sequence(
     n_back_level: int, total_trials: int
 ) -> tuple[list[str], list[Answer]]:
@@ -127,19 +143,8 @@ def _create_deterministic_sequence(
             continue  # Regenerate if wrong number of targets
 
         # Step 4: Validate consecutive repetition constraint
-        has_too_many_repeats = False
-        for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
-            # Check if stimulus repeats more than allowed consecutive times
-            consecutive_same = True
-            for j in range(1, cfg.MAX_CONSECUTIVE_REPEATS + 1):
-                if sequence_numbers[i] != sequence_numbers[i + j]:
-                    consecutive_same = False
-                    break
-            if consecutive_same:
-                has_too_many_repeats = True
-                break
-        if has_too_many_repeats:
-            continue  # Regenerate if too many consecutive repeats
+        if _exec_step4(cfg, sequence_numbers):
+            continue
 
         # Step 5: Valid sequence found - convert to paths and generate answers
         stimulus_paths.extend(
@@ -202,20 +207,8 @@ def _create_practice_sequence(
             continue  # Regenerate if wrong number of targets
 
         # Step 4: Validate consecutive repetition constraint
-        has_too_many_repeats = False
-        for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
-            # Check if stimulus repeats more than allowed consecutive times
-            consecutive_same = True
-            for j in range(1, cfg.MAX_CONSECUTIVE_REPEATS + 1):
-                if sequence_numbers[i] != sequence_numbers[i + j]:
-                    consecutive_same = False
-                    break
-            if consecutive_same:
-                has_too_many_repeats = True
-                break
-
-        if has_too_many_repeats:
-            continue  # Regenerate if too many consecutive repeats
+        if _exec_step4(cfg, sequence_numbers):
+            continue
 
         # Step 5: Valid sequence found - convert to paths and generate answers
         stimulus_paths = [
