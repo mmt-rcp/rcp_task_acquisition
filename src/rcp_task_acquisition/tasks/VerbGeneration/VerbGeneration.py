@@ -76,6 +76,7 @@ class VerbGeneration(bases.StimulusBase):
                 self.timer.value = int(timer_clock.getTime())
         self.trial_list[f"trial_{self.trial}"] = self.words_shown
         self.display.flip()
+        self.play_tone()
 
     def saveMetadata(self) -> TaskMetaData:
         # data = {f"trial_{self.trial}": list(self.words_shown),
