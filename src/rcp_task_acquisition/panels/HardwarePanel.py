@@ -693,6 +693,17 @@ class HardwarePanel(wx.Panel):
                 else:
                     camera.in_use.SetValue(False)
 
+    @staticmethod
+    def _set_task_item(item: HardwareRow | CameraRow) -> None:
+        if not item.in_use_all:
+            item.in_use.Enable(False)
+            item.name.Enable(False)
+        else:
+            item.in_use_all = True
+            item.name.Enable(True)
+            item.in_use.Enable(True)
+        item.in_use.SetValue(False)
+
     def set_task(self, task: str) -> None:
         self.task = task
         # update to show available hardware for task
@@ -700,24 +711,11 @@ class HardwarePanel(wx.Panel):
             self.select_protocol = True
 
             for hardware in self.hardware_list:
-                if not hardware.in_use_all:
-                    hardware.in_use.Enable(False)
-                    hardware.name.Enable(False)
-                else:
-                    hardware.in_use_all = True
-                    hardware.name.Enable(True)
-                    hardware.in_use.Enable(True)
-                hardware.in_use.SetValue(False)
+                self._set_task_item(hardware)
                 hardware.labjack.Enable(False)
+
             for camera in self.camera_list:
-                if not camera.in_use_all:
-                    camera.in_use.Enable(False)
-                    camera.name.Enable(False)
-                else:
-                    camera.in_use_all = True
-                    camera.name.Enable(True)
-                    camera.in_use.Enable(True)
-                camera.in_use.SetValue(False)
+                self._set_task_item(camera)
                 camera.serial.Enable(False)
                 camera.is_primary.Enable(False)
 
