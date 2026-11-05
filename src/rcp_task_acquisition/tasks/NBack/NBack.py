@@ -90,7 +90,20 @@ def _all_stimuli_paths() -> list[str]:
     return LETTERS  # paths
 
 
-def _exec_step4(cfg, sequence_numbers):
+def _exec_step1_2(total_trials, n_back_level) -> tuple[list[int], list[int]]:
+    # Step 1: Generate random sequence using available stimuli (1-10)
+    sequence_numbers = [random.randint(1, cfg.STIMULI_COUNT) for _ in range(total_trials)]
+
+    # Step 2: Identify targets automatically based on n-back rule
+    target_positions: list[int] = []
+    for pos in range(n_back_level, len(sequence_numbers)):
+        if sequence_numbers[pos] == sequence_numbers[pos - n_back_level]:
+            target_positions.append(pos)
+
+    return sequence_numbers, target_positions
+
+
+def _exec_step4(cfg, sequence_numbers) -> bool:
     """Return True if too many repeats"""
     has_too_many_repeats = False
     for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
@@ -127,19 +140,11 @@ def _create_deterministic_sequence(
     answers: list[Answer] = []
 
     while True:  # Keep generating until valid sequence found
-        # Step 1: Generate random sequence using available stimuli (1-10)
-        sequence_numbers = [random.randint(1, cfg.STIMULI_COUNT) for _ in range(total_trials)]
+        # step 1 + 2 :
+        sequence_numbers, target_positions = _exec_step1_2(total_trials, n_back_level)
 
-        # Step 2: Identify targets automatically based on n-back rule
-        target_count = 0
-        target_positions = []
-
-        for pos in range(n_back_level, len(sequence_numbers)):
-            if sequence_numbers[pos] == sequence_numbers[pos - n_back_level]:
-                target_count += 1
-                target_positions.append(pos)
         # Step 3: Validate exact target count requirement
-        if target_count != cfg.TARGETS_PER_BLOCK:
+        if len(target_positions) != cfg.TARGETS_PER_BLOCK:
             continue  # Regenerate if wrong number of targets
 
         # Step 4: Validate consecutive repetition constraint
@@ -161,7 +166,7 @@ def _create_deterministic_sequence(
         logger.info(
             "Generated deterministic %s-back sequence: %s targets in %s trials",
             n_back_level,
-            target_count,
+            len(target_positions),
             total_trials,
         )
         break
@@ -191,19 +196,10 @@ def _create_practice_sequence(
 
     while True:  # Keep generating until valid sequence found
         # Step 1: Generate random sequence using available stimuli (1-10)
-        sequence_numbers = [random.randint(1, cfg.STIMULI_COUNT) for _ in range(total_trials)]
-
-        # Step 2: Identify targets automatically based on n-back rule
-        target_count = 0
-        target_positions = []
-
-        for pos in range(n_back_level, len(sequence_numbers)):
-            if sequence_numbers[pos] == sequence_numbers[pos - n_back_level]:
-                target_count += 1
-                target_positions.append(pos)
+        sequence_numbers, target_positions = _exec_step1_2(total_trials, n_back_level)
 
         # Step 3: Validate exact target count requirement (3 for practice)
-        if target_count != 3:
+        if len(target_positions) != 3:
             continue  # Regenerate if wrong number of targets
 
         # Step 4: Validate consecutive repetition constraint
@@ -228,7 +224,7 @@ def _create_practice_sequence(
     logger.info(
         "Generated practice %s-back sequence: %s targets in %s trials",
         n_back_level,
-        target_count,
+        len(target_positions),
         total_trials,
     )
     return stimulus_paths, answers
