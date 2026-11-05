@@ -379,7 +379,7 @@ class MainFrame(wx.Frame):
                 self.cams.stop_recording()
             self.video_status.value = VideoStatus.STOP
             controls_panel.session_button.SetLabel("Start Task")
-            controls_panel.hardware_button.Enable(True)
+            controls_panel.hardware_button.Enable()
             self.trial_panel.hide()
             self.msgq.put(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
@@ -413,6 +413,7 @@ class MainFrame(wx.Frame):
         )
         if trial_panel.continue_button.GetValue():
             logger.debug("in trial button")
+            self.controls_panel.hardware_button.Disable()
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
@@ -455,8 +456,8 @@ class MainFrame(wx.Frame):
             self.msgq.put(StimulusMessage.RUN_TASK)
         else:
             logger.debug("stopping episode")
+            self.controls_panel.hardware_button.Enable()
             self.finish.value = 2
-
             self.rest_timer.Stop()
             if isinstance(trial_panel, SaraPanel):
                 trial_panel.show_scoring()
@@ -693,8 +694,9 @@ class MainFrame(wx.Frame):
                     graph_panel.labjack_stream_button.Enable(False)
                     graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
-            controls_panel.session_button.Enable(False)
+            self.trial_panel.continue_button.Disable()
         else:
+            self.trial_panel.continue_button.Enable()
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
@@ -715,7 +717,6 @@ class MainFrame(wx.Frame):
             cam_panel.minRec.Enable(True)
             cam_panel.secRec.Enable(True)
             cam_panel.update_settings.Enable(True)
-            controls_panel.session_button.Enable(True)
 
     def create_metadata(self) -> None:
         logger.verbose("create_metadata called")
