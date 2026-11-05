@@ -11,6 +11,9 @@ from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
+# on purpose at the end. prevent import loop cycle.
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
+
 logger = get_logger(__name__)
 
 
@@ -228,6 +231,9 @@ class TrialPanelWithInstructPlayback(TrialPanel):
     video_buttons: list[wx.ToggleButton]
     other_buttons: list[wx.ToggleButton]
 
+    syllable_start_video_button: wx.ToggleButton
+    syllable_pause_video_button: wx.ToggleButton
+
     def setup_instruction_playback(self):
         vid_title = self.video_title = wx.StaticText(self, label="")
         start_but = self.start_video_button = wx.ToggleButton(
@@ -289,6 +295,17 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         super().stop_video()
         self.pause_video_button.SetLabel("Pause Video")
 
+    def set_stopped_status(self):
+        self.video_buttons[0].SetLabel("Start Video")
+        self.video_buttons[0].SetValue(False)
+        if self.video_buttons[1].GetValue():
+            self.video_buttons[1].SetValue(False)
+            self.video_buttons[1].SetLabel("Pause Video")
+        self.video_buttons[1].Enable(False)
+        self.other_buttons[0].Enable(True)
+        self.continue_button.Enable(True)
+        # self.next_button.Enable(True)
+
     def pause_video(self):
         self.pause_video_button.SetLabel("Resume Video")
         super().pause_video()
@@ -297,6 +314,24 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         self.pause_video_button.SetLabel("Pause Video")
         super().resume_video()
 
+    def get_buttons(self) -> None:
+        if self.syllable_start_video_button.GetValue():
+            self.video_buttons = [
+                self.syllable_start_video_button,
+                self.syllable_pause_video_button,
+            ]
+            self.other_buttons = [self.start_video_button, self.pause_video_button]
+        elif self.start_video_button.GetValue():
+            self.video_buttons = [self.start_video_button, self.pause_video_button]
+            self.other_buttons = [
+                self.syllable_start_video_button,
+                self.syllable_pause_video_button,
+            ]
 
-from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
-# on purpose at the end. prevent import loop cycle.
+    def set_live_status(self):
+        self.continue_button.Enable(False)
+        self.video_buttons[0].SetLabel("Stop Video")
+        self.video_buttons[0].Enable(True)
+        self.video_buttons[1].Enable(True)
+        self.other_buttons[0].Enable(False)
+        self.other_buttons[1].Enable(False)
