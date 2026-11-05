@@ -80,7 +80,7 @@ class MainFrame(wx.Frame):
         self.stimulus_timer = Value(ctypes.c_int, 0)
         self.stimulus_panel = Value(ctypes.c_bool, False)
         self.count = 0
-        self.frames: float = 0  # ~framerate
+        self.main_framerate: float = 0  # ~framerate
         self.results_list: list[Any] = []
         self.serial_device = SerialDevice()
         self.cam_crop = Crop()
@@ -347,12 +347,11 @@ class MainFrame(wx.Frame):
             if not is_success:
                 controls_panel.session_button.SetValue(False)
                 return
-
             graph_panel.labjack_stream_button.SetValue(True)
             graph_panel.labjack_stream_button.Enable(False)
             graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self.prepare_file(self.task, self.participant)
-            self.create_file()
+            self.create_metadata()
             lj_path = os.path.join(self.sess_dir, self.path_base + "_labjack.txt")
             msg = f"P{self.path_base}x"
             self.lj.add_csv(lj_path, self.serial_device, msg)
@@ -720,6 +719,8 @@ class MainFrame(wx.Frame):
 
     def create_metadata(self) -> None:
         logger.verbose("create_metadata called")
+        if not self.sess_dir.exists():
+            self.sess_dir.mkdir(parents=True, exist_ok=True)
         meta = file_utils.metadata_template()
         self._update_metadata(meta)
 
@@ -735,6 +736,8 @@ class MainFrame(wx.Frame):
         cameras_meta = {}
         meta["version"] = str(__version__)
         meta["actual_scan_rate"] = self.labjack_scan_rate
+        meta["framerate"] = user_cfg.cam_config.framerate
+        meta["framerate_decrease_factor"] = user_cfg.cam_config.framerate_decrease_factor
 
         for cam_d in self.cams.cam_dict.values():
             cfg = user_cfg.cameras[cam_d.name]
@@ -746,6 +749,7 @@ class MainFrame(wx.Frame):
                 "nickname": cam_d.name,
                 "actual_framerate": cam_d.actual_framerate,
                 "actual_exposure": cam_d.exposure,
+                "framerate_decrease_factor": cfg.framerate_decrease_factor,
             }
         meta["cameras"] = config.to_raw_recursive(cameras_meta)
         meta["unitRef"] = user_cfg.unitRef
@@ -775,10 +779,14 @@ class MainFrame(wx.Frame):
         res = metadata_panel.show()
         metadata_panel.dialog.Close()
         if res == wx.ID_OK:
+            self.update_metadata()  # to ensure have all as it is right now,
+            # notably cameras actual frame rates.
             metadata = file_utils.read_metadata(self.metapath)
-            logger.debug("read metadata: %s", metadata)
             metadata["actual_scan_rate"] = self.labjack_scan_rate
             for key, value in metadata_panel.metadata.items():
+                prev = metadata.get(key)
+                if prev is not None:
+                    logger.debug("replacing metadata key %s: %s -> %s", key, prev, value)
                 metadata[key] = value
             metadata["EndTime_Local"] = self.end_time
             metadata["EndTime_UTC"] = self.end_time_utc
@@ -811,7 +819,7 @@ class MainFrame(wx.Frame):
         logger.verbose("prepare_file called")
         part = participant
         if part is None:
-            logger.verbose("setting no_participant for create_file")
+            logger.verbose("setting no_participant for prepare_file")
             part = no_participant
             # what todo ?
         task_panel_cls = get_task_panel_class(self.task)
@@ -856,11 +864,6 @@ class MainFrame(wx.Frame):
             self.metapath = Path(self.sess_dir, meta_name)
         logger.notice("prepared new metapath: %s", self.metapath)
 
-    def create_file(self) -> None:
-        if not self.sess_dir.exists():
-            self.sess_dir.mkdir(parents=True, exist_ok=True)
-        self.create_metadata()
-
     def initCams(self) -> bool:  # NB: but return value unused/unchecked in all callers
         logger.verbose("initCams()")
         # self.trial_panel.Show()
@@ -881,7 +884,6 @@ class MainFrame(wx.Frame):
             self.controls_panel.cam_panel.crop.Enable(False)
             self.controls_panel.cam_panel.reset.Enable(False)
             self.Enable(True)
-
             self.controls_panel.session_button.Enable(True)
             self.image_panel.draw()
         else:
@@ -990,8 +992,6 @@ class MainFrame(wx.Frame):
                 self.trial_panel.reset(0)
                 self.trial_panel.show()
                 self.prepare_file(self.task, self.participant)
-            # else:
-            #     self.create_file()
 
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             cam_panel.set_crop.Enable(False)
@@ -1073,18 +1073,18 @@ class MainFrame(wx.Frame):
         self.video_status.value = VideoStatus.NOT_PLAYING
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
-        cams_cfg = user_cfg.cameras
-        args: config.HardwareDictConfig
+        cams_cfg: config.CamerasDictConfig
         if not self.task or self.task not in tasks_cfg:
             logger.debug("task %r not in tasks_cfg (%s)", self.task, tuple(tasks_cfg))
             args = user_cfg.hardware
+            cams_cfg = user_cfg.cameras
             self.controls_panel.show_cams()
-            self.frames = user_cfg.cam_config.framerate
+            self.main_framerate = user_cfg.cam_config.framerate
         else:
             logger.debug("populating cameras and hardware configs")
             cams_cfg = config.CamerasDictConfig()
             args = config.HardwareDictConfig()
-            self.frames = 0
+            self.main_framerate = 0
             task_cfg = tasks_cfg[self.task]
             self.controls_panel.hide_cams()
             for hard_name in task_cfg.settings:
@@ -1096,7 +1096,6 @@ class MainFrame(wx.Frame):
                     logger.warning(
                         "Task %s: unknown hardware name in task settings: %s", task, hard_name
                     )
-        # logger.debug(f"args: {args}")
         hard_gen = ((arg.value, v.labjack_input, "", v.voltage_range) for arg, v in args.items())
         sorted_hardware: tuple[tuple[str, str, str, tuple[float, float]], ...] = tuple(
             sorted(hard_gen, key=lambda item: item[1])
@@ -1105,7 +1104,7 @@ class MainFrame(wx.Frame):
             HardwareListsType, tuple(zip(*sorted_hardware))
         )
         # logger.debug(hardware_lists)
-        self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.frames)
+        self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.main_framerate)
         controls_panel = self.controls_panel
         controls_panel.cam_panel.init.SetValue(True)
         controls_panel.update_task(task)

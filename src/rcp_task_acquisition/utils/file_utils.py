@@ -61,6 +61,8 @@ def metadata_template() -> ruamel.yaml.CommentedMap:
     \n
 
 # Cameras
+    framerate:
+    framerate_decrease_factor:
     cameras:
     \n
 
