@@ -7,21 +7,20 @@ W Williamson, wallace.williamson@ucdenver.edu
 
 import ctypes
 import datetime
-import json
-import multiprocessing
+import multiprocessing as mp
 import os
 import shutil
 import time
 import typing
-import warnings
-from multiprocessing import Event, Queue, Value
+
 from pathlib import Path
 from typing import Any
 
 import wx
 import wx.lib.dialogs
 import numpy as np
-import cv2
+import matplotlib as mpl
+import matplotlib.backend_bases
 
 from rcp_task_acquisition.models.CameraFrontend import CamerasFrontend
 from rcp_task_acquisition.models.Crop import Crop
@@ -73,12 +72,12 @@ class MainFrame(wx.Frame):
         self._rcp_context = rcp_context
         self.task: str = ""
         self.launch_args: dict[str, Any] = {}
-        self.button_pressed = Value(ctypes.c_bool, False)
+        self.button_pressed = mp.Value(ctypes.c_bool, False)
         self.recording = False
         self.calibrate = False
-        self.press_count = Value(ctypes.c_int, 0)
-        self.stimulus_timer = Value(ctypes.c_int, 0)
-        self.stimulus_panel = Value(ctypes.c_bool, False)
+        self.press_count = mp.Value(ctypes.c_int, 0)
+        self.stimulus_timer = mp.Value(ctypes.c_int, 0)
+        self.stimulus_panel = mp.Value(ctypes.c_bool, False)
         self.count = 0
         self.main_framerate: float = 0  # ~framerate
         self.results_list: list[Any] = []
@@ -198,7 +197,7 @@ class MainFrame(wx.Frame):
         controls_panel.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, handle_hardware_test)
         controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
         controls_panel.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
-        self.cam_test = Value(ctypes.c_bool, False)
+        self.cam_test = mp.Value(ctypes.c_bool, False)
         self.liveTimer = wx.Timer(self, wx.ID_ANY)
         controls_panel.show_patient_cams_button.Bind(
             wx.EVT_TOGGLEBUTTON,
@@ -224,7 +223,7 @@ class MainFrame(wx.Frame):
         self.x1 = 0
         self.y1 = 0
         self.frmDims = [0, 1080, 0, 1440]
-        self.shared = Value(ctypes.c_byte, 0)
+        self.shared = mp.Value(ctypes.c_byte, 0)
         # self.camaq = Value(ctypes.c_byte, 0)  unused
         # self.frmaq = Value(ctypes.c_int, 0)
         self.frmaq = self.cams.frmaq
@@ -254,13 +253,13 @@ class MainFrame(wx.Frame):
         controls_panel.camera_toggle.Bind(wx.EVT_BUTTON, on_update_cameras_viewed)
         # set up stimulus thread
 
-        self.video_status = Value(ctypes.c_int, 0)
+        self.video_status = mp.Value(ctypes.c_int, 0)
 
-        self.msgq: multiprocessing.Queue[Any] = multiprocessing.Queue()
+        self.msgq: mp.Queue[Any] = mp.Queue()
 
-        self.finish = Value(ctypes.c_byte, 0)
-        self.resultsq: Queue[Any] = Queue()  # output from stimulus patient window process
-        self.video_lock = Event()
+        self.finish = mp.Value(ctypes.c_byte, 0)
+        self.resultsq: mp.Queue[Any] = mp.Queue()  # output from stimulus patient window process
+        self.video_lock = mp.Event()
         self.thread = StimulusThread(
             self.msgq,
             self.finish,
@@ -1015,16 +1014,17 @@ class MainFrame(wx.Frame):
                             p.unlink(missing_ok=True)
                 # remove any files that aren't the calibrated files
 
-    def onClick(self, event: wx.Event) -> None:
+    def onClick(self, event: mpl.backend_bases.Event) -> None:
         if self.controls_panel.cam_panel.set_crop.GetValue():
             cameras = self._rcp_context.user_config.cameras
+            event = typing.cast(mpl.backend_bases.LocationEvent, event)
             self.cam_crop.adjust_crop(
                 event, self.image_panel.axes, [cam_item.value for cam_item in cameras], cameras
             )
             self.cam_crop.drawROI(self.image_panel.axes)
             self.image_panel.figure.canvas.draw()
 
-    def OnKeyPressed(self, event: wx.Event) -> None:
+    def OnKeyPressed(self, event: wx.KeyEvent) -> None:
         keyCode = event.GetKeyCode()
         # Save the new ROI parameters
         if keyCode in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
