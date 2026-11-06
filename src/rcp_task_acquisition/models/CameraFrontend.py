@@ -409,7 +409,7 @@ class CamerasFrontend:
                 return
             logger.verbose("requesting camera stop to %s", cam_d.name)
             cam_d.put_to(CameraCommand.STOP, timeout=1)
-            ret = cam_d.get_from(timeout=2)
+            ret = cam_d.get_from(timeout=3)
             if ret != "done":
                 assert isinstance(ret, int)
                 if ret > threshold:
@@ -464,7 +464,7 @@ class CamerasFrontend:
 
             # self.recSet.append(self.cam_dict[camID].get_from())
             try:
-                width, height = cam_d.get_from(timeout=1)
+                width, height = cam_d.get_from(timeout=2)
             except Exception as err:
                 logger.error("could not read W/H: %s", err)
                 errors[cam_d.name] = err

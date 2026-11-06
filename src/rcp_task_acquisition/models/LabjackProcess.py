@@ -1,5 +1,6 @@
 import ctypes
 import multiprocessing
+import queue
 from multiprocessing import sharedctypes
 from typing import Any
 import time
@@ -174,9 +175,13 @@ class LabJackDataStream(ProcessWithLogging):
                     continue
 
             if self.create_csv.value:
-                self.labjack_csv = self.folder_queue.get()
-                write_to_csv = True
                 self.create_csv.value = False
+                try:
+                    self.labjack_csv = self.folder_queue.get(timeout=1)
+                except queue.Empty:
+                    logger.warning("could read labjack csv, queue empty")
+                else:
+                    write_to_csv = True
 
             try:
                 data = ljm.eStreamRead(self.handle)
