@@ -398,21 +398,23 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.name)
             self._put_response(percentage_dropped)
 
-        try:
-            cam.EndAcquisition()
-            cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
-        except PySpin.SpinnakerException as err:
-            logger.exception("Could not stop acquisition: %s", err, stacklevel=1)
-        self.frmGrab.value = 0
-        if ctx.ismaster:
+        if cam is not None:
             try:
-                cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-                cam.LineSource.SetValue(PySpin.LineSource_FrameTriggerWait)
-                cam.LineInverter.SetValue(True)
-                cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-                cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
+                cam.EndAcquisition()
+                cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
             except PySpin.SpinnakerException as err:
-                logger.exception("Could stop line trigger: %s", err, stacklevel=1)
+                if err.errorcode != -1010:
+                    logger.exception("Could not stop acquisition: %s", err, stacklevel=1)
+            self.frmGrab.value = 0
+            if ctx.ismaster:
+                try:
+                    cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                    cam.LineSource.SetValue(PySpin.LineSource_FrameTriggerWait)
+                    cam.LineInverter.SetValue(True)
+                    cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                    cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
+                except PySpin.SpinnakerException as err:
+                    logger.exception("Could stop line trigger: %s", err, stacklevel=1)
         self._put_response("done")
         logger.success("successfully stopped acquisition")
 
