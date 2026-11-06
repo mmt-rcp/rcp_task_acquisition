@@ -332,19 +332,12 @@ class CamerasFrontend:
         all_cams_serial = [c.serial for c in self._cam_by_idx]
         for cam_d in self._cam_by_idx:
             multi_cam = spin.multiCam_DLC_Cam(
-                cam_d.camq,
-                cam_d.camq_p2read,
-                cam_d.serial,
+                cam_d,
                 all_cams_serial,
-                cam_d.frame_dims,
                 self.camaq,
                 self.frmaq,
-                cam_d.array4feed,
-                cam_d.frmGrab,
                 DOWNSAMPLE_VAL,
-                config=cam_d.base_config,
                 user_config=self._rcp_context.user_config,
-                name=cam_d.name,
             )
             self.multi_cameras[cam_d.serial] = multi_cam
             multi_cam.start()
