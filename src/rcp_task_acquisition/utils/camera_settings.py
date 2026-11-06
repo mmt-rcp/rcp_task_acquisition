@@ -44,6 +44,12 @@ class CamSettings:
     frame_size: FrameDims
     base_config: CameraConfig
 
+    def put_to(self, data, *, timeout=3):
+        self.camq.put(data, timeout=timeout)
+
+    def get_from(self, *, timeout=3):
+        return self.camq_p2read.get(timeout=timeout)
+
     def apply_new_dims(self, new_dims: FrameDims):
         frame = self.frameBuff[0 : new_dims.dispSize].reshape([new_dims.h, new_dims.w, 3])
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
