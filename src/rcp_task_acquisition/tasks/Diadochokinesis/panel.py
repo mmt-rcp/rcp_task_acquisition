@@ -182,7 +182,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self.seconds += 1
             self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
 
-    def end_trial(self):
+    def end_trial(self) -> None:
         super().end_trial()
         self.syllable_start_video_button.Enable(True)
 

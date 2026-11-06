@@ -370,16 +370,20 @@ class MainFrame(wx.Frame):
         else:
             self.task_active = False
             self.serial_device.write("A")
-            time.sleep(3)
-            if trial_panel.continue_button.GetValue():
-                trial_panel.continue_button.SetValue(False)
-                self.trial_event()
-            if self.recording:
-                self.cams.stop_recording()
+            #
+            time.sleep(1)  # todo why was it sleep(3) ? why sleep at all ?
+            #
             self.video_status.value = VideoStatus.STOP
             controls_panel.session_button.SetLabel("Start Task")
             controls_panel.hardware_button.Enable(True)
-            self.trial_panel.hide()
+            if trial_panel.continue_button.GetValue():
+                # end the trial if it was running
+                with wx.EventBlocker(trial_panel.continue_button):
+                    trial_panel.continue_button.SetValue(False)
+                self.trial_event()
+            if self.recording:
+                self.cams.stop_recording()
+            self.trial_panel.end_task()
             self.put_to_stimulus(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
 

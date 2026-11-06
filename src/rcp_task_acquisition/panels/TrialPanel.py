@@ -167,14 +167,17 @@ class TrialPanel(wx.Panel):
         self.rest_timer.Start(1000)
         self.Show()
 
+    def end_task(self):
+        self.hide()
+
     def hide(self):
         self.rest_timer.Stop()
         self.Hide()
 
-    def start_trial(self):
+    def start_trial(self) -> None:
         self.trial_is_active = True
 
-    def end_trial(self):
+    def end_trial(self) -> None:
         self.trial_is_active = False
 
     def get_video_buttons(self):

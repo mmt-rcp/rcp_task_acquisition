@@ -18,6 +18,7 @@ class SaraPanel(TrialPanel):
     def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         super().__init__(parent, *args, **kwargs)
         self.current_assessment: str = ""
+        self.previous_assessment: str = ""
         self.assessment_list: list[str] = list(ASSESMENTS.keys())
         self.assessment_num = 0
         self.actual_assessments: dict[str, dict[str, Any]] = {}
@@ -83,12 +84,30 @@ class SaraPanel(TrialPanel):
         self.edit_button.Bind(wx.EVT_BUTTON, self.edit_score)
         return grid_sizer
 
+    def Hide(self) -> bool:
+        self.close_scoring()
+        return super().Hide()
+
+    def close_scoring(self):
+        panel = self.scoring_panel
+        if panel is None:
+            return
+        self.scoring_panel = None
+        panel.Hide()
+        panel.Close()
+
+    def _create_scoring(self, args: dict | None = None):
+        panel = self.scoring_panel
+        if panel is not None:
+            self.close_scoring()
+        panel = self.scoring_panel = AssessmentPanel(self.current_assessment, args)
+        panel.Bind(wx.EVT_CLOSE, self._on_reset_assessment)
+        panel.continue_button.Bind(wx.EVT_BUTTON, self._on_reset_assessment)
+        panel.ShowModal()
+
     def show_scoring(self) -> None:
-        self.scoring_panel = AssessmentPanel(self.current_assessment)
-        self.scoring_panel.Bind(wx.EVT_CLOSE, self._on_reset_assessment)
-        self.scoring_panel.continue_button.Bind(wx.EVT_BUTTON, self._on_reset_assessment)
-        self.continue_button.Enable(False)
-        self.edit_button.Enable(False)
+        self._create_scoring()
+        self.edit_button.Enable()
 
     def add_metadata(self) -> dict[str, dict[str, Any]]:
         return self.actual_assessments
@@ -105,9 +124,9 @@ class SaraPanel(TrialPanel):
         # need to unbind to prevent infinite recursion,
         score_panel.Unbind(wx.EVT_CLOSE, handler=self._on_reset_assessment)
         # with this following Close:
-        score_panel.Close()
+        self.close_scoring()
         logger.debug("button: %s, text: %s", button_idx, text)
-        assesment_dict = {
+        assessment_dict = {
             "type": self.current_assessment,
             "score": button_idx,
             "description": ASSESMENTS[self.current_assessment][button_idx],
@@ -118,14 +137,15 @@ class SaraPanel(TrialPanel):
             self.assessment_num += 1
         else:
             self.assessment_num = 0
+        self.previous_assessment = self.current_assessment
         self.current_assessment = self.assessment_list[self.assessment_num]
         self.assessment_choice.SetSelection(self.assessment_num)
         logger.debug("edit num: %s", self.edit_num)
         if self.edit_num is not None:
-            self.actual_assessments[f"{self.edit_num}"] = assesment_dict
+            self.actual_assessments[f"{self.edit_num}"] = assessment_dict
             self.edit_num = None
         else:
-            self.actual_assessments[f"trial_{self.trial_number}"] = assesment_dict
+            self.actual_assessments[f"trial_{self.trial_number}"] = assessment_dict
         self.assessment_task.Enable(True)
         self.assessment_choice.Enable(True)
         self.continue_button.SetLabel("Begin Trial")
@@ -137,9 +157,9 @@ class SaraPanel(TrialPanel):
         return self.current_assessment
 
     def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.trial_number += 1
         logger.debug("trial Number: %s", self.trial_number)
-        self.trial_is_active = True
         self.assessment_task.Enable(False)
         self.assessment_choice.Enable(False)
         cur_asses = self.current_assessment = self.assessment_list[
@@ -167,17 +187,19 @@ class SaraPanel(TrialPanel):
                 self.seconds_text.SetLabel(f"Time: {self.timer.value} secs")
 
     def edit_score(self, event: wx.Event) -> None:
-        logger.debug("assessment: %s", self.recent_trials[self.current_assessment])
-        self.edit_num = f"trial_{self.recent_trials[self.current_assessment]}"
-        args = self.actual_assessments[f"trial_{self.recent_trials[self.current_assessment]}"]
+        logger.debug(
+            "edit: assessment: %s ; recent=%s ; actual=%s",
+            self.previous_assessment,
+            self.recent_trials,
+            self.actual_assessments,
+        )
+        val = self.recent_trials[self.previous_assessment]
+        self.edit_num = f"trial_{val}"
+        args = self.actual_assessments[f"trial_{val}"]
         logger.debug("actual a: %s", self.actual_assessments)
         logger.debug("args: %s", args)
         logger.debug("recent t: %s", self.recent_trials)
-        score_panel = self.scoring_panel = AssessmentPanel(self.current_assessment, args)
-        score_panel.Bind(wx.EVT_CLOSE, self._on_reset_assessment)
-        score_panel.continue_button.Bind(wx.EVT_BUTTON, self._on_reset_assessment)
-        self.continue_button.Enable(False)
-        self.edit_button.Enable(False)
+        self._create_scoring(args)
 
 
 class AssessmentPanel(wx.Dialog):
@@ -204,7 +226,6 @@ class AssessmentPanel(wx.Dialog):
         self.vertical_sizer.Add(self._add_buttons(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizerAndFit(self.vertical_sizer)
         self.Layout()
-        self.Show()
 
     def _create_assessment_score(
         self, current_assessment: str, args: dict[str, Any]
