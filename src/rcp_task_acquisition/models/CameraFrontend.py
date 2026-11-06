@@ -502,7 +502,9 @@ class CamerasFrontend:
             prim_cam = self.cam_dict[self.primary_cams[0]]
             prim_cam.put_to(CameraCommand.GET_BALANCE, timeout=1)
             rate = prim_cam.get_from(timeout=2)
-            primary_rate = prim_cam.actual_framerate = rate
+            logger.verbose("receive rate: %r", rate)
+            if isinstance(rate, (int, float)):
+                primary_rate = prim_cam.actual_framerate = rate
         for cam_d in self._cam_by_idx:
             if not cam_d.is_primary:
                 cam_d.actual_framerate = primary_rate / int(cam_d.decrease_val)
