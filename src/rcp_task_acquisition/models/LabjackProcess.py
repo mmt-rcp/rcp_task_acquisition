@@ -187,7 +187,7 @@ class LabJackDataStream(Process):
                     if new_list[1][0] != 0:
                         idx = len(new_list[1]) - int(np.argmax(new_list[1] == 1))
                         self.rest_time.value = (1 / self.actualscanRate.value) * idx
-                        self.grasp_ready.value = True
+                    self.grasp_ready.value = True
 
             if self.button_list:
                 for button in self.button_list:

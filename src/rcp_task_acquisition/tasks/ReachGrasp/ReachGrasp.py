@@ -74,8 +74,8 @@ class ReachGrasp(bases.StimulusBase):
                     self._end_task()
                     return
 
-            self.display.draw_patch()
-            self.display.flip()
+            # self.display.draw_patch()
+            # self.display.flip()
             # tone to start the reach
             self.play_reach_tone()
 
