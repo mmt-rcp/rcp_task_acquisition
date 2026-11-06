@@ -205,11 +205,7 @@ class CamerasFrontend:
                 dispSize=dimensions[3] * dimensions[1] * 3,
             )
 
-            frame = cam.frameBuff[0 : new_dims.dispSize].reshape([new_dims.h, new_dims.w, 3])
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            for f in range(3):
-                cam.frame[new_dims.y1 : new_dims.y2, new_dims.x1 : new_dims.x2, f] = frame[:, :, f]
-            cam.frame_size = new_dims
+            cam.apply_new_dims(new_dims)
 
         cam0, cam1 = self._cam_by_idx[self.cam_pointer : self.cam_pointer + 2]
         self.im[0].set_data(cam0.frame)
@@ -316,9 +312,9 @@ class CamerasFrontend:
         for cam in self._cam_by_idx:
             name_base = "%s_%s_trial%03d" % (path_base, cam.name, count)
             new_base = os.path.join(sess_dir, name_base)
-            cam.camq.put(CameraCommand.RECORD_PREP, timeout=2)
-            cam.camq.put(new_base, timeout=1)
-            res = cam.camq_p2read.get(timeout=3)
+            cam.put_to(CameraCommand.RECORD_PREP)
+            cam.put_to(new_base, timeout=1)
+            res = cam.get_from(timeout=3)
             logger.verbose("RECORD_PREP res: %s", res)
 
         self.camaq.value = 1
@@ -336,19 +332,12 @@ class CamerasFrontend:
         all_cams_serial = [c.serial for c in self._cam_by_idx]
         for cam_d in self._cam_by_idx:
             multi_cam = spin.multiCam_DLC_Cam(
-                cam_d.camq,
-                cam_d.camq_p2read,
-                cam_d.serial,
+                cam_d,
                 all_cams_serial,
-                cam_d.frame_dims,
                 self.camaq,
                 self.frmaq,
-                cam_d.array4feed,
-                cam_d.frmGrab,
                 DOWNSAMPLE_VAL,
-                config=cam_d.base_config,
                 user_config=self._rcp_context.user_config,
-                name=cam_d.name,
             )
             self.multi_cameras[cam_d.serial] = multi_cam
             multi_cam.start()
@@ -357,8 +346,8 @@ class CamerasFrontend:
         for cam in self._cam_by_idx:
             initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
             try:
-                cam.camq.put(initialization, timeout=1)
-                res = cam.camq_p2read.get(timeout=3)
+                cam.put_to(initialization, timeout=1)
+                res = cam.get_from(timeout=5)  # initialisation can be slow somtimes
             except Exception as err:
                 logger.error("%s: cannot initialize camera: %s", cam.name, err)
                 raise
@@ -370,12 +359,12 @@ class CamerasFrontend:
         errors = {}
         for cam in self._cam_by_idx:
             try:
-                cam.camq.put(CameraCommand.RELEASE, timeout=1)
+                cam.put_to(CameraCommand.RELEASE, timeout=1)
             except Exception as err:
                 errors[cam.serial] = err
         for cam in self._cam_by_idx:
             try:
-                cam.camq_p2read.get(timeout=3)
+                cam.get_from(timeout=3)
             except queue.Empty:
                 logger.warning("timeout get from p2read")
             except Exception as err:
@@ -400,10 +389,10 @@ class CamerasFrontend:
             self.camaq.value = 1
 
         for cam in self._cam_by_idx:
-            cam.camq.put(CameraCommand.START, timeout=1)
+            cam.put_to(CameraCommand.START, timeout=1)
         for prim_cam_serial in self.primary_cams:
             cam = self.cam_dict[prim_cam_serial]
-            cam.camq.put(CameraCommand.TRIG_OFF, timeout=1)
+            cam.put_to(CameraCommand.TRIG_OFF, timeout=1)
 
     def stopAq(self) -> None:
         logger.verbose("stopAq started")
@@ -419,15 +408,16 @@ class CamerasFrontend:
             if cam_d is None:
                 return
             logger.verbose("requesting camera stop to %s", cam_d.name)
-            cam_d.camq.put(CameraCommand.STOP, timeout=1)
-            ret = cam_d.camq_p2read.get(timeout=2)
+            cam_d.put_to(CameraCommand.STOP, timeout=1)
+            ret = cam_d.get_from(timeout=3)
+            logger.debug("received rsp = %r from cam", ret)
             if ret != "done":
-                assert isinstance(ret, int)
-                if ret > threshold:
-                    error_message.append(f"{ret}% of camera frames dropped for {cam_d.name}")
-                ret = cam_d.camq_p2read.get(timeout=1)
-                if ret != "done":
-                    logger.warning("unexpected response to cam stop: %s", ret)
+                if isinstance(ret, int):
+                    if ret > threshold:
+                        error_message.append(f"{ret}% of camera frames dropped for {cam_d.name}")
+                    ret = cam_d.get_from(timeout=1)
+                    if ret != "done":
+                        logger.warning("unexpected response to cam stop: %s", ret)
 
         cam_errors = {}
         for camID in self.secondary_cams:
@@ -459,8 +449,8 @@ class CamerasFrontend:
         errors = {}
         for cam_d in self._cam_by_idx:
             try:
-                cam_d.camq.put(CameraCommand.UPDATE_SETTINGS, timeout=1)
-                suc_test = cam_d.camq_p2read.get(timeout=2)
+                cam_d.put_to(CameraCommand.UPDATE_SETTINGS, timeout=1)
+                suc_test = cam_d.get_from(timeout=2)
                 if suc_test == -1:
                     raise RuntimeError("camera unresponsive")
             except Exception as err:
@@ -471,11 +461,11 @@ class CamerasFrontend:
                 continue
                 # raise ValueError("Cameras unresponsive")
             message = "crop" if self.crop else "full"
-            cam_d.camq.put(message, timeout=1)
+            cam_d.put_to(message, timeout=1)
 
-            # self.recSet.append(self.cam_dict[camID].camq_p2read.get())
+            # self.recSet.append(self.cam_dict[camID].get_from())
             try:
-                width, height = cam_d.camq_p2read.get(timeout=1)
+                width, height = cam_d.get_from(timeout=2)
             except Exception as err:
                 logger.error("could not read W/H: %s", err)
                 errors[cam_d.name] = err
@@ -489,19 +479,19 @@ class CamerasFrontend:
 
     def get_exposure(self) -> None:
         for cam_d in self._cam_by_idx:
-            cam_d.camq.put(CameraCommand.SET_EXPOSURE, timeout=1)
+            cam_d.put_to(CameraCommand.SET_EXPOSURE, timeout=1)
         self.startAq()
         self.camaq.value = 1
         time.sleep(1)
         self.camaq.value = 0
         self.stopAq()
         for cam_d in self._cam_by_idx:
-            cam_d.camq.put(CameraCommand.GET_EXPOSURE, timeout=1)
+            cam_d.put_to(CameraCommand.GET_EXPOSURE, timeout=1)
         for cam_d in self._cam_by_idx:
-            cam_d.exposure = cam_d.camq_p2read.get(timeout=2)
+            cam_d.exposure = cam_d.get_from(timeout=2)
 
         for cam_d in self._cam_by_idx:
-            cam_d.camq.put(CameraCommand.SET_BALANCE, timeout=1)
+            cam_d.put_to(CameraCommand.SET_BALANCE, timeout=1)
         self.startAq()
         self.camaq.value = 1
         time.sleep(1)
@@ -510,13 +500,15 @@ class CamerasFrontend:
         primary_rate = self.framerate
         if len(self.primary_cams) >= 1:
             prim_cam = self.cam_dict[self.primary_cams[0]]
-            prim_cam.camq.put(CameraCommand.GET_BALANCE, timeout=1)
-            rate = prim_cam.camq_p2read.get(timeout=2)
-            primary_rate = prim_cam.actual_framerate = rate
+            prim_cam.put_to(CameraCommand.GET_BALANCE, timeout=1)
+            rate = prim_cam.get_from(timeout=2)
+            logger.verbose("receive rate: %r", rate)
+            if isinstance(rate, (int, float)):
+                primary_rate = prim_cam.actual_framerate = rate
         for cam_d in self._cam_by_idx:
             if not cam_d.is_primary:
                 cam_d.actual_framerate = primary_rate / int(cam_d.decrease_val)
-                cam_d.camq.put(CameraCommand.GET_BALANCE, timeout=2)
+                cam_d.put_to(CameraCommand.GET_BALANCE, timeout=2)
 
     def update_crop(self, value) -> None:
         self.crop = value

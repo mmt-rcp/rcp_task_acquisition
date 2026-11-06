@@ -155,43 +155,13 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.continue_button.Enable(True)
         self.finish_text.SetLabel("")
 
-    def get_buttons(self) -> None:
-        if self.syllable_start_video_button.GetValue():
-            self.video_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
-            self.other_buttons = [self.start_video_button, self.pause_video_button]
-        elif self.start_video_button.GetValue():
-            self.video_buttons = [self.start_video_button, self.pause_video_button]
-            self.other_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
-
     def start_video(self) -> None:
         self.get_buttons()
         # self.next_button.Enable(False)
-        self.continue_button.Enable(False)
-        self.video_buttons[0].SetLabel("Stop Video")
-        self.video_buttons[0].Enable(True)
-        self.video_buttons[1].Enable(True)
-
-        self.other_buttons[0].Enable(False)
-        self.other_buttons[1].Enable(False)
+        self.set_live_status()
 
     def stop_video(self) -> None:
-        self.video_buttons[0].SetLabel("Start Video")
-        self.video_buttons[0].SetValue(False)
-        if self.video_buttons[1].GetValue():
-            self.video_buttons[1].SetValue(False)
-            self.video_buttons[1].SetLabel("Pause Video")
-
-        self.video_buttons[1].Enable(False)
-        self.other_buttons[0].Enable(True)
-
-        # self.next_button.Enable(True)
-        self.continue_button.Enable(True)
+        self.set_stopped_status()
 
     def pause_video(self) -> None:
         self.video_buttons[1].SetLabel("Resume Video")

@@ -1,5 +1,6 @@
 import ctypes
 import multiprocessing
+import queue
 from multiprocessing import sharedctypes
 from typing import Any
 import time
@@ -38,7 +39,6 @@ class LabJackDataStream(ProcessWithLogging):
         scan_rate: SharedFloat,
         handshake: SharedInt,
     ) -> None:
-        self.is_success = True
         self.voltage_range: dict[str, tuple[float, float]] = {}
         for index, val in enumerate(labjack_list):
             if "A" in val:
@@ -175,9 +175,13 @@ class LabJackDataStream(ProcessWithLogging):
                     continue
 
             if self.create_csv.value:
-                self.labjack_csv = self.folder_queue.get()
-                write_to_csv = True
                 self.create_csv.value = False
+                try:
+                    self.labjack_csv = self.folder_queue.get(timeout=1)
+                except queue.Empty:
+                    logger.warning("could read labjack csv, queue empty")
+                else:
+                    write_to_csv = True
 
             try:
                 data = ljm.eStreamRead(self.handle)
@@ -289,6 +293,3 @@ class LabJackDataStream(ProcessWithLogging):
         self.session_file = ""
         self.labjack_csv = ""
         self.numpy_arr[:] = np.nan
-
-    def is_successful(self) -> bool:
-        return self.is_success
