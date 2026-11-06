@@ -132,9 +132,9 @@ class StimulusBase:
             data = pd.DataFrame(flip_updated)
             data.to_csv(csv_name)
 
-    def play_tone(self):
+    def play_tone(self, duration: float = DURATION):
         # winsound.Beep(int(FREQUENCY), DURATION)
-        self.play_stone(FREQUENCY, DURATION, SAMPLING_RATE)
+        self.play_stone(FREQUENCY, duration, SAMPLING_RATE)
 
     def reset_task(self):
         # placeholder
