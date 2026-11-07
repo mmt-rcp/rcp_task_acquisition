@@ -418,6 +418,8 @@ class CamerasFrontend:
                     ret = cam_d.get_from(timeout=1)
                     if ret != "done":
                         logger.warning("unexpected response to cam stop: %s", ret)
+                else:
+                    logger.warning("%s: unexpected rsp for STOP: %s", ret)
 
         cam_errors = {}
         for camID in self.secondary_cams:
