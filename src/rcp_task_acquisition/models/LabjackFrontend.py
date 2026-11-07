@@ -263,7 +263,6 @@ class LabjackFrontend:
             self.graph_panel.draw()
 
     def add_csv(self, labjack_file: str, serial: SerialDevice, msg: str) -> None:
-        self.labjack_csv = labjack_file
         self.labjack_queue.put(labjack_file, timeout=1)
         self.labjack_is_csv.value = True
 
