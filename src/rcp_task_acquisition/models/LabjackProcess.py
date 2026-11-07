@@ -37,6 +37,8 @@ class LabJackDataStream(ProcessWithLogging):
         stream_started: SharedBool,
         scan_rate: SharedFloat,
         handshake: SharedInt,
+        grasp_ready,
+        grasp_task,
     ) -> None:
         self.is_success = True
         self.voltage_range: dict[str, tuple[float, float]] = {}
@@ -54,6 +56,10 @@ class LabJackDataStream(ProcessWithLogging):
         self.extended_inputs: list[int] = inputs[2]
         self.stream_started = stream_started
         self.actualscanRate = scan_rate
+        self.grasp_task = grasp_task
+        self.grasp_ready = grasp_ready[0]
+        self.grasp_index = None
+        self.rest_time = grasp_ready[1]
         self.handshake = handshake
         for item in self.extended_inputs:
             self.digital_inputs.append(item + 8)
@@ -224,6 +230,15 @@ class LabJackDataStream(ProcessWithLogging):
                     debounce = 1
                 if np.all(reshape_list[button[0]][-min_off_samples:]):
                     debounce = 0
+
+            if self.grasp_task:
+                if self.grasp_index is None:
+                    self.grasp_index = self.analog_inputs.index("AIN7")
+                if not np.all(new_list[1]):
+                    if new_list[1][0] != 0:
+                        idx = len(new_list[1]) - int(np.argmax(new_list[1] == 1))
+                        self.rest_time.value = (1 / self.actualscanRate.value) * idx
+                    self.grasp_ready.value = True
 
             if write_to_csv:
                 self.write_csv(results, first_write)
