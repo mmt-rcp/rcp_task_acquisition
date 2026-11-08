@@ -46,7 +46,9 @@ class TrialPanel(wx.Panel):
         vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-        self.rest_timer = wx.Timer(self)
+        self.rest_timer = wx.Timer(
+            self
+        )  # 1s recurrent timer, started/stopped when trial panel is shown/hidden
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
         # for camera views on patient screen:

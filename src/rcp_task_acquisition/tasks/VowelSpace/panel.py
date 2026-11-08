@@ -28,8 +28,6 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         )
         self.SetSizerAndFit(vertical_sizer)
         self.current_syllable = ""
-        self.rest_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
         self.instruction_paths = VIDEO_PATHS
         self.video_title.SetLabel("Instructions Overview: ")
         self.start_video_button.Enable(True)

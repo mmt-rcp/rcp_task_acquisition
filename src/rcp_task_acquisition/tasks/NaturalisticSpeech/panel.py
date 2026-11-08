@@ -33,9 +33,6 @@ class NaturalisticSpeechPanel(TrialPanel):
         vertical_sizer.Add(self._set_up_photo(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-        self.rest_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
-
     def _set_up_photo(self) -> wx.GridBagSizer:
         """
         Set up the naturalistic speech panel
