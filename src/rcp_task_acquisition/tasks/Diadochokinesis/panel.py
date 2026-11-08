@@ -33,15 +33,16 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         super().__init__(parent, *args, **kwargs)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        static_box_sizer = self.setup_instruction_playback()
         vertical_sizer.Add(self._setup_ddk(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        static_box_sizer = self.setup_instruction_playback()
+
         vertical_sizer.Add(
             self.add_video_panel(static_box_sizer), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
-        self.SetSizerAndFit(vertical_sizer)
         self.instruction_paths = DDK_PATHS
         self.video_title.SetLabel("Instructions Overview: ")
         self.start_video_button.Enable(True)
+        self.SetSizer(vertical_sizer)
 
     def _setup_ddk(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
@@ -74,6 +75,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(3, 0),
@@ -95,10 +97,10 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self, label=f"Syllable ({self.syllable}) Instructions:"
         )
         self.syllable_start_video_button = wx.ToggleButton(
-            self, label="Play Video", size=(self.button_width * 2, -1)
+            self, label="Play Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button = wx.ToggleButton(
-            self, label="Pause Video", size=(self.button_width * 2, -1)
+            self, label="Pause Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button.Enable(False)
 

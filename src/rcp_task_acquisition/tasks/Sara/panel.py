@@ -66,6 +66,7 @@ class SaraPanel(TrialPanel):
             flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALIGN_CENTER_VERTICAL | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(3, 0),

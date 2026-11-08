@@ -56,6 +56,7 @@ class NbackPanel(TrialPanel):
         grid_sizer.Add(
             self.real, pos=(2, 2), span=(0, 2), flag=wx.ALIGN_LEFT | wx.TOP | wx.BOTTOM, border=10
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button, pos=(4, 0), span=(0, 2), flag=wx.ALIGN_LEFT | wx.TOP, border=10
         )

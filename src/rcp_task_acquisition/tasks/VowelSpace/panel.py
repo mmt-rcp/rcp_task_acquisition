@@ -54,7 +54,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         grid_sizer.Add(
             self.finish_text, pos=(2, 0), span=(0, 6), flag=wx.ALIGN_LEFT | wx.ALL, border=5
         )
-
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button, pos=(3, 0), span=(0, 2), flag=wx.ALIGN_LEFT | wx.TOP, border=5
         )
@@ -66,10 +66,10 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
     def add_video_panel(self, static_box_sizer) -> wx.GridBagSizer:
         self.syllable_video_title = wx.StaticText(self, label="Phrase Instructions:")
         self.syllable_start_video_button = wx.ToggleButton(
-            self, label="Start Video", size=(self.button_width * 2, -1)
+            self, label="Start Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button = wx.ToggleButton(
-            self, label="Pause Video", size=(self.button_width * 2, -1)
+            self, label="Pause Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button.Enable(False)
 

@@ -43,7 +43,8 @@ class TrialPanel(wx.Panel):
         self.timer: sharedctypes.Synchronized[int]
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        self._buttons_grid = self._setup_buttons()
+        vertical_sizer.Add(self._buttons_grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
         self.rest_timer = wx.Timer(

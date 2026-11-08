@@ -94,6 +94,7 @@ class NaturalisticSpeechPanel(TrialPanel):
         grid_sizer.Add(
             self.seconds_text, pos=(4, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.ALL, border=10
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button, pos=(5, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.ALL, border=10
         )

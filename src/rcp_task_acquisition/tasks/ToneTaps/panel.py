@@ -74,6 +74,7 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(4, 0),
