@@ -276,7 +276,9 @@ class MainFrame(wx.Frame):
             rcp_context=rcp_context,
         )
         self.startingSession = False
-        self.rest_timer = wx.Timer(self)
+        self.rest_timer = wx.Timer(
+            self
+        )  # 800ms recurrent timer, started/stopped when trial is begin/ended
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
         self.Bind(wx.EVT_TIMER, self.cams.vidPlayer, self.liveTimer)
         self.Bind(wx.EVT_TIMER, self._cams_update, self.liveTimer)
@@ -311,6 +313,7 @@ class MainFrame(wx.Frame):
         self.put_to_stimulus(data)
 
     def _cams_update(self, event: wx.Event):
+        logger.debug("_cams_update: %s", event)
         cams = self.cams
         if cams.camaq.value == 2:
             return
@@ -333,6 +336,7 @@ class MainFrame(wx.Frame):
         # pass
 
     def run_task(self) -> None:
+        """Start/Stop New Task (not trial)"""
         graph_panel = self.graph_panel
         controls_panel = self.controls_panel
         trial_panel = self.trial_panel
@@ -401,7 +405,7 @@ class MainFrame(wx.Frame):
             self.rest_timer.Stop()
 
     def trial_event(self) -> None:
-        """called on initialize or stop of single trial"""
+        """called on start/stop of single trial"""
         trial_panel = self.trial_panel
         vid_stat_val = self.video_status.value
         vid_stat: str | VideoStatus
@@ -503,6 +507,7 @@ class MainFrame(wx.Frame):
         self.trial_event()
 
     def update_intertrial(self, event: wx.Event) -> None:
+        """Called by rest_timer recurrent timer (800ms)"""
         logger.debug(
             "update_intertrial: finish=%s, video=%s", self.finish.value, self.video_status.value
         )

@@ -267,6 +267,7 @@ class CamerasFrontend:
             self.image_panel.figure.canvas.draw()
 
     def vidPlayer(self, event: wx.Event) -> None:
+        logger.debug("vidPlayer: %s", event)
         if self.camaq.value == 2:
             return
         # self.participant_monitor.update_screen()
