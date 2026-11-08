@@ -375,8 +375,6 @@ class MainFrame(wx.Frame):
             self.task_active = False
             self.serial_device.write("A")
             #
-            time.sleep(1)  # todo why was it sleep(3) ? why sleep at all ?
-            #
             self.video_status.value = VideoStatus.STOP
             controls_panel.session_button.SetLabel("Start Task")
             controls_panel.hardware_button.Enable(True)
@@ -426,7 +424,8 @@ class MainFrame(wx.Frame):
             if vid_stat == VideoStatus.PAUSED:
                 self.video_lock.clear()
                 self.video_status.value = VideoStatus.STOP
-                self.video_lock.wait()
+                if not self.video_lock.wait(2):
+                    logger.warning("timeout wait video lock")
                 self.video_lock.clear()
             if vid_stat == VideoStatus.FINISHED:
                 logger.debug("ending video")
