@@ -20,12 +20,18 @@ logger = get_logger(__name__)
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
+    button_width = 150
+    _continue_button_width: int | None = None
+
+    @property
+    def continue_button_width(self) -> int:
+        return self.button_width
+
     def __init__(self, parent: wx.Window, *, patient_monitor: int = 0) -> None:
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0
         self.countdown_start = 0
-        self.button_width = 76
         self.border = 5
         self.trial_is_active = False
         self.instruction_paths: dict[str, str] = {}  # now currently unused
@@ -42,11 +48,6 @@ class TrialPanel(wx.Panel):
 
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
-
-        # if type(self) is TrialPanel:
-        #     self.continue_button.Show()
-        # else:
-        #     self.continue_button.Hide()
 
         # for camera views on patient screen:
         self.im: list[AxesImage] = []
@@ -138,8 +139,10 @@ class TrialPanel(wx.Panel):
         return super().Close(force=force)
 
     def _setup_buttons(self):
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
-        self.continue_button.Hide()
+        self.continue_button = wx.ToggleButton(
+            self, label="Begin Trial", size=(self.continue_button_width, -1)
+        )
+        self.continue_button.Show(type(self) is not TrialPanel)
         self.repeat_trial_button = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))
         self.repeat_trial_button.Hide()
         grid_sizer = wx.GridBagSizer(0, 0)

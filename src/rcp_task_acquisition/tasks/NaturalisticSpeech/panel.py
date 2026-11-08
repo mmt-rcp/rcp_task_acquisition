@@ -25,7 +25,6 @@ class NaturalisticSpeechPanel(TrialPanel):
         # self.timestamps = {} unused
         self.countdown_start = 0
         self.image_path: list[str] = []
-        self.button_width = 76
         self.border = 5
         self.photo = None
         self.selection = 0
@@ -95,10 +94,6 @@ class NaturalisticSpeechPanel(TrialPanel):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
-
         grid_sizer.Add(
             self.seconds_text, pos=(4, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.ALL, border=10
         )

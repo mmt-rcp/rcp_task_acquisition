@@ -39,7 +39,6 @@ class SaraPanel(TrialPanel):
             self, id=wx.ID_ANY, choices=self.assessment_list, size=(310, -1)
         )
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
         self.edit_button = wx.Button(self, label="Edit Previous Score", size=(150, -1))
         self.edit_button.Enable(False)
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs", size=(300, -1))

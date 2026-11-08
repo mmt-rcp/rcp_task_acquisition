@@ -48,7 +48,6 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.syllable_text = wx.StaticText(self, label=f"Syllable: {self.syllable}")
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
         self.next_button = wx.Button(self, label="Next Trial")
         self.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
 

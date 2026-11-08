@@ -33,7 +33,6 @@ class NbackPanel(TrialPanel):
         self.nback_choice.SetSelection(0)
 
         text = wx.StaticText(self, label="Select trial type")
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
 
         grid_sizer = wx.GridBagSizer(5, 4)
 

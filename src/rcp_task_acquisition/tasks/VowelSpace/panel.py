@@ -43,7 +43,6 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.finish_text = wx.StaticText(self, label="")
         self.finish_text.Wrap(299)
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
         self.next_button = wx.Button(self, label="Next Trial")
         # self.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
 

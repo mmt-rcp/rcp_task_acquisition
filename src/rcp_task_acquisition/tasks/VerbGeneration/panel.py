@@ -24,7 +24,6 @@ class VerbGenerationPanel(TrialPanel):
         self.trial_number = 1
         # self.timestamps = {}  unused
         self.countdown_start = 0
-        self.button_width = 76
         self.border = 5
         self.selection = 0
         self.verb_lists = []
@@ -52,9 +51,6 @@ class VerbGenerationPanel(TrialPanel):
         self.noun_choice.SetSelection(self.selection)
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         self.seconds_text = wx.StaticText(self, label="Time: 0 mins, 0 secs")
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
 
         grid_sizer = wx.GridBagSizer(5, 4)
         grid_sizer.Add(

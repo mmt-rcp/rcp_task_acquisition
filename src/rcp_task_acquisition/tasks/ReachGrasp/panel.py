@@ -35,10 +35,6 @@ class ReachGraspPanel(TrialPanel):
 
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
 
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
-
         grid_sizer = wx.GridBagSizer(6, 4)
         grid_sizer.Add(
             self.trial_text,
