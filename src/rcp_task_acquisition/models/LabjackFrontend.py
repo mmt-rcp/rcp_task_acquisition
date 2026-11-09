@@ -179,10 +179,11 @@ class LabjackFrontend:
         new_arr = np.empty(80000 * (len(self.hardware_indices) + 3))
         new_arr.fill(np.nan)
         labjack_arr = self.labjack_arr.get_obj()
+        flat = new_arr.flatten()
         np.frombuffer(labjack_arr, dtype=ctypes.c_double).reshape(  # type: ignore
             # eventual todo: cannot get type hint right yet with shared array and np.frombuffer(...)
-            len(new_arr.flatten())
-        )[:] = new_arr.flatten()
+            len(flat)
+        )[:] = flat
         self.graph_panel.draw()
         logger.info("labjack stopped")
         return self.scan_rate.value
@@ -248,9 +249,10 @@ class LabjackFrontend:
                 self.graph_panel.set_visible_const(index)
                 arr_step += self.array_length
             # if self.handshake.value == 1:
+            flat = y_plot_points.flatten()
             np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(  # type: ignore
-                len(y_plot_points.flatten())
-            )[:] = y_plot_points.flatten()
+                len(flat)
+            )[:] = flat
             # self.handshake.value = 0
             self.graph_panel.draw()
 

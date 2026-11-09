@@ -274,9 +274,8 @@ class LabJackDataStream(ProcessWithCommands):
             )
             graph_list_index += 1
 
-        np.frombuffer(self.graph_arr.get_obj(), dtype=ctypes.c_double).reshape(
-            len(self.numpy_arr.flatten())
-        )[:] = self.numpy_arr.flatten()
+        flat = self.numpy_arr.flatten()
+        np.frombuffer(self.graph_arr.get_obj(), dtype=ctypes.c_double).reshape(len(flat))[:] = flat
 
     def stop(self):
         self._disconnect()
