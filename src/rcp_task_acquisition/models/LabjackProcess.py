@@ -1,32 +1,29 @@
 import ctypes
+import io
 import multiprocessing
 import queue
-from multiprocessing import sharedctypes
-from typing import Any
 import time
+from multiprocessing import sharedctypes
+from pathlib import Path
 from typing import Optional, Any
 
 import numpy as np
 from labjack import ljm
 
-from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.process import set_high_prio
-from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
-from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, SharedFloat
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging, ProcessWithCommands
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, SharedFloat, SharedEvent
 
 logger = get_logger(__name__)
 
 
-class LabJackDataStream(ProcessWithLogging):
+class LabJackDataStream(ProcessWithCommands):
     def __init__(
         self,
         arr_length: int,
-        is_finished: SharedBool,
         labjack_arr: sharedctypes.SynchronizedArray,
-        create_csv: SharedBool,
-        folder_queue: multiprocessing.Queue,
         labjack_list: list[str],
         graph_indices: tuple[SharedInt, SharedInt, SharedInt],
         button_pressed: SharedBool,
@@ -35,7 +32,7 @@ class LabJackDataStream(ProcessWithLogging):
         press_counter: SharedInt,
         constants: list[int],
         voltage_ranges: tuple[tuple[float, float], ...],
-        stream_started: SharedBool,
+        stream_started: SharedEvent,
         scan_rate: SharedFloat,
         handshake: SharedInt,
     ) -> None:
@@ -73,11 +70,6 @@ class LabJackDataStream(ProcessWithLogging):
         self.graph_arr = labjack_arr
         self.numpy_arr = np.empty((6, self.attemptedscanRate * 2))
         self.numpy_arr.fill(np.nan)
-        self.finished = is_finished
-        self.create_csv = create_csv
-        self.folder_queue = folder_queue
-        self.session_file = ""
-        self.labjack_csv = ""
         self.results = np.empty(self.scan_num * SCANS_PER_READ)
         self.results.fill(np.nan)
         self.graph_indices = graph_indices
@@ -101,6 +93,7 @@ class LabJackDataStream(ProcessWithLogging):
         self.voltage_ranges = work_voltage_ranges
         logger.verbose("voltages_ranges: %s", self.voltage_ranges)
         self.handle: Optional[int] = None  # ljm handle ; it's a fd basically
+        self._labjack_csv_fh: io.BufferedWriter | None = None
 
     def _disconnect(self):
         handle = self.handle
@@ -147,13 +140,25 @@ class LabJackDataStream(ProcessWithLogging):
         self.actualscanRate.value = ljm.eStreamStart(
             self.handle, SCANS_PER_READ, numAddresses, scan_list, self.attemptedscanRate
         )
+
         logger.success("started LJM stream on %s", self.handle)
+
+    @ProcessWithCommands.relay_to
+    def add_csv(self, path: Path | str) -> None:
+        path = Path(path)
+        need_header = not path.exists() or path.stat().st_size == 0
+        fh = path.open("ab")
+        if need_header:
+            headers = self.analog_inputs
+            if self.digital_inputs:
+                headers.append("Digital")
+            np.savetxt(fh, np.asarray(headers).reshape(1, len(headers)), fmt="%s", delimiter=",")
+        self._labjack_csv_fh = fh
+        logger.info("opened %s for writing", path)
 
     def run(self):
         set_high_prio()
-        first_write = True
         logger.debug("Start labjack stream.")
-        write_to_csv = False
         data_1 = None
         data_2 = None
         debounce = 0
@@ -164,8 +169,7 @@ class LabJackDataStream(ProcessWithLogging):
             aScanList.append(2580)
         logger.debug("ljm: addresses=%s", aScanList)
 
-        self.stream_started.value = True
-        while not self.finished.value:
+        while not self._exit_requested:
             if self.handle is None:
                 try:
                     self._attempt_connect(aScanList)
@@ -173,15 +177,6 @@ class LabJackDataStream(ProcessWithLogging):
                     logger.error("Failed open LJM: %s ; will retry in 1s", err)
                     time.sleep(1)
                     continue
-
-            if self.create_csv.value:
-                self.create_csv.value = False
-                try:
-                    self.labjack_csv = self.folder_queue.get(timeout=1)
-                except queue.Empty:
-                    logger.warning("could read labjack csv, queue empty")
-                else:
-                    write_to_csv = True
 
             try:
                 data = ljm.eStreamRead(self.handle)
@@ -192,6 +187,8 @@ class LabJackDataStream(ProcessWithLogging):
                 self._disconnect()
                 ljm.closeAll()
                 continue
+
+            self.stream_started.set()
 
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
@@ -229,10 +226,21 @@ class LabJackDataStream(ProcessWithLogging):
                 if np.all(reshape_list[button[0]][-min_off_samples:]):
                     debounce = 0
 
-            if write_to_csv:
-                self.write_csv(results, first_write)
-                first_write = False
+            fh = self._labjack_csv_fh
+            if fh is not None:
+                try:
+                    np.savetxt(fh, results.T, fmt="%f", delimiter=",")
+                except BaseException as err:
+                    self._labjack_csv_fh = None
+                    logger.error("could not write to csv file: %s ; closing file", err)
+                    fh.close()
+
             self.graph(results, new_list)  # digital_reshape, extended_reshape)
+
+        fh = self._labjack_csv_fh
+        if fh is not None:
+            fh.flush()
+            fh.close()
 
         self.stop()
 
@@ -270,26 +278,7 @@ class LabJackDataStream(ProcessWithLogging):
             len(self.numpy_arr.flatten())
         )[:] = self.numpy_arr.flatten()
 
-    def write_csv(self, results: np.ndarray, write_headers: bool = False) -> None:
-        if not self.labjack_csv:
-            self.labjack_csv = self.session_file  # os.path.join(self.sessionFolder, filename)
-        with open(self.labjack_csv, "ab") as file:
-            if write_headers:
-                headers = self.analog_inputs
-                if self.digital_inputs:
-                    headers.append("Digital")
-                np.savetxt(
-                    file, np.asarray(headers).reshape(1, len(headers)), fmt="%s", delimiter=","
-                )
-            np.savetxt(file, results.T, fmt="%f", delimiter=",")
-
-    def set_folder(self, session_dir) -> None:
-        self.session_file = session_dir
-
     def stop(self):
         self._disconnect()
         ljm.closeAll()
-        self.create_csv.value = False
-        self.session_file = ""
-        self.labjack_csv = ""
         self.numpy_arr[:] = np.nan
