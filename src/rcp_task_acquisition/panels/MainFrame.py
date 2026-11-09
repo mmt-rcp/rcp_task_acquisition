@@ -311,8 +311,8 @@ class MainFrame(wx.Frame):
         self.put_to_stimulus(StimulusMessage.UPDATE_DATA)
         self.put_to_stimulus(data)
 
-    def _cams_update(self, event: wx.Event):
-        logger.debug("_cams_update: %s", event)
+    def _cams_update(self, event: wx.Event) -> None:
+        # logger.debug("_cams_update: %s", event)
         cams = self.cams
         if cams.camaq.value == 2:
             return
