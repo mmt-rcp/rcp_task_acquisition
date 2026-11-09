@@ -294,6 +294,11 @@ class MainFrame(wx.Frame):
         self.task_active = False
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_SIZE, self.on_resize)
+        self._timer_task_start_end = wx.Timer(self, wx.ID_ANY)
+        self.Bind(wx.EVT_TIMER, self._on_timer_task_start_end, self._timer_task_start_end)
+
+    def _on_timer_task_start_end(self, event: wx.Event) -> None:
+        self.controls_panel.session_button.Enable()
 
     def _show_patient_cams(self, show: bool = True) -> None:
         controls_panel = self.controls_panel
@@ -340,7 +345,6 @@ class MainFrame(wx.Frame):
     def on_resize(self, event: wx.Event) -> None:
         wx.CallAfter(self.image_panel.reset_sizing)
         event.Skip()
-        # pass
 
     def run_task(self) -> None:
         graph_panel = self.graph_panel
@@ -348,6 +352,12 @@ class MainFrame(wx.Frame):
         trial_panel = self.trial_panel
         logger.verbose("run_task called task_but=%s", controls_panel.session_button.GetValue())
         self.Enable()
+        # disable task button (start/stop),
+        # for 1.5s:
+        controls_panel.session_button.Disable()
+        self.Update()
+        self._timer_task_start_end.StartOnce(1500)
+        #
         if controls_panel.session_button.GetValue():
             self.task_active = True
             self.count = 0
@@ -380,7 +390,6 @@ class MainFrame(wx.Frame):
         else:
             self.task_active = False
             self.serial_device.write("A")
-            time.sleep(3)
             if trial_panel.continue_button.GetValue():
                 trial_panel.continue_button.SetValue(False)
                 self.trial_event()
