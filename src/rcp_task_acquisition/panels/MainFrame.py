@@ -38,6 +38,7 @@ from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.Calibration.panel import CalibrationPanel
 from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
+from rcp_task_acquisition.tasks.ReachGrasp.panel import ReachGraspPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
@@ -74,6 +75,11 @@ class MainFrame(wx.Frame):
         self.task: str = ""
         self.launch_args: dict[str, Any] = {}
         self.button_pressed = Value(ctypes.c_bool, False)
+        self.grasp_ready = (
+            Value(ctypes.c_bool, False),
+            Value(ctypes.c_float, 0),
+        )
+        self.grasp_count = Value(ctypes.c_int, 0)
         self.recording = False
         self.calibrate = False
         self.press_count = Value(ctypes.c_int, 0)
@@ -216,6 +222,7 @@ class MainFrame(wx.Frame):
             self.button_pressed,
             self.press_count,
             self.cam_test,
+            self.grasp_ready,
         )
 
         self.Bind(wx.EVT_TIMER, self.lj.labjack_event, self.labjack_timer)
@@ -274,6 +281,8 @@ class MainFrame(wx.Frame):
             self.resultsq,
             self.stimulus_timer,
             self.video_lock,
+            self.grasp_ready,
+            self.grasp_count,
             rcp_context=rcp_context,
         )
         self.startingSession = False
@@ -1112,7 +1121,10 @@ class MainFrame(wx.Frame):
         trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         self.initCams()
-        self.lj.update_hardware(hardware_lists)
+        self.lj.update_hardware(
+            hardware_lists,
+            is_grasp=isinstance(trial_panel, ReachGraspPanel),
+        )
         self.press_count.value = 0
         self.video_start, self.video_pause = trial_panel.get_video_buttons()
         if isinstance(trial_panel, CalibrationPanel):
