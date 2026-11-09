@@ -157,6 +157,17 @@ class LabJackDataStream(ProcessWithCommands):
         logger.info("opened %s for writing", path)
 
     def run(self):
+        try:
+            self.run_()
+        finally:
+            fh = self._labjack_csv_fh
+            if fh is not None:
+                fh.flush()
+                fh.close()
+
+            self.stop()
+
+    def run_(self):
         set_high_prio()
         logger.debug("Start labjack stream.")
         data_1 = None
@@ -236,13 +247,6 @@ class LabJackDataStream(ProcessWithCommands):
                     fh.close()
 
             self.graph(results, new_list)  # digital_reshape, extended_reshape)
-
-        fh = self._labjack_csv_fh
-        if fh is not None:
-            fh.flush()
-            fh.close()
-
-        self.stop()
 
     def graph(self, results: np.ndarray, digital: np.ndarray) -> None:  # , extended):
         new_list = [digital[item] for item in self.digital_inputs]
