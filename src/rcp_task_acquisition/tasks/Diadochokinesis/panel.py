@@ -34,11 +34,10 @@ class DdkPanel(TrialPanelWithInstructPlayback):
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_ddk(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        video_panel = self.add_video_panel()
         static_box_sizer = self.setup_instruction_playback()
-
-        vertical_sizer.Add(
-            self.add_video_panel(static_box_sizer), 0, wx.ALIGN_LEFT | wx.ALL, self.border
-        )
+        static_box_sizer.Add(video_panel, 1, wx.EXPAND | wx.ALL, self.border)
+        vertical_sizer.Add(static_box_sizer, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.instruction_paths = DDK_PATHS
         self.video_title.SetLabel("Instructions Overview: ")
         self.start_video_button.Enable(True)
@@ -92,7 +91,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def add_video_panel(self, static_box_sizer):
+    def add_video_panel(self) -> wx.GridBagSizer:
         self.syllable_video_title = wx.StaticText(
             self, label=f"Syllable ({self.syllable}) Instructions:"
         )
@@ -126,9 +125,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
-
-        static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
-        return static_box_sizer
+        return grid_sizer
 
     def next_trial(self, event: wx.Event):
         logger.verbose(

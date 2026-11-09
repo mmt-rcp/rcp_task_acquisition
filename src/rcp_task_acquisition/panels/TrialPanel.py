@@ -243,7 +243,7 @@ class TrialPanelWithInstructPlayback(TrialPanel):
     syllable_start_video_button: wx.ToggleButton
     syllable_pause_video_button: wx.ToggleButton
 
-    def setup_instruction_playback(self):
+    def setup_instruction_playback(self) -> wx.StaticBoxSizer:
         vid_title = self.video_title = wx.StaticText(self, label="")
         start_but = self.start_video_button = wx.ToggleButton(
             self, label="Play Video", size=(150, -1)
