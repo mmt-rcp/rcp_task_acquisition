@@ -215,7 +215,7 @@ class TrialPanel(wx.Panel):
     def on_timer(self, event: wx.Event) -> None:
         pass
 
-    def start_new_trial(self) -> None:
+    def start_new_task(self) -> None:
         self.trial_number = 0
 
     def update_values(self) -> None:

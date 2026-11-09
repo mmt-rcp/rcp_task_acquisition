@@ -133,7 +133,7 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         self.trial_text.SetLabel(f"Trial # {count + 1}")
         self.start_video_button.Enable(True)
 
-    def start_new_trial(self):
+    def start_new_task(self) -> None:
         self.trial_number = 0
         self.trial_text.SetLabel("Trial # 1")
 

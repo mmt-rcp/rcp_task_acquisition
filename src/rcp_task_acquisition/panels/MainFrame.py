@@ -367,7 +367,7 @@ class MainFrame(wx.Frame):
                 trial, syllable, finish = trial_info
                 trial_panel.repeat = True
                 trial_panel.update_trial(trial, syllable)
-            trial_panel.start_new_trial()
+            trial_panel.start_new_task()
             trial_panel.show()
             # if not self.rest_timer.IsRunning():
             #     self.rest_timer.Start(1000)

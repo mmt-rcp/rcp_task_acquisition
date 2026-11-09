@@ -199,7 +199,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
     def resume_video(self):
         self.video_buttons[1].SetLabel("Pause Video")
 
-    def start_new_trial(self):
+    def start_new_task(self) -> None:
         self.trial_number_ = 1
         self.trials = {}
         self.syllable_count = 0

@@ -193,8 +193,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         )
         return ".".join(self.phonemic_list), self.semantic, self.value
 
-    def start_new_trial(self) -> None:
-        super().start_new_trial()
+    def start_new_task(self) -> None:
+        super().start_new_task()
         self.trial_num = 0
         self.phonemic_choice.Enable(True)
         self.semantic_choice.Enable(True)
