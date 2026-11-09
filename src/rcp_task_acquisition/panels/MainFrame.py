@@ -877,37 +877,37 @@ class MainFrame(wx.Frame):
                 logger.error("cams initialize failed")
                 return False
             self.trial_panel.prepare_cams(self.cams.camera_settings[:2])
-            self.controls_panel.cam_panel.init.SetLabel("Release")
-            self.controls_panel.cam_panel.exposure_button.Enable(True)
-            self.controls_panel.cam_panel.play.Enable(True)
-            self.controls_panel.cam_panel.rec.Enable(True)
-            self.controls_panel.cam_panel.minRec.Enable(True)
-            self.controls_panel.cam_panel.secRec.Enable(True)
-            self.controls_panel.cam_panel.update_settings.Enable(True)
-            self.controls_panel.cam_panel.crop.Enable(False)
-            self.controls_panel.cam_panel.reset.Enable(False)
+            cam_panel.init.SetLabel("Release")
+            cam_panel.exposure_button.Enable(True)
+            cam_panel.play.Enable(True)
+            cam_panel.rec.Enable(True)
+            cam_panel.minRec.Enable(True)
+            cam_panel.secRec.Enable(True)
+            cam_panel.update_settings.Enable(True)
+            cam_panel.crop.Enable(False)
+            cam_panel.reset.Enable(False)
             self.Enable(True)
             self.controls_panel.session_button.Enable(True)
             self.image_panel.draw()
         else:
-            self.controls_panel.cam_panel.init.SetLabel("Enable")
+            cam_panel.init.SetLabel("Enable")
             self.cams.deinitialize()
             # if self.serSuccess:
             #     self.ser.close()
-            if self.controls_panel.cam_panel.rec.GetValue():
-                self.controls_panel.cam_panel.rec.SetValue(False)
+            if cam_panel.rec.GetValue():
+                cam_panel.rec.SetValue(False)
                 self.recordCam()
-            if self.controls_panel.cam_panel.play.GetValue():
-                self.controls_panel.cam_panel.play.SetValue(False)
+            if cam_panel.play.GetValue():
+                cam_panel.play.SetValue(False)
                 self.liveFeed()
-            if self.controls_panel.cam_panel.set_crop.GetValue():
-                self.controls_panel.cam_panel.set_crop.SetValue(False)
+            if cam_panel.set_crop.GetValue():
+                cam_panel.set_crop.SetValue(False)
 
             self.image_panel.draw()
             self._set_cam_panel_enable(False)
-            self.controls_panel.cam_panel.crop.Enable(True)
-            self.controls_panel.cam_panel.reset.Enable(True)
-            self.controls_panel.cam_panel.update_settings.Enable(False)
+            cam_panel.crop.Enable(True)
+            cam_panel.reset.Enable(True)
+            cam_panel.update_settings.Enable(False)
             # self.cams.deinitThreads()
         return True
 
