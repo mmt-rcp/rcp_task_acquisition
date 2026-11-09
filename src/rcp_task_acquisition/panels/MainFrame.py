@@ -198,7 +198,7 @@ class MainFrame(wx.Frame):
         controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
         controls_panel.tens_button.Bind(wx.EVT_BUTTON, self.tens_pulse)
         self.cam_test = mp.Value(ctypes.c_bool, False)
-        self.liveTimer = wx.Timer(self, wx.ID_ANY)
+        self.liveTimer = wx.Timer(self, wx.ID_ANY)  # 150 ms timer
         controls_panel.show_patient_cams_button.Bind(
             wx.EVT_TOGGLEBUTTON,
             lambda _: self._show_patient_cams(controls_panel.show_patient_cams_button.GetValue()),
@@ -280,7 +280,6 @@ class MainFrame(wx.Frame):
             self
         )  # 800ms recurrent timer, started/stopped when trial is begin/ended
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
-        self.Bind(wx.EVT_TIMER, self.cams.vidPlayer, self.liveTimer)
         self.Bind(wx.EVT_TIMER, self._cams_update, self.liveTimer)
         self.thread.start()
         self.task_active = False
@@ -317,6 +316,7 @@ class MainFrame(wx.Frame):
         cams = self.cams
         if cams.camaq.value == 2:
             return
+        self.cams.vidPlayer(event)  # should it be better after the following code block ?
         for cam in cams.cam_dict.values():
             if cam.frmGrab.value == 1:
                 cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
