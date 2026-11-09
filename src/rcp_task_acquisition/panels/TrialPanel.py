@@ -165,18 +165,18 @@ class TrialPanel(wx.Panel):
         )
         return grid_sizer
 
-    def reset(self, count):
+    def reset(self, count: int) -> None:
         self.seconds = 0
 
-    def show(self):
+    def show(self) -> None:
         logger.verbose("show()")
         self.rest_timer.Start(1000)
         self.Show()
 
-    def end_task(self):
+    def end_task(self) -> None:
         self.hide()
 
-    def hide(self):
+    def hide(self) -> None:
         self.rest_timer.Stop()
         self.Hide()
 

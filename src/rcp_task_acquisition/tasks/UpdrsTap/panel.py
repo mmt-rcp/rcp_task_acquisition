@@ -120,7 +120,7 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
     def on_select(self, event):
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
 
-    def reset(self, trial):
+    def reset(self, count: int) -> None:
         self.trial_is_active = False
         self.seconds = 11
         self.left_radio.Enable(True)
@@ -130,7 +130,7 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         # self.continue_button.Enable(False)
         self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")
-        self.trial_text.SetLabel(f"Trial # {trial + 1}")
+        self.trial_text.SetLabel(f"Trial # {count + 1}")
         self.start_video_button.Enable(True)
 
     def start_new_trial(self):
