@@ -35,6 +35,8 @@ class LabJackDataStream(ProcessWithCommands):
         stream_started: SharedEvent,
         scan_rate: SharedFloat,
         handshake: SharedInt,
+        grasp_ready,
+        grasp_task,
     ) -> None:
         self.voltage_range: dict[str, tuple[float, float]] = {}
         for index, val in enumerate(labjack_list):
@@ -51,6 +53,10 @@ class LabJackDataStream(ProcessWithCommands):
         self.extended_inputs: list[int] = inputs[2]
         self.stream_started = stream_started
         self.actualscanRate = scan_rate
+        self.grasp_task = grasp_task
+        self.grasp_ready = grasp_ready[0]
+        self.grasp_index = None
+        self.rest_time = grasp_ready[1]
         self.handshake = handshake
         for item in self.extended_inputs:
             self.digital_inputs.append(item + 8)
@@ -158,7 +164,7 @@ class LabJackDataStream(ProcessWithCommands):
 
     def run(self):
         try:
-            self.run_()
+            self._run()
         finally:
             fh = self._labjack_csv_fh
             if fh is not None:
@@ -167,7 +173,7 @@ class LabJackDataStream(ProcessWithCommands):
 
             self.stop()
 
-    def run_(self):
+    def _run(self):
         set_high_prio()
         logger.debug("Start labjack stream.")
         data_1 = None
@@ -245,6 +251,15 @@ class LabJackDataStream(ProcessWithCommands):
                     self._labjack_csv_fh = None
                     logger.error("could not write to csv file: %s ; closing file", err)
                     fh.close()
+
+            if self.grasp_task:
+                if self.grasp_index is None:
+                    self.grasp_index = self.analog_inputs.index("AIN7")
+                if not np.all(new_list[1]):
+                    if new_list[1][0] != 0:
+                        idx = len(new_list[1]) - int(np.argmax(new_list[1] == 1))
+                        self.rest_time.value = (1 / self.actualscanRate.value) * idx
+                    self.grasp_ready.value = True
 
             self.graph(results, new_list)  # digital_reshape, extended_reshape)
 
