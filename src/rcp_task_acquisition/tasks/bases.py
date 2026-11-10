@@ -107,9 +107,8 @@ class StimulusBase:
         # winsound.Beep(int(FREQUENCY), DURATION)
         self.play_stone(FREQUENCY, duration, SAMPLING_RATE)
 
-    def reset_task(self):
-        # placeholder
-        pass
+    def reset_task(self) -> None:
+        """Reset task. As if task has not begun at all yet. For a new task run."""
 
     def play_instructional_video(self, trial_name: str):
         user_cfg = self._rcp_context.user_config
