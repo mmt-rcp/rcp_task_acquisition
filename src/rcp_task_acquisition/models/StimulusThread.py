@@ -108,6 +108,9 @@ class StimulusThread(ProcessWithLogging):
         }
         self._reentrant_check_commands = 0
 
+    def send_to(self, data, *, timeout=3):
+        self.msgq.put(data, timeout=timeout)
+
     def _handle_show_window(self):
         self.window.winHandle.set_visible(True)
         self.window.flip()

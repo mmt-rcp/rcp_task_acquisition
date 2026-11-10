@@ -297,27 +297,30 @@ class MainFrame(wx.Frame):
         self._timer_task_start_end = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_TIMER, self._on_timer_task_start_end, self._timer_task_start_end)
 
+    def send_to_stimulus(self, data, *, timeout=3):
+        self.stimulus_proc.send_to(data, timeout=timeout)
+
     def _on_timer_task_start_end(self, event: wx.Event) -> None:
         self.controls_panel.session_button.Enable()
 
     def _show_patient_cams(self, show: bool = True) -> None:
         controls_panel = self.controls_panel
         if show:
-            self.msgq.put(StimulusMessage.HIDE_WINDOW)
+            self.send_to_stimulus(StimulusMessage.HIDE_WINDOW)
             controls_panel.task_panel.patient_frame.Show()
         else:
-            self.msgq.put(StimulusMessage.SHOW_WINDOW)
+            self.send_to_stimulus(StimulusMessage.SHOW_WINDOW)
             controls_panel.task_panel.patient_frame.Hide()
         with wx.EventBlocker(controls_panel.show_patient_cams_button):
             controls_panel.show_patient_cams_button.SetValue(show)
 
     def _update_stimulus_task(self, task):
-        self.msgq.put(StimulusMessage.UPDATE_TASK)
-        self.msgq.put(task)
+        self.send_to_stimulus(StimulusMessage.UPDATE_TASK)
+        self.send_to_stimulus(task)
 
     def _update_data(self, data):
-        self.msgq.put(StimulusMessage.UPDATE_DATA)
-        self.msgq.put(data)
+        self.send_to_stimulus(StimulusMessage.UPDATE_DATA)
+        self.send_to_stimulus(data)
 
     def _cams_update(self, event: wx.Event):
         cams = self.cams
@@ -378,7 +381,7 @@ class MainFrame(wx.Frame):
             controls_panel.session_button.SetLabel("End Task")
             # self.hardware_button.Enable(False)
             if isinstance(trial_panel, VowelSpacePanel):
-                self.msgq.put(StimulusMessage.VOWEL_SPACE)
+                self.send_to_stimulus(StimulusMessage.VOWEL_SPACE)
                 trial_info = self.resultsq.get()
                 trial, syllable, finish = trial_info
                 trial_panel.repeat = True
@@ -399,7 +402,7 @@ class MainFrame(wx.Frame):
             controls_panel.session_button.SetLabel("Start Task")
             controls_panel.hardware_button.Enable()
             self.trial_panel.hide()
-            self.msgq.put(StimulusMessage.END_TASK)
+            self.send_to_stimulus(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
 
             self.finish.value = 0
@@ -411,7 +414,7 @@ class MainFrame(wx.Frame):
             self.end_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
             self.end_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.finalize_metadata()
-            self.msgq.put(StimulusMessage.RESET_TASK)
+            self.send_to_stimulus(StimulusMessage.RESET_TASK)
             self.labjack_timer.Start(200)
             self.rest_timer.Stop()
 
@@ -471,7 +474,7 @@ class MainFrame(wx.Frame):
             trial_panel.continue_button.SetLabel("Stop Trial")
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.liveTimer.Start(150)
-            self.msgq.put(StimulusMessage.RUN_TASK)
+            self.send_to_stimulus(StimulusMessage.RUN_TASK)
         else:
             logger.debug("stopping episode")
             self.controls_panel.hardware_button.Enable()
@@ -504,7 +507,7 @@ class MainFrame(wx.Frame):
     def next_trial(self, event: wx.Event) -> None:
         assert isinstance(self.trial_panel, VowelSpacePanel)
         self._update_data(False)
-        self.msgq.put(StimulusMessage.VOWEL_SPACE)
+        self.send_to_stimulus(StimulusMessage.VOWEL_SPACE)
         trial_info = self.resultsq.get()
         trial, syllable, finish = trial_info
         self.trial_panel.continue_button.SetLabel("Begin Trial")
@@ -555,8 +558,8 @@ class MainFrame(wx.Frame):
             result = self.trial_panel.get_instruction(self.count)
             logger.debug("putting PLAY_INSTRUCTIONS %r to process", result)
             # self.thread.play_video()
-            self.msgq.put(StimulusMessage.PLAY_INSTRUCTIONS)
-            self.msgq.put(result)
+            self.send_to_stimulus(StimulusMessage.PLAY_INSTRUCTIONS)
+            self.send_to_stimulus(result)
             self.video_status.value = VideoStatus.PLAY
             self.trial_panel.start_video()
             if not self.rest_timer.IsRunning():
@@ -657,7 +660,7 @@ class MainFrame(wx.Frame):
                     is_success = True
                 else:
                     is_success = self.lj.start_labjack()
-                self.msgq.put(StimulusMessage.HARDWARE_TEST)
+                self.send_to_stimulus(StimulusMessage.HARDWARE_TEST)
                 if not is_success:
                     logger.error("Error loading labjack_stream")
                 else:
@@ -701,7 +704,7 @@ class MainFrame(wx.Frame):
         if controls_panel.hardware_button.GetValue():
             self.hardware_test = True
             self.graph_panel.hardware_panel.Show()
-            self.msgq.put(StimulusMessage.HARDWARE_TEST)
+            self.send_to_stimulus(StimulusMessage.HARDWARE_TEST)
             if not self.task_active:
                 is_success = self.lj.start_labjack()
 
@@ -823,7 +826,7 @@ class MainFrame(wx.Frame):
             shutil.rmtree(self.sess_dir, ignore_errors=True)
 
     def update_task_metadata(self) -> None:
-        self.msgq.put(StimulusMessage.SEND_METADATA)
+        self.send_to_stimulus(StimulusMessage.SEND_METADATA)
         try:
             trial_data = json.loads(self.resultsq.get())
         except Exception as err:
@@ -938,7 +941,7 @@ class MainFrame(wx.Frame):
         self.statusbar.SetStatusText("closing..")
         if self.stimulus_proc.is_alive():
             try:
-                self.msgq.put(StimulusMessage.CLOSE_WINDOW)
+                self.send_to_stimulus(StimulusMessage.CLOSE_WINDOW)
                 self.stimulus_proc.join(2)
                 if self.stimulus_proc.is_alive():
                     logger.warning("Stimulus still active after close")
@@ -1163,7 +1166,7 @@ class MainFrame(wx.Frame):
                 trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
         self.participant_monitor.update_screen()
         trial_panel.add_timer(self.stimulus_timer)
-        self.msgq.put(StimulusMessage.INITIALIZE)
+        self.send_to_stimulus(StimulusMessage.INITIALIZE)
         self.Show()  # NB: we are in the method `def show(...)` : lower-case s
 
     def Show(self, show: bool = True) -> bool:
