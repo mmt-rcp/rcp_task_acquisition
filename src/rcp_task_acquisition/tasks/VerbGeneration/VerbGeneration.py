@@ -30,6 +30,11 @@ class VerbGeneration(bases.StimulusBase):
                 self.lists.append(line[1:])
         logger.debug("read %s: %s", c.CSV_PATH, self.lists)
 
+    def reset_task(self):
+        super().reset_task()
+        self.trial_list = {}
+        self.trial = 0
+
     def present(self, test=True) -> None:
         self.timer.value = 0
         self.trial += 1

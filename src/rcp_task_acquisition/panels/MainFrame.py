@@ -799,6 +799,7 @@ class MainFrame(wx.Frame):
         metadata_panel.dialog.Close()
         if res == wx.ID_OK:
             self.update_metadata()  # to ensure have all as it is right now,
+            self.update_task_metadata()
             # notably cameras actual frame rates.
             metadata = file_utils.read_metadata(self.metapath)
             metadata["actual_scan_rate"] = self.labjack_scan_rate
@@ -829,7 +830,6 @@ class MainFrame(wx.Frame):
             logger.error("update task metadata error: %s", err)
             trial_data = None
         metadata = file_utils.read_metadata(self.metapath)
-        logger.debug("%s yaml loaded sections: %r", self.metapath, tuple(metadata))
         metadata["trial_data"] = trial_data
         self.trial_panel.populate_metadata(metadata)
         file_utils.write_metadata(metadata, self.metapath)
