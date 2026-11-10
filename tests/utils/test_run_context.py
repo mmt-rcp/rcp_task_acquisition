@@ -20,7 +20,9 @@ def rcp_run_ctx():
 
 
 def test_load_default_user():
-    cfg, _ = config.load_rcp_user_config(constants.DEFAULT_USER_CONFIG_PATH)
+    cfg, _ = config.load_rcp_user_config(
+        constants.CODE_CONFIG_DIR_PATH / constants.DEFAULT_USER_CONFIG_FILE_NAME
+    )
     assert isinstance(cfg, RcpUserConfig)
     assert isinstance(cfg.hardware, config.HardwareDictConfig)
     assert isinstance(cfg.cameras, config.CamerasDictConfig)
@@ -28,7 +30,9 @@ def test_load_default_user():
 
 
 def test_load_default_tasks():
-    cfg, _ = config.load_rcp_tasks_config(constants.DEFAULT_TASKS_CONFIG_PATH)
+    cfg, _ = config.load_rcp_tasks_config(
+        constants.CODE_CONFIG_DIR_PATH / constants.DEFAULT_TASKS_CONFIG_FILE_NAME
+    )
     assert isinstance(cfg, config.RcpTasksGroupConfig)
     for key, value in cfg.items():
         assert isinstance(key, str)

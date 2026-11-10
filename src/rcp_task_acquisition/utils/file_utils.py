@@ -4,11 +4,6 @@ from typing import Any
 
 import ruamel.yaml
 
-from rcp_task_acquisition.utils import config
-from rcp_task_acquisition.utils.constants import (
-    CODE_CONFIG_DIR_PATH,
-    SCREEN_CONFIG_FILE_NAME,
-)
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
