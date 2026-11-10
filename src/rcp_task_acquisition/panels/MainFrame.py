@@ -359,6 +359,8 @@ class MainFrame(wx.Frame):
         self._timer_task_start_end.StartOnce(1500)
         #
         if controls_panel.session_button.GetValue():
+            self.msgq.put(StimulusMessage.INITIALIZE)
+            # this recreates a new stimulus instance in the stimulus process.
             self.task_active = True
             self.count = 0
             self.finish.value = 0
