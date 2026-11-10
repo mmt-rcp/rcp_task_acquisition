@@ -29,8 +29,11 @@ class NbackPanel(TrialPanel):
         self._group_radio_trial_kinds = (self.practice, self.real)
 
         trial = wx.StaticText(self, label="Select N-back")
-        self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES, size=(200, -1))
-        self.nback_choice.SetSelection(0)
+        ch = self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES)
+        ch.Update()
+        sz = ch.GetSize()
+        ch.SetMinSize(wx.Size(2 * sz.Width, sz.Height))  # make it twice large the min size
+        ch.SetSelection(0)
 
         text = wx.StaticText(self, label="Select trial type")
 
