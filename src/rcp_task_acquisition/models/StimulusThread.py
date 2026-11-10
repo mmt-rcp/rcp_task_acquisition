@@ -5,7 +5,7 @@ import multiprocessing
 import time
 from enum import Enum
 from queue import Empty
-from typing import Callable
+from typing import Callable, Any
 
 import wx
 
@@ -26,7 +26,7 @@ from rcp_task_acquisition.utils.displays import Window
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
 from rcp_task_acquisition.utils.run_context import RcpRunContext
-from rcp_task_acquisition.utils.typing import SharedBool, SharedEvent, SharedInt
+from rcp_task_acquisition.utils.typing import SharedBool, SharedEvent, SharedInt, SharedFloat
 
 logger = get_logger(__name__)
 
@@ -65,6 +65,8 @@ class StimulusThread(ProcessWithLogging):
         resultsq: multiprocessing.Queue,
         stimulus_timer: SharedInt,
         event_lock: SharedEvent,
+        grasp_ready: tuple[SharedBool, SharedFloat],
+        grasp_count: SharedInt,
         *,
         rcp_context: RcpRunContext,
     ):
@@ -86,6 +88,8 @@ class StimulusThread(ProcessWithLogging):
         self.alive = True
         self.task = task
         self.video_lock = event_lock
+        self.grasp_ready = grasp_ready
+        self.grasp_count = grasp_count
         self._msg_handlers: dict[StimulusMessage, Callable] = {
             StimulusMessage.INITIALIZE: self._handle_initialize,
             StimulusMessage.SEND_METADATA: self._handle_send_metadata,
@@ -280,11 +284,14 @@ class StimulusThread(ProcessWithLogging):
                 logger.debug("Using StimulusBase for %s", self.task)
                 self.stimulus = StimulusBase(**base_vars)  # type: ignore
                 return
-        extra_args = []
+        extra_args: list[Any] = []
         if issubclass(base_cls, N_back):
             extra_args.append(self.button)
         elif issubclass(base_cls, ToneTapsClosed):
             extra_args.append(self.press_count)
+        elif issubclass(base_cls, ReachGrasp):
+            extra_args.append(self.grasp_ready)
+            extra_args.append(self.grasp_count)
         self.stimulus = base_cls(base_vars, *extra_args)
         logger.info("stimulus: %s", self.stimulus)
 

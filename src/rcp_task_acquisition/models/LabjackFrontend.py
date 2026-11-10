@@ -17,7 +17,13 @@ from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
-from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, HardwareListsType, SharedArray
+from rcp_task_acquisition.utils.typing import (
+    SharedBool,
+    SharedInt,
+    HardwareListsType,
+    SharedArray,
+    SharedFloat,
+)
 
 logger = get_logger(__name__)
 
@@ -31,7 +37,8 @@ class LabjackFrontend:
         button_pressed: SharedBool,
         press_count: SharedInt,
         hardware_test: SharedBool,
-    ):
+        grasp_ready: tuple[SharedBool, SharedFloat],
+    ) -> None:
         self._serial_dev: SerialDevice | None = None
         self.constants: list[str] = []
         self.constant_index: list[int] = []
@@ -59,6 +66,7 @@ class LabjackFrontend:
             "d", array_length * (len(self.hardware_indices) + 3)
         )
         self.labjack_queue: Queue[Any] = Queue()
+        self.grasp_ready = grasp_ready
         self.labjack_is_csv = Value(ctypes.c_bool, False)
         self.stream_started = Value(ctypes.c_bool, False)
         self.labjack_is_finished = Value(ctypes.c_bool, True)
@@ -76,6 +84,7 @@ class LabjackFrontend:
         self.serial_state = 0
         self.labjack_process: LabJackDataStream | None = None
         self.msg = ""
+        self.is_grasp = False
 
     def labjack_stream(self, even: wx.Event) -> None:
         labjack_button = self.graph_panel.labjack_stream_button
@@ -91,12 +100,15 @@ class LabjackFrontend:
     def update_hardware(
         self,
         hardware_lists: HardwareListsType,
+        *,
+        is_grasp: bool = False,
     ) -> None:
         self.graph_panel.update_graph(hardware_lists)
         self.hardware = list(hardware_lists[0])
         self.labjack_list = list(hardware_lists[1])
         self.constant_index = []
         self.constants = []
+        self.is_grasp = is_grasp
         for index, constant in enumerate(PLOT_CONSTANTS):
             hardware_index = self.hardware.index(constant)
             self.constants.append(self.labjack_list[hardware_index])
@@ -164,6 +176,8 @@ class LabjackFrontend:
             self.stream_started,
             self.scan_rate,
             self.handshake,
+            self.grasp_ready,
+            self.is_grasp,
         )
         proc.start()
         self.labjack_timer.Start(200)

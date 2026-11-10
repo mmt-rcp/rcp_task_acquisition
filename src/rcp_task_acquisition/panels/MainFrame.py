@@ -37,6 +37,7 @@ from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.Calibration.panel import CalibrationPanel
 from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
+from rcp_task_acquisition.tasks.ReachGrasp.panel import ReachGraspPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
@@ -73,6 +74,11 @@ class MainFrame(wx.Frame):
         self.task: str = ""
         self.launch_args: dict[str, Any] = {}
         self.button_pressed = mp.Value(ctypes.c_bool, False)
+        self.grasp_ready = (
+            mp.Value(ctypes.c_bool, False),
+            mp.Value(ctypes.c_float, 0),
+        )
+        self.grasp_count = mp.Value(ctypes.c_int, 0)
         self.recording = False
         self.calibrate = False
         self.press_count = mp.Value(ctypes.c_int, 0)
@@ -215,6 +221,7 @@ class MainFrame(wx.Frame):
             self.button_pressed,
             self.press_count,
             self.cam_test,
+            self.grasp_ready,
         )
 
         self.Bind(wx.EVT_TIMER, self.lj.labjack_event, self.labjack_timer)
@@ -273,6 +280,8 @@ class MainFrame(wx.Frame):
             self.resultsq,
             self.stimulus_timer,
             self.video_lock,
+            self.grasp_ready,
+            self.grasp_count,
             rcp_context=rcp_context,
         )
         self.startingSession = False
@@ -285,6 +294,11 @@ class MainFrame(wx.Frame):
         self.task_active = False
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_SIZE, self.on_resize)
+        self._timer_task_start_end = wx.Timer(self, wx.ID_ANY)
+        self.Bind(wx.EVT_TIMER, self._on_timer_task_start_end, self._timer_task_start_end)
+
+    def _on_timer_task_start_end(self, event: wx.Event) -> None:
+        self.controls_panel.session_button.Enable()
 
     def put_to_stimulus(self, data, *, timeout=3) -> None:
         self.msgq.put(data, timeout=timeout)
@@ -333,7 +347,6 @@ class MainFrame(wx.Frame):
     def on_resize(self, event: wx.Event) -> None:
         wx.CallAfter(self.image_panel.reset_sizing)
         event.Skip()
-        # pass
 
     def run_task(self) -> None:
         """Start/Stop New Task (not trial)"""
@@ -342,6 +355,12 @@ class MainFrame(wx.Frame):
         trial_panel = self.trial_panel
         logger.verbose("run_task called task_but=%s", controls_panel.session_button.GetValue())
         self.Enable()
+        # disable task button (start/stop),
+        # for 1.5s:
+        controls_panel.session_button.Disable()
+        self.Update()
+        self._timer_task_start_end.StartOnce(1500)
+        #
         if controls_panel.session_button.GetValue():
             self.task_active = True
             self.count = 0
@@ -377,7 +396,7 @@ class MainFrame(wx.Frame):
             #
             self.video_status.value = VideoStatus.STOP
             controls_panel.session_button.SetLabel("Start Task")
-            controls_panel.hardware_button.Enable(True)
+            controls_panel.hardware_button.Enable()
             if trial_panel.continue_button.GetValue():
                 # end the trial if it was running
                 with wx.EventBlocker(trial_panel.continue_button):
@@ -418,6 +437,7 @@ class MainFrame(wx.Frame):
         )
         if trial_panel.continue_button.GetValue():
             logger.debug("in trial button")
+            self.controls_panel.hardware_button.Disable()
             self.count += 1
             self.cams.trial = self.count
             self.cams.session = self.session
@@ -461,8 +481,8 @@ class MainFrame(wx.Frame):
             self.put_to_stimulus(StimulusMessage.RUN_TASK)
         else:
             logger.debug("stopping episode")
+            self.controls_panel.hardware_button.Enable()
             self.finish.value = 2
-
             self.rest_timer.Stop()
             if isinstance(trial_panel, SaraPanel):
                 trial_panel.show_scoring()
@@ -700,8 +720,9 @@ class MainFrame(wx.Frame):
                     graph_panel.labjack_stream_button.Enable(False)
                     graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
-            controls_panel.session_button.Enable(False)
+            self.trial_panel.continue_button.Disable()
         else:
+            self.trial_panel.continue_button.Enable()
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
@@ -722,7 +743,6 @@ class MainFrame(wx.Frame):
             cam_panel.minRec.Enable(True)
             cam_panel.secRec.Enable(True)
             cam_panel.update_settings.Enable(True)
-            controls_panel.session_button.Enable(True)
 
     def create_metadata(self) -> None:
         logger.verbose("create_metadata called")
@@ -1116,7 +1136,10 @@ class MainFrame(wx.Frame):
         trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         self.initCams()
-        self.lj.update_hardware(hardware_lists)
+        self.lj.update_hardware(
+            hardware_lists,
+            is_grasp=isinstance(trial_panel, ReachGraspPanel),
+        )
         self.press_count.value = 0
         self.video_start, self.video_pause = trial_panel.get_video_buttons()
         if isinstance(trial_panel, CalibrationPanel):
