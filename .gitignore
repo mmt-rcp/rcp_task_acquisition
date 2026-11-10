@@ -11,6 +11,9 @@ database/
 # IDEs:
 /.idea/
 
+#
+**/*.py.orig
+
 # Distribution / packaging
 .Python
 build/
