@@ -350,6 +350,7 @@ class MainFrame(wx.Frame):
         event.Skip()
 
     def run_task(self) -> None:
+        """Called on start/stop of Task"""
         graph_panel = self.graph_panel
         controls_panel = self.controls_panel
         trial_panel = self.trial_panel
@@ -363,6 +364,8 @@ class MainFrame(wx.Frame):
         #
         if controls_panel.session_button.GetValue():
             self.task_active = True
+            self.send_to_stimulus(StimulusMessage.INITIALIZE)
+            # this creates new stimulus instance in the stimulus process.
             self.count = 0
             self.finish.value = 0
             is_success = self.lj.start_labjack()
@@ -1166,7 +1169,7 @@ class MainFrame(wx.Frame):
                 trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
         self.participant_monitor.update_screen()
         trial_panel.add_timer(self.stimulus_timer)
-        self.send_to_stimulus(StimulusMessage.INITIALIZE)
+        self.send_to_stimulus(StimulusMessage.INITIALIZE)  # nb: it's also done on "start_task".
         self.Show()  # NB: we are in the method `def show(...)` : lower-case s
 
     def Show(self, show: bool = True) -> bool:
