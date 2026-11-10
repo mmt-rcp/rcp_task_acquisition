@@ -268,7 +268,7 @@ class MainFrame(wx.Frame):
         self.finish = Value(ctypes.c_byte, 0)
         self.resultsq: Queue[Any] = Queue()
         self.video_lock = Event()
-        self.thread = StimulusThread(
+        self.stimulus_proc = StimulusThread(
             self.msgq,
             self.finish,
             self.shared,
@@ -290,7 +290,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.update_intertrial, self.rest_timer)
         self.Bind(wx.EVT_TIMER, self.cams.vidPlayer, self.liveTimer)
         self.Bind(wx.EVT_TIMER, self._cams_update, self.liveTimer)
-        self.thread.start()
+        self.stimulus_proc.start()
         self.task_active = False
         self.disable_timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_SIZE, self.on_resize)
@@ -311,7 +311,7 @@ class MainFrame(wx.Frame):
         with wx.EventBlocker(controls_panel.show_patient_cams_button):
             controls_panel.show_patient_cams_button.SetValue(show)
 
-    def _update_task(self, task):
+    def _update_stimulus_task(self, task):
         self.msgq.put(StimulusMessage.UPDATE_TASK)
         self.msgq.put(task)
 
@@ -936,14 +936,14 @@ class MainFrame(wx.Frame):
         """
         logger.info("Close event called")
         self.statusbar.SetStatusText("closing..")
-        if self.thread.is_alive():
+        if self.stimulus_proc.is_alive():
             try:
                 self.msgq.put(StimulusMessage.CLOSE_WINDOW)
-                self.thread.join(2)
-                if self.thread.is_alive():
+                self.stimulus_proc.join(2)
+                if self.stimulus_proc.is_alive():
                     logger.warning("Stimulus still active after close")
-                    self.thread.terminate()
-                    self.thread.join(1)
+                    self.stimulus_proc.terminate()
+                    self.stimulus_proc.join(1)
             except Exception as err:
                 logger.error("Error request close_window to stimulus: %s", err)
         else:
@@ -1088,7 +1088,7 @@ class MainFrame(wx.Frame):
         self.launch_args = launch_args
         task = self.task = launch_args["task"].strip()
         self.participant = launch_args["participant"]
-        self._update_task(task)
+        self._update_stimulus_task(task)
         self.video_status.value = VideoStatus.NOT_PLAYING
         tasks_cfg = self._rcp_context.tasks_config
         user_cfg = self._rcp_context.user_config
