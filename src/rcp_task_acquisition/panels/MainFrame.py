@@ -359,6 +359,8 @@ class MainFrame(wx.Frame):
         self._timer_task_start_end.StartOnce(1500)
         #
         if controls_panel.session_button.GetValue():
+            self.start_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
+            self.start_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.task_active = True
             self.count = 0
             self.finish.value = 0
@@ -1079,8 +1081,6 @@ class MainFrame(wx.Frame):
 
     def init_and_show(self, launch_args: dict[str, Any]) -> None:
         logger.verbose("show(): launch_args=%s", launch_args)
-        self.start_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
-        self.start_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
