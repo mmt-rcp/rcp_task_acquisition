@@ -119,7 +119,7 @@ class LabJackDataStream(ProcessWithCommands):
             self.__attempt_connect(scan_list)
             return
         except ljm.ljm.LJMError as err:
-            logger.warning("LJM: failed attempt connect: %s..", err, exc_info=True, stacklevel=2)
+            logger.warning("LJM: failed attempt connect: %s..", err)
             # if err.errorCode == 2605:  # STREAM_IS_ACTIVE
             #     ljm.eStreamStop(self.handle)
         self._disconnect()

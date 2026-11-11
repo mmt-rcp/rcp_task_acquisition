@@ -43,7 +43,7 @@ class CamCtx:
     is_decreased = False
     record_frame_rate: float = 0
     cam_list: PySpin.CameraList
-    cam: PySpin.Camera
+    cam: PySpin.Camera | None = None
     system: PySpin.SystemPtr
     processor: PySpin.ImageProcessor
     aqW: int
@@ -128,7 +128,6 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
     def run(self) -> None:
         ctx = CamCtx()
-        self._init_spin(ctx)
         # exposure_max = 4000
         cfg = self._cam_config
         framerate_decrease = cfg.framerate_decrease_factor
@@ -156,16 +155,39 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.processor = PySpin.ImageProcessor()
         ctx.processor.SetColorProcessing(PySpin.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
 
+        logged_init_failed = False
+
         while True:
+            if ctx.cam is None:
+                try:
+                    self._init_spin(ctx)
+                    logged_init_failed = False
+                except Exception as err:
+                    if not logged_init_failed:
+                        logged_init_failed = True
+                        logger.error("cannot init cam: %s", err)
+                    self._execute_release(ctx)
             try:  # get a new msg command
-                msg = self._get_data(timeout=0.5)  # using 0.5s wait timeout,
+                msg = self._get_data(timeout=1)  # using 1s wait timeout,
                 # could even use more, given nothing else to check/wait on here.
             except Empty:
                 continue
+            if msg is None:
+                logger.verbose("got None, exiting")
+                break
+            if ctx.cam is None:
+                self._put_response("done-failed: cam init failed")
+                continue
             self._handle_cmd(ctx, msg)
 
+    @staticmethod
+    def _validate_cam(cam: PySpin.Camera | None) -> PySpin.Camera:
+        if cam is None:
+            raise RuntimeError("cam not created")
+        return cam
+
     def _handle_cmd(self, ctx, msg):
-        logger.notice("handling msg/cmd: %s", msg)
+        logger.notice("Executing %s", msg)
         handle = self._command_handlers.get(msg, None)  # type: ignore
         if handle is None:
             logger.warning("Unhandled command: %s", msg)
@@ -175,7 +197,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         except Exception as err:
             logger.exception("failed executing %s: %s", msg, err)
             if msg != CameraCommand.UPDATE_SETTINGS:
-                self._put_response("done")
+                self._put_response("done-failed")
 
     def _init_spin(self, ctx: CamCtx) -> None:
         ctx.method = "none"
@@ -196,8 +218,8 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         logger.verbose("got spin cam instance: %s", ctx.cam)
 
     def _cmd_InitM(self, ctx: CamCtx) -> None:
+        cam = self._validate_cam(ctx.cam)
         ctx.ismaster = True
-        cam = ctx.cam
         cam.Init()
         self.create_primary(cam)
         self._put_response("done")
@@ -206,7 +228,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             _image.Release()
 
     def _cmd_InitS(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         cam.Init()
         self.create_secondary(cam, ctx.is_decreased)
         self._put_response("done")
@@ -215,7 +237,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             _image.Release()
 
     def _cmd_InitC(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         cam.Init()
         cam.LineSelector.SetValue(PySpin.LineSelector_Line2)
         cam.V3_3Enable.SetValue(False)
@@ -232,8 +254,12 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self._put_response("done")
 
     def _execute_release(self, ctx: CamCtx) -> None:
-        ctx.cam.DeInit()
-        ctx.cam = None
+        if ctx.cam is not None:
+            try:
+                ctx.cam.DeInit()
+            except Exception as err:
+                logger.error("spin cam DeInit failed: %s", err)
+            ctx.cam = None
         for i in self.idList:
             ctx.cam_list.RemoveBySerial(str(i))
         ctx.cam_list.Clear()
@@ -245,13 +271,14 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
     def _cmd_recordPrep(self, ctx: CamCtx) -> None:
         path_base = self._get_data()
+        cam = self._validate_cam(ctx.cam)
         logger.debug("using base_path=%s", path_base)
         if self.async_writer is not None:
             logger.verbose("async_writer already running")
             self._put_response("done")
             return
         write_frame_rate = ctx.record_frame_rate
-        s_node_map = ctx.cam.GetTLStreamNodeMap()
+        s_node_map = cam.GetTLStreamNodeMap()
         handling_mode = PySpin.CEnumerationPtr(s_node_map.GetNode("StreamBufferHandlingMode"))
         if not PySpin.IsAvailable(handling_mode) or not PySpin.IsWritable(handling_mode):
             logger.warning("Unable to set Buffer Handling mode (node retrieval). Aborting...\n")
@@ -276,7 +303,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self._put_response("done")
 
     def _cmd_Start(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         cam.BeginAcquisition()
         if ctx.ismaster or ctx.isunconnected:
             self.frm.value = 0
@@ -365,15 +392,18 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
         after_data = self._get_data(timeout=2)
         if after_data != CameraCommand.STOP:
-            logger.error(
-                "Received unexpected %s after acquire ; aq_val=%s. but still processing",
-                after_data,
-                aq_val,
-            )
+            if after_data == CameraCommand.RELEASE:
+                self._handle_cmd(ctx, CameraCommand.STOP)
+            else:
+                logger.error(
+                    "Received unexpected %s after acquire ; aq_val=%s. but still processing",
+                    after_data,
+                    aq_val,
+                )
         self._handle_cmd(ctx, after_data)
 
     def _cmd_Stop(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         async_writer = self.async_writer
         if async_writer is not None:
             async_writer.close()
@@ -426,9 +456,9 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             self._cmd_updateSettings_part1(ctx)
         except Exception as err:
             logger.exception("update_settings part1 failed: %s", err)
-            self._put_response(-1, timeout=1)
-            self._put_response((30, 30), timeout=1)
+            self._put_response("done-failed", timeout=1)
             return
+        self._put_response("done")
         try:
             self._cmd_updateSettings_part2(ctx)
         except Exception as err:
@@ -436,7 +466,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             self._put_response((30, 30), timeout=1)
 
     def _cmd_updateSettings_part1(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         cam_cfg = self._cam_config
         nodemap = cam.GetNodeMap()
         binsize = cam_cfg.bin
@@ -549,13 +579,12 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             logger.warning("ISP Enable node is not available or read-only.")
 
         # cam.AdcBitDepth.SetValue(PySpin.AdcBitDepth_Bit8)
-        self._put_response("done")
 
     def _cmd_updateSettings_part2(self, ctx: CamCtx) -> None:
         method = self._get_data(timeout=3)
         logger.debug("received method: %s ; prev=%s", method, ctx.method)
         ctx.method = method
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         cam_cfg = self._cam_config
         nodemap = cam.GetNodeMap()
         node_width = PySpin.CIntegerPtr(nodemap.GetNode("Width"))
@@ -673,10 +702,11 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self._put_response((applied_width, applied_height))
 
     def _cmd_setExposure(self, ctx: CamCtx) -> None:
-        ctx.cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
+        cam = self._validate_cam(ctx.cam)
+        cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Continuous)
 
     def _cmd_getExposure(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         logger.info("Current exposure: %s", ctx.current_exposure_time)
         ctx.current_exposure_time = cam.ExposureTime.GetValue() * 0.99
         cam.ExposureAuto.SetValue(PySpin.ExposureAuto_Off)
@@ -688,10 +718,11 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self._put_response(exposure_time)
 
     def _cmd_setBalance(self, ctx: CamCtx) -> None:
-        ctx.cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Continuous)
+        cam = self._validate_cam(ctx.cam)
+        cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Continuous)
 
     def _cmd_getBalance(self, ctx: CamCtx) -> None:
-        cam = ctx.cam
+        cam = self._validate_cam(ctx.cam)
         cam_cfg = self._cam_config
         cam.BalanceWhiteAuto.SetValue(PySpin.BalanceWhiteAuto_Off)
         cam.Gain.SetValue(cam_cfg.gain)

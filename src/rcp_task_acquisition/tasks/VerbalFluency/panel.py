@@ -140,7 +140,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
 
     def update_values(self) -> None:
         logger.debug("printing update_values")
-        self.continue_button.SetValue(False)
+        with wx.EventBlocker(self.continue_button):
+            self.continue_button.SetValue(False)
         self.start_video_button.Enable(True)
         self.seconds_text.SetLabel("Time: 60 secs")
         if self.trial_num < len(self.phonemic_list):

@@ -37,7 +37,6 @@ class LaunchPanel:
         self._rcp_context = rcp_context
         self.args = None
         self.task: str = ""
-        self.is_hidden = False
         tasks_config = rcp_context.tasks_config
         self.task_list = list(tasks_config.keys())
         self.task_list.append("all_hardware")
@@ -350,7 +349,6 @@ class LaunchPanel:
         self.hardware_panel.set_task(self.task)
 
     def Show(self):
-        self.is_hidden = False
         return self.dialog.Show()
 
     def get_metadata(self) -> None:

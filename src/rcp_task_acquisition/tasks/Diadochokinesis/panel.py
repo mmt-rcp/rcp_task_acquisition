@@ -173,7 +173,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.start_video_button.Enable(False)
         self.syllable_start_video_button.Enable(False)
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {DDK_TRIAL_TIME - self.timer.value} secs")
         else:

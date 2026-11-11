@@ -1,5 +1,8 @@
+import queue
+import threading
 from enum import Enum
 
+import atexit
 import wx
 
 from rcp_task_acquisition.models.StimulusThread import StimulusMessage
@@ -24,6 +27,7 @@ class SwitchPanel:
     """Main "switch" (control-) panel"""
 
     def __init__(self, *, rcp_context: RcpRunContext) -> None:
+        super().__init__()
         self._rcp_context: RcpRunContext = rcp_context
         self.active_panel = ActivePanel.LAUNCH
         self.launch_panel = LaunchPanel(rcp_context=rcp_context)
@@ -58,20 +62,20 @@ class SwitchPanel:
         self.switch_panel()
 
     def switch_panel(self) -> None:
-        logger.verbose("switch_panel: active=%s", self.active_panel)
         # if launch panel showing, switching to show task panel & vice versa
-        if self.active_panel == ActivePanel.LAUNCH:
-            self.task_frame.Enable()
+        cur_panel = self.active_panel
+        next_panel = cur_panel.switch_panel()
+        logger.verbose("switch_panel, going to %s", next_panel)
+        self.active_panel = next_panel
+        if cur_panel == ActivePanel.LAUNCH:
+            self.launch_panel.Hide()
             self.task_frame.controls_panel.quit_button.SetLabel("Exit to Launch Menu")
             self.task_frame.init_and_show(self.launch_panel.metadata)
-            self.launch_panel.Hide()
-        else:
+        elif cur_panel == ActivePanel.TASK:
+            self.task_frame.Hide()
             self.launch_panel.protocol_button.SetLabel("Select Protocol")
             self.launch_panel.enable_gui(True)
-            self.task_frame.Hide()
             self.launch_panel.Show()
-
-        self.active_panel = self.active_panel.switch_panel()
 
     def _on_disable_panel(self, event: wx.Event) -> None:
         logger.verbose("on_disable_panel: event=%s ; from=%s", event, event.GetEventObject())
@@ -80,7 +84,6 @@ class SwitchPanel:
             logger.debug("close from launch panel, preventing timer start")
             # if close of main launch panel, then don't switch panels.
             return
-        # self.switch_panel
         if 0:
             self.switch_panel()  # tried this, which is indirectly called by the disable_timer,
         # but for some reason don't get the same visual result.

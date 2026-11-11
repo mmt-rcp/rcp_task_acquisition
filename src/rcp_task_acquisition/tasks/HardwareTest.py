@@ -20,7 +20,7 @@ class HardwareTest(bases.StimulusBase):
         self.display.flip()
         clock = core.Clock()
         logger.debug("before present loop ; flash=%s clock=%s", self.flash_time, clock.getTime())
-        while True:
+        while self.finish.value == 0:
             self.check_commands(0)
             p0 = time.perf_counter()
             cnt = -1
@@ -30,7 +30,7 @@ class HardwareTest(bases.StimulusBase):
                 # logger.debug("loop1")
                 self.display.draw_patch()
                 self.display.flip()
-                if self.finish.value == 2:
+                if self.finish.value != 0:
                     self.display.switch_patch()
                     self.display.draw_patch()
                     self.display.flip()

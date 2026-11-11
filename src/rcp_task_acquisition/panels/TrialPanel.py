@@ -120,7 +120,7 @@ class TrialPanel(wx.Panel):
         self._image_panel.update_names(list(cam.name for cam in cams))
 
     def prepare_cams(self, cams: list[CamSettings]):
-        # logger.debug("received prepare cams: %s", cams)
+        logger.debug("received prepare cams: %s", [cam.name for cam in cams])
         # self._frame_patient.Show()
         imp = self._image_panel
         imp.updateImage()
