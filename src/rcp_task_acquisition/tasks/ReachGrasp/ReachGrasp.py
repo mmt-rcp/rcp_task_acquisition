@@ -1,9 +1,12 @@
+from typing import Any
+
 import numpy as np
 from psychopy import core
 import pyaudio
 
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData, SharedBool, SharedFloat, SharedInt
 from rcp_task_acquisition.tasks.ReachGrasp.constants import (
     MIN_REST_VAL,
     MAX_REST_VAL,
@@ -11,23 +14,28 @@ from rcp_task_acquisition.tasks.ReachGrasp.constants import (
     SPACING,
 )
 
-logger = get_logger("./tasks/ReachGrasp")
+logger = get_logger(__name__)
 
 
 class ReachGrasp(bases.StimulusBase):
-    def __init__(self, base_vars, grasp, grasp_count):
+    def __init__(
+        self,
+        base_vars: dict[str, Any],
+        grasp: tuple[SharedBool, SharedFloat],
+        grasp_count: SharedInt,
+    ) -> None:
         super().__init__(**base_vars)
         self.trial_count = 0
-        self.hand = None
-        self.grasp_object = None
-        self.hand_dict = {}
-        self.grasp_dict = {}
+        self.hand: str = ""
+        self.grasp_object: str = ""
+        self.hand_dict: dict[str, str] = {}
+        self.grasp_dict: dict[str, str] = {}
         self.grasp_ready = grasp[0]
         self.rest_time = grasp[1]
         self.grasp_count = grasp_count
-        self.metadata = {}
+        self.metadata: dict[str, dict[str, Any]] = {}
 
-    def present(self):
+    def present(self) -> None:
         self.timer.value = 0
         self.trial_count += 1
 
@@ -102,17 +110,12 @@ class ReachGrasp(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def update_data(self, data):
+    def update_data(self, data: tuple[str, str]) -> None:
         self.hand = data[0]
         self.grasp_object = data[1]
 
-    def saveMetadata(self, name, sessionFolder):
-        # data = {
-        #     "trial_count": self.trial_count,
-        #     "hand_used": self.hand_dict,
-        #     "grasp_object": self.grasp_dict,
-        # }
-        return self.metadata  # data
+    def saveMetadata(self) -> TaskMetaData:
+        return self.metadata
 
     def play_reach_tone(self, frequency=500, duration=0.25, sample_rate=44100):
         """

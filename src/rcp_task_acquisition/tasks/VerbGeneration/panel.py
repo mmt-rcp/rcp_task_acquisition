@@ -4,19 +4,25 @@ import wx
 
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.VerbGeneration.VerbGeneration import VerbGeneration
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./VerbGeneration/panel")
+logger = get_logger(__name__)
 
 
 class VerbGenerationPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig(
+        "verb_generation", "Verb Generation", "verbgeneration", VerbGeneration
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
         self.display_mins = 0
         self.trial_number = 1
-        self.timestamps = {}
+        # self.timestamps = {}  unused
         self.countdown_start = 0
         self.button_width = 76
         self.border = 5
@@ -34,7 +40,7 @@ class VerbGenerationPanel(TrialPanel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
-    def _set_up_photo(self):
+    def _set_up_photo(self) -> wx.GridBagSizer:
         """
         Set up the naturalistic speech panel
         Returns:
@@ -76,24 +82,20 @@ class VerbGenerationPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
         self.trial_is_active = True
         self.noun_choice.Enable(False)
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
 
-    def update_trial(self, number):
-        self.trial_number = number
-        self.trial_text.SetLabel(f"Trial # {self.trial_number}")
-
-    def get_result(self):
+    def get_result(self) -> int:
         list_choice = self.noun_choice.GetSelection()
         return list_choice
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
         self.trial_is_active = False
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
         self.noun_choice.Enable(True)
@@ -101,7 +103,7 @@ class VerbGenerationPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
         self.continue_button.SetValue(False)
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         self.seconds += 1
         self.display_mins = int(self.timer.value / 60)
         self.display_secs = self.timer.value % 60

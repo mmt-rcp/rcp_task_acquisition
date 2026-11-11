@@ -4,6 +4,7 @@ use the keyboard to move through the points
 """
 
 import csv
+import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,8 +22,8 @@ def graph_csv():
             try:
                 test_dict["CAMERA"].append(float(row[-1]))
                 test_dict["PHOTODIODE"].append(float(row[4]))
-            except:
-                pass
+            except Exception as err:
+                logging.debug("Error parse camera/photodiode: %s", err, stack_info=True)
 
     return test_dict
 

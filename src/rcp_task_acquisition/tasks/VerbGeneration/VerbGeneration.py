@@ -5,20 +5,21 @@ from psychopy import core, visual
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import TaskMetaData
 
-logger = get_logger("./tasks/VerbGeneration")
+logger = get_logger(__name__)
 
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class VerbGeneration(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict) -> None:
         super().__init__(**base_vars)
-        self.list_num = None
-        self.words_shown = []
+        self.list_num: int = 0
+        self.words_shown: list[str] = []
         self.trial = 0
-        self.trial_list = {}
-        self.lists = []
-        self.stim_list = []
+        self.trial_list: dict[str, str | list[str]] = {}
+        self.lists: list[list[str]] = []
+        self.stim_list: list[visual.TextStim] = []
         self.fixation = visual.TextStim(
             self.display, text="+", name="FixationCross", pos=(0, 0), height=50
         )
@@ -27,9 +28,9 @@ class VerbGeneration(bases.StimulusBase):
             reader = csv.reader(f, delimiter=",")
             for i, line in enumerate(reader):
                 self.lists.append(line[1:])
-        logger.debug(self.lists)
+        logger.debug("read %s: %s", c.CSV_PATH, self.lists)
 
-    def present(self, test=True):
+    def present(self, test=True) -> None:
         self.timer.value = 0
         self.trial += 1
         self.words_shown = []
@@ -77,7 +78,7 @@ class VerbGeneration(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def saveMetadata(self, name, sessionFolder):
+    def saveMetadata(self) -> TaskMetaData:
         # data = {f"trial_{self.trial}": list(self.words_shown),
         #         "word_time": str(c.SHOW_TIME),
         #         "fixation_time": str(c.GENERATION_TIME)}
@@ -85,9 +86,9 @@ class VerbGeneration(bases.StimulusBase):
         self.trial_list["fixation_time"] = str(c.GENERATION_TIME)
         return self.trial_list
 
-    def update_data(self, list_num):
+    def update_data(self, data: int) -> None:
+        self.list_num = data
         self.stim_list = []
-        self.list_num = int(list_num[0])  # -1
         for word in self.lists[self.list_num]:
             self.stim_list.append(
                 visual.TextStim(self.display, text=word, name="trial", pos=(0, 0), height=100)

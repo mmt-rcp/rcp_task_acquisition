@@ -1,32 +1,47 @@
 import wx
 
+from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.panels.ParticipantMonitorPanel import MonitorPanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
-from rcp_task_acquisition.tasks.Calibration.panel import Calibration
+from rcp_task_acquisition.tasks.Calibration.panel import CalibrationPanel
 from rcp_task_acquisition.tasks.Diadochokinesis.panel import DdkPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.panel import NaturalisticSpeechPanel
 from rcp_task_acquisition.tasks.NBack.panel import NbackPanel
 from rcp_task_acquisition.tasks.ReachGrasp.panel import ReachGraspPanel
 from rcp_task_acquisition.tasks.Sara.panel import SaraPanel
 from rcp_task_acquisition.tasks.ToneTaps.panel import ToneTapsClosedPanel
-from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel
+from rcp_task_acquisition.tasks.UpdrsTap.panel import FingerTapPanel, ToneTapsPanel
 from rcp_task_acquisition.tasks.VerbalFluency.panel import VerbalFluencyPanel
 from rcp_task_acquisition.tasks.VerbGeneration.panel import VerbGenerationPanel
 from rcp_task_acquisition.tasks.VowelSpace.panel import VowelSpacePanel
+from rcp_task_acquisition.tasks.utils import get_task_panel_class
+from rcp_task_acquisition.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ControlsPanel(wx.Panel):
-    def __init__(self, parent, ctrl_panel, psychopy_monitor, monitor_size, task="task"):
-        super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
+    task_panel: TrialPanel
 
+    def __init__(
+        self,
+        parent: wx.Window,
+        ctrl_panel: GraphPanel,
+        psychopy_monitor: int,
+        monitor_size: wx.Size,
+        task="task",
+    ):
+        super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
+        self._psychopy_monitor = psychopy_monitor
+        self._psychopy_size = monitor_size
         vertical_spacer = wx.GridBagSizer(5, 5)
         vertical_position = 0
         button_width = 76
         self.cam_panel = CameraControlPanel(self, button_width)
-        self.task_panel = self.get_task_panel(task)
+        self.task_panel: TrialPanel = self.get_task_panel(task)
         self.task_panel.Enable(False)
         vertical_spacer.Add(
-            self._set_up_tasks(task, button_width),
+            self._set_up_task(task, button_width),
             pos=(vertical_position, 0),
             span=(0, 5),
             flag=wx.ALIGN_CENTER_HORIZONTAL | wx.TOP | wx.BOTTOM,
@@ -55,19 +70,19 @@ class ControlsPanel(wx.Panel):
         self.cam_panel.Hide()
         self.Layout()
 
-    def get_trial_panel(self):
+    def get_trial_panel(self) -> TrialPanel:
         return self.task_panel
 
-    def show_cams(self):
+    def show_cams(self) -> bool:
         return self.cam_panel.Show()
 
-    def get_monitor(self):
+    def get_monitor(self) -> MonitorPanel:
         return self.monitor
 
-    def hide_cams(self):
+    def hide_cams(self) -> bool:
         return self.cam_panel.Hide()
 
-    def _set_up_tasks(self, task, button_width):
+    def _set_up_task(self, task: str, button_width: int) -> wx.GridBagSizer:
         vertical_position = 0
         white_space = 10
         self.task_sizer = wx.GridBagSizer(6, 5)
@@ -84,6 +99,7 @@ class ControlsPanel(wx.Panel):
         )
         vertical_position += 1
 
+        self._task_panel_sizer_index = vertical_position
         self.task_sizer.Add(
             self.task_panel,
             pos=(vertical_position, 0),
@@ -103,7 +119,7 @@ class ControlsPanel(wx.Panel):
         )
 
         self.hardware_button = wx.ToggleButton(
-            self, id=wx.ID_ANY, label="Hardware Test", size=(button_width * 2, -1)
+            self, label="Hardware Test", size=(button_width * 2, -1)
         )
         self.task_sizer.Add(
             self.hardware_button,
@@ -125,6 +141,12 @@ class ControlsPanel(wx.Panel):
             flag=wx.LEFT,
             border=white_space,
         )
+        but = self.show_patient_cams_button = wx.ToggleButton(
+            self, id=wx.ID_ANY, label="Patient cameras", size=(button_width * 2, -1)
+        )
+        self.task_sizer.Add(
+            but, pos=(vertical_position, 2), span=(0, 2), flag=wx.LEFT, border=white_space
+        )
 
         vertical_position += 1
 
@@ -141,43 +163,30 @@ class ControlsPanel(wx.Panel):
 
         vertical_position += 1
 
-        self.quit = wx.Button(
+        self.quit_button = wx.Button(
             self, id=wx.ID_ANY, label="Exit to Launch Menu", size=(int(button_width * 4 + 15), -1)
         )
         self.task_sizer.Add(
-            self.quit, pos=(vertical_position, 0), span=(0, 4), flag=wx.LEFT, border=white_space
+            self.quit_button,
+            pos=(vertical_position, 0),
+            span=(0, 4),
+            flag=wx.LEFT,
+            border=white_space,
         )
 
         return self.task_sizer
 
-    def get_cam_handles(self):
-        return (
-            self.cam_panel.init,
-            self.cam_panel.reset,
-            self.cam_panel.update_settings,
-            self.cam_panel.play,
-            self.cam_panel.rec,
-            self.cam_panel.exposure_button,
-            self.cam_panel.set_crop,
-            self.cam_panel.crop,
-            self.cam_panel.minRec,
-            self.cam_panel.secRec,
-        )
-
-    def get_task_handles(self):
-        return (
-            self.camera_toggle,
-            self.hardware_button,
-            self.session_button,
-            self.quit,
-            self.tens_button,
-        )
-
-    def update_task(self, task):
+    def update_task(self, task: str) -> None:
+        logger.verbose("update_task: %s", task)
         task_title = task.replace("_", " ").title()
         self.task_text.SetLabel(f"{task_title}")
-        self.task_panel.Destroy()
+
+        # self.task_sizer.Remove(self._task_panel_sizer_index)
+        self.task_panel.Destroy()  # Close() is making following sizer.Add to error
+        #
+
         self.task_panel = self.get_task_panel(task)
+        self.show_patient_cams_button.Hide()
 
         self.task_sizer.Add(
             self.task_panel,
@@ -189,55 +198,48 @@ class ControlsPanel(wx.Panel):
         self.task_panel.Hide()
         self.Layout()
 
-    def get_task_panel(self, task):
-        if task == "motor_task_finger_taps":
-            return FingerTapPanel(self)
-        elif task == "tone_taps":
-            panel = FingerTapPanel(self)
-            panel.seconds_text.Hide()
-            return panel
-        elif task == "naturalistic_speech":
-            return NaturalisticSpeechPanel(self)
-        elif task == "diadochokinesis":
-            return DdkPanel(self)
-        elif task == "vowel_space":
-            return VowelSpacePanel(self)
-        elif task == "verbal_fluency":
-            return VerbalFluencyPanel(self)
-        elif task == "n_back":
-            return NbackPanel(self)
-        elif task == "reach_grasp":
-            return ReachGraspPanel(self)
-        elif task == "tone_taps_closed":
-            return ToneTapsClosedPanel(self)
-        elif task == "sara":
-            return SaraPanel(self)
-        elif task == "verb_generation":
-            return VerbGenerationPanel(self)
-        elif "calibrate" in task:
-            return Calibration(self)
-        else:
-            basic_panel = TrialPanel(self)
-            basic_panel.continue_button.Show()
-            return basic_panel
-
-    def close_task_panel(self):
-        self.task_panel.Destroy()
+    def get_task_panel(self, task: str) -> TrialPanel:
+        possible_tasks = (
+            FingerTapPanel,
+            ToneTapsClosedPanel,
+            NaturalisticSpeechPanel,
+            DdkPanel,
+            VowelSpacePanel,
+            VerbalFluencyPanel,
+            VerbGenerationPanel,
+            NbackPanel,
+            ReachGraspPanel,
+            SaraPanel,
+            VerbGenerationPanel,
+        )
+        found_cls = None
+        for cls in possible_tasks:
+            if cls.task_trial_item_config.code == task:
+                found_cls = cls
+                break
+        if found_cls is None:
+            if "calibrate" in task:
+                found_cls = CalibrationPanel
+            else:
+                logger.warning("using default TrialPanel for task %r", task)
+                found_cls = TrialPanel
+        basic_panel = found_cls(self, patient_monitor=self._psychopy_monitor)
+        return basic_panel
 
 
 class CameraControlPanel(wx.Panel):
     def __init__(self, parent, button_width):
         super().__init__(parent, -1, style=wx.BORDER_NONE)
-        camctrlbox = wx.StaticBox(self, label="Camera Control")
+        box = wx.StaticBox(self, label="Camera Control")
         camsizer = wx.GridBagSizer(5, 5)
-        bsizer = wx.StaticBoxSizer(camctrlbox, wx.HORIZONTAL)
+        bsizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         white_space = 0
         vpos = 0
 
-        self.init = wx.ToggleButton(self, id=wx.ID_ANY, label="Enable", size=(button_width, -1))
+        self.init = wx.ToggleButton(box, id=wx.ID_ANY, label="Enable", size=(button_width, -1))
         camsizer.Add(self.init, pos=(vpos, 0), span=(1, 2), flag=wx.ALL, border=white_space)
 
-        self.reset = wx.Button(self, id=wx.ID_ANY, label="Reset", size=(button_width, -1))
+        self.reset = wx.Button(box, id=wx.ID_ANY, label="Reset", size=(button_width, -1))
         camsizer.Add(self.reset, pos=(vpos, 3), span=(1, 3), flag=wx.ALL, border=white_space)
 
         self.update_settings = wx.Button(
@@ -249,16 +251,16 @@ class CameraControlPanel(wx.Panel):
         self.update_settings.Enable(False)
 
         vpos += 1
-        self.play = wx.ToggleButton(self, id=wx.ID_ANY, label="Live", size=(button_width, -1))
+        self.play = wx.ToggleButton(box, id=wx.ID_ANY, label="Live", size=(button_width, -1))
         camsizer.Add(self.play, pos=(vpos, 0), span=(1, 3), flag=wx.ALL, border=white_space)
         self.play.Enable(False)
 
-        self.rec = wx.ToggleButton(self, id=wx.ID_ANY, label="Record", size=(button_width, -1))
+        self.rec = wx.ToggleButton(box, id=wx.ID_ANY, label="Record", size=(button_width, -1))
         camsizer.Add(self.rec, pos=(vpos, 3), span=(1, 3), flag=wx.ALL, border=white_space)
         self.rec.Enable(False)
 
         self.exposure_button = wx.Button(
-            self, id=wx.ID_ANY, label="Set Exposure", size=(button_width * 2, -1)
+            box, id=wx.ID_ANY, label="Set Exposure", size=(button_width * 2, -1)
         )
         camsizer.Add(
             self.exposure_button, pos=(vpos, 6), span=(0, 6), flag=wx.ALL, border=white_space
@@ -266,23 +268,23 @@ class CameraControlPanel(wx.Panel):
         self.exposure_button.Enable(False)
 
         vpos += 1
-        self.set_crop = wx.ToggleButton(self, id=wx.ID_ANY, label="Set Crop")
+        self.set_crop = wx.ToggleButton(box, id=wx.ID_ANY, label="Set Crop")
         camsizer.Add(self.set_crop, pos=(vpos, 0), span=(0, 3), flag=wx.TOP | wx.BOTTOM, border=3)
         self.set_crop.Enable(False)
 
-        self.crop = wx.CheckBox(self, id=wx.ID_ANY, label="Crop", size=(button_width, -1))
+        self.crop = wx.CheckBox(box, id=wx.ID_ANY, label="Crop", size=(button_width, -1))
         camsizer.Add(self.crop, pos=(vpos, 3), span=(0, 3), flag=wx.TOP, border=0)
         self.crop.SetValue(True)
 
-        self.minRec = wx.TextCtrl(self, value="20", size=(50, -1))
+        self.minRec = wx.TextCtrl(box, value="20", size=(50, -1))
         self.minRec.Enable(False)
-        min_text = wx.StaticText(self, label="M:")
+        min_text = wx.StaticText(box, label="M:")
         camsizer.Add(self.minRec, pos=(vpos, 7), span=(1, 2), flag=wx.ALL, border=white_space)
         camsizer.Add(min_text, pos=(vpos, 6), span=(1, 1), flag=wx.TOP, border=5)
 
-        self.secRec = wx.TextCtrl(self, value="0", size=(50, -1))
+        self.secRec = wx.TextCtrl(box, value="0", size=(50, -1))
         self.secRec.Enable(False)
-        sec_text = wx.StaticText(self, label="S:")
+        sec_text = wx.StaticText(box, label="S:")
         camsizer.Add(self.secRec, pos=(vpos, 10), span=(1, 2), flag=wx.ALL, border=white_space)
         camsizer.Add(sec_text, pos=(vpos, 9), span=(1, 1), flag=wx.TOP, border=5)
 

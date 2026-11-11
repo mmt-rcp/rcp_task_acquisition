@@ -1,25 +1,28 @@
 import os
+import platform
 from enum import Enum
 from pathlib import Path
 
-import ruamel.yaml
 from psychopy import core
 
-BASEDIR = Path(__file__).resolve().parent.parent.parent.parent
-CODE_DIR = Path(__file__).resolve().parent.parent
+CODE_DIR = Path(__file__).resolve().parent.parent  # src/rcp_task_aquisition
+REPO_BASE_DIR = CODE_DIR.parent.parent  # top repo dir
 
-STIM_CONFIG_FILE_PATH = CONFIG_FILE_PATH = os.path.join(
-    CODE_DIR.resolve().parent.parent, "config_files"
-)
-config_path = os.path.join(CONFIG_FILE_PATH, "userdata.yaml")
-ruamelFile = ruamel.yaml.YAML()
-
-with open(config_path, "r") as config_file:
-    config = ruamelFile.load(config_file)
+if platform.system() == "Windows":
+    DEFAULT_CONFIG_DIR_PATH = Path("C:/Users/Public/Documents/rcp_config")
+    DEFAULT_RAW_DATA_DIR = Path("D:/RawDataLocal")
+else:
+    DEFAULT_CONFIG_DIR_PATH = Path.home() / ".config/rcp_task_acquisition"
+    DEFAULT_RAW_DATA_DIR = Path.home() / "RawDataLocal"
 
 
-RAW_DATA_DIR = Path(config["RawDataDir"])
-VIDEO_DIR = Path(config["VideoDir"])
+DEFAULT_USER_CONFIG_FILE_NAME = Path("userdata.yaml")
+DEFAULT_TASKS_CONFIG_FILE_NAME = Path("taskconfig.yaml")
+
+CODE_CONFIG_DIR_PATH = REPO_BASE_DIR / "config_files"
+DEFAULT_USER_CONFIG_PATH = DEFAULT_CONFIG_DIR_PATH / DEFAULT_USER_CONFIG_FILE_NAME
+DEFAULT_TASKS_CONFIG_PATH = DEFAULT_CONFIG_DIR_PATH / DEFAULT_TASKS_CONFIG_FILE_NAME
+
 
 STIM_CONFIG_FILE_NAME = "visualStimulusConfig.yaml"
 SCREEN_CONFIG_FILE_NAME = "screen_config.yaml"
@@ -63,27 +66,7 @@ CAMERA_HEADERS = [
 HEADERS = ["In Use", "Hardware", "Labjack Pin", "Voltage Range"]
 
 
-HARDWARE_LIST = [
-    "Photodetector",
-    "Subject Mic",
-    "Experimenter Mic",
-    "PC Audio",
-    "Grip Force Sensor",
-    "Force Sensor X",
-    "Force Sensor Y",
-    "Force Sensor Z",
-    "Camera Sync TTL",
-    "Grasp Start Pad",
-    "Extra Digital In 1",
-    "Extra Digital In 2",
-    "Slow Barcode",
-    "Return From DS7A",
-    "Trigger to DS7A",
-    "TTL to E-Phys",
-    "Digital Accessory",
-]
-
-LABJACK_PIN_LIST = [
+LABJACK_PIN_LIST: list[str] = [
     "AIN0",
     "AIN1",
     "AIN2",
@@ -134,7 +117,7 @@ BAUDRATE = 9600
 WRITE_TIMEOUT = 0.1
 
 
-class VideoStatus(Enum):
+class VideoStatus(int, Enum):
     NOT_PLAYING = 0
     PLAY = 1
     PAUSED = 2

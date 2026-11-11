@@ -4,26 +4,32 @@ import wx
 
 import rcp_task_acquisition.tasks.NaturalisticSpeech.constants as c
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.NaturalisticSpeech.NaturalisticSpeech import NaturalisticSpeech
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/NaturalisticSpeechPanel")
+logger = get_logger(__name__)
 
 
 class NaturalisticSpeechPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig(
+        "naturalistic_speech", "Naturalistic Speech", "naturalisticspeech", NaturalisticSpeech
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
         self.display_mins = 0
         self.trial_number = 1
-        self.timestamps = {}
+        # self.timestamps = {} unused
         self.countdown_start = 0
-        self.image_path = []
+        self.image_path: list[str] = []
         self.button_width = 76
         self.border = 5
         self.photo = None
         self.selection = 0
-        self.image_list = []
+        # self.image_list = []  unused
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._set_up_photo(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
@@ -31,20 +37,20 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
-    def _set_up_photo(self):
+    def _set_up_photo(self) -> wx.GridBagSizer:
         """
         Set up the naturalistic speech panel
         Returns:
             message (wx dialog panel)
         """
-        self.image_names = os.listdir(c.IMG_DIR)
+        self.image_names: list[str] = os.listdir(c.IMG_DIR)
 
         for image in self.image_names:
             try:
                 image_path = os.path.join(c.IMG_DIR, image)
                 self.image_path.append(image_path)
-            except Exception as e:
-                logger.error(f"Unable to load {image}, Error: {e}")
+            except Exception as err:
+                logger.error("Unable to load %s: %s", image, err)
 
         self.image_names += c.NON_IMAGE_TASKS
         self.image_choice = wx.Choice(self, id=wx.ID_ANY, choices=self.image_names, size=(310, -1))
@@ -102,28 +108,21 @@ class NaturalisticSpeechPanel(TrialPanel):
 
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
-        self.trial_number = number
-
+        self.trial_number = count
         self.trial_is_active = True
         self.image_choice.Enable(False)
         self.shown_image.Enable(False)
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
 
-    def update_trial(self, number):
-        self.trial_number = number
-        self.trial_text.SetLabel(f"Trial # {self.trial_number}")
-
-    def get_result(self):
-        image_path = self.image_names[
-            self.selection
-        ]  # os.path.join(c.IMG_DIR, self.image_names[self.selection])
+    def get_result(self) -> tuple[str, int]:
+        image_path = self.image_names[self.selection]
         return image_path, self.trial_number
 
-    def reset(self, number):
-        self.seconds = 0
-        self.trial_number = number
+    def reset(self, count: int) -> None:
+        super().reset(count)
+        self.trial_number = count
         self.trial_is_active = False
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
         self.image_choice.Enable(True)

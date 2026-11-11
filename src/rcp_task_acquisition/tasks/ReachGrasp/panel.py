@@ -1,11 +1,17 @@
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.ReachGrasp.ReachGrasp import ReachGrasp
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 
 
 class ReachGraspPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig(
+        "reach_grasp", "Reach Grasp", "reachgrasp", ReachGrasp
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.reach_hand = "Left"
         self.pace = "Self-Paced"
         self.grasp_object = "Large"
@@ -14,7 +20,7 @@ class ReachGraspPanel(TrialPanel):
         vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    def _setup_fingertap(self):
+    def _setup_fingertap(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
 
         self.hand_text = wx.StaticText(self, label="Choose which hand trial will use:")
@@ -105,7 +111,7 @@ class ReachGraspPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.seconds = 0
         self.left_radio.Enable(False)
         self.right_radio.Enable(False)
@@ -114,13 +120,10 @@ class ReachGraspPanel(TrialPanel):
         self.large_object_radio.Enable(False)
         self.pinch_object_radio.Enable(False)
         self.poke_object_radio.Enable(False)
-        self.trial_text.SetLabel(f"Trial # {number}")
+        self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
         self.grasp_object = (
             "Large"
@@ -134,11 +137,7 @@ class ReachGraspPanel(TrialPanel):
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
         return self.reach_hand, self.grasp_object  # , self.pace
 
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
-
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.seconds = 5
         self.left_radio.Enable(True)
         self.right_radio.Enable(True)
@@ -150,9 +149,9 @@ class ReachGraspPanel(TrialPanel):
         self.seconds_text.SetLabel("Time: 0 secs")
         self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")
-        self.trial_text.SetLabel(f"Trial # {number + 1}")
+        self.trial_text.SetLabel(f"Trial # {count + 1}")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds += 1
             self.seconds_text.SetLabel(f"Time: {self.timer.value} secs")

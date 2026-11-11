@@ -1,0 +1,39 @@
+[run]
+# branch = true
+relative_files = true
+
+source_pkgs =
+    rcp_task_acquisition
+
+omit =
+	# not yet sure where these are coming, but coverage get a ref. to these, which are non-existent here:
+    config-3.py
+    config.py
+    shibokensupport/*
+    signature_bootstrap.py
+    */tests/*
+    */auto-trainer-api/*
+
+# allow coverage in python sub-processes (subprocess):
+patch =
+#   execv  Cannot be used on Windows, makes error.
+   _exit
+#   fork   Cannot be used on Windows, makes error.
+   subprocess
+
+concurrency = thread,multiprocessing
+parallel = true
+# still needed
+
+sigterm = true
+
+[report]
+show_missing = true
+include_namespace_packages = true
+
+omit =
+    config-3.py
+    config.py
+    shibokensupport/*
+    signature_bootstrap.py
+    */tests/*

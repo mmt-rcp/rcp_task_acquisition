@@ -1,28 +1,31 @@
 from dataclasses import dataclass
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
+from typing import Any
 
 import PySpin
 import wx
 
-from rcp_task_acquisition.models.Warnings import WarningHandler, WarnCat
+from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
+from rcp_task_acquisition.utils import config, constants
+from rcp_task_acquisition.utils.config import HardwareItem, RcpTasksGroupConfig
 from rcp_task_acquisition.utils.constants import (
     ANALOG_RANGES,
     CAMERA_HEADERS,
-    HARDWARE_LIST,
     HEADERS,
     LABJACK_PIN_LIST,
 )
-from rcp_task_acquisition.utils.file_utils import read_config, write_config
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.run_context import RcpRunContext
 
-logger = get_logger("./panels/HardwarePanel")
+logger = get_logger(__name__)
 
 
 # keeping track of each row for the hardware/camera selection
 # keeping cameras and hardware seperate since we handle them differently in setup and values needed
 @dataclass
 class HardwareRow:
-    name: wx.StaticText
+    name: wx.StaticText | wx.TextCtrl
     in_use: wx.CheckBox
     labjack: wx.Choice
     voltage_range: wx.Choice
@@ -43,7 +46,7 @@ class CameraRow:
     in_use_protocol: bool = False
 
 
-class CamProcess(Process):
+class CamProcessListCameras(ProcessWithLogging):
     """
     For some reason the PySpin instance does not like being created on the main thread.
     (it works here and then will cause freezing when trying to run the main gui)
@@ -85,22 +88,21 @@ class HardwarePanel(wx.Panel):
 
     """
 
-    def __init__(self, task_config, parent=None):
-        self.args = None
-        self.row_list = HARDWARE_LIST
-        self.protocol = None
-        self.camera_indices = []
+    def __init__(
+        self, tasks_config: RcpTasksGroupConfig, parent=None, *, rcp_context: RcpRunContext
+    ) -> None:
+        self._rcp_context: RcpRunContext = rcp_context
+        self.args: list[str] = []
+        self.row_list: list[str] = [member.value for member in HardwareItem]
         self.hardware_list: list[HardwareRow] = []
         self.camera_list: list[CameraRow] = []
-        self.cam_serial_numbers = []
-        self.labjack_selction = LABJACK_PIN_LIST
-        self.serial_selections = []
+        self.cam_serial_numbers: list[str] = []
+        self.labjack_selection = LABJACK_PIN_LIST
         self.select_protocol = False
-        self.user_config = read_config("userdata.yaml")
-        self.task_config = task_config
-        self.task = None
+        self.tasks_config = tasks_config
+        self.task: str = ""
         self.border = 10
-        self.task_list = list(self.task_config.keys())
+        self.task_list = list(self.tasks_config.keys())
 
         user_input_count = 1
         while len(self.row_list) < len(LABJACK_PIN_LIST) + 1:
@@ -114,7 +116,7 @@ class HardwarePanel(wx.Panel):
         vertical_sizer.Add(self._setup_labjack(), 0, wx.EXPAND | wx.ALL, 10)
         self.SetSizerAndFit(vertical_sizer)
 
-    def _setup_protocol(self):
+    def _setup_protocol(self) -> wx.GridBagSizer:
         self.save_button = wx.Button(self, label="Save Hardware Settings")
         self.save_button.Bind(wx.EVT_BUTTON, self.save_event)
 
@@ -149,16 +151,16 @@ class HardwarePanel(wx.Panel):
         )
         return grid_sizer
 
-    def _setup_labjack(self):
-        hardware_config = self.user_config["hardware"]
-        user_input_list = []
+    def _setup_labjack(self) -> wx.StaticBoxSizer:
+        ctx = self._rcp_context
+        user_input_list: list[str] = []
         user_input_count = 0
         vertical_pos = 0
         horizontal_pos = 0
-
-        labjack_sizer = wx.GridBagSizer(len(HEADERS), len(HARDWARE_LIST))
+        box = wx.StaticBox(self, label="Labjack Setup")
+        labjack_sizer = wx.GridBagSizer(len(HEADERS), len(HardwareItem))
         for header in HEADERS:
-            new_header = wx.StaticText(self, label=header)
+            new_header = wx.StaticText(box, label=header)
             labjack_sizer.Add(
                 new_header,
                 pos=(vertical_pos, horizontal_pos),
@@ -170,26 +172,28 @@ class HardwarePanel(wx.Panel):
         vertical_pos += 1
 
         # to get any user added hardware names
-        for hardware in hardware_config:
+        for hardware, hard_cfg in ctx.user_config.hardware.items():
             if hardware not in self.row_list:
-                user_input_list.append(hardware)
-        for hardware in self.row_list:
-            in_use = wx.CheckBox(self, id=wx.ID_ANY)
-            in_use.Bind(wx.EVT_CHECKBOX, self.update_options)
+                user_input_list.append(hardware.value)
 
+        logger.debug("creating hardware list: %s", self.row_list)
+        for hard_name in self.row_list:
+            in_use = wx.CheckBox(box, id=wx.ID_ANY)
+            in_use.Bind(wx.EVT_CHECKBOX, self.update_options)
+            is_user_hard = "user" in hard_name.lower()
             name = (
-                wx.StaticText(self, label=hardware)
-                if "user" not in hardware.lower()
-                else wx.TextCtrl(self, value=hardware)
+                wx.TextCtrl(box, value=hard_name)
+                if is_user_hard
+                else wx.StaticText(box, label=hard_name)
             )
             name.Enable(False)
 
-            labjack = wx.Choice(self, id=wx.ID_ANY, choices=LABJACK_PIN_LIST)
+            labjack = wx.Choice(box, id=wx.ID_ANY, choices=LABJACK_PIN_LIST)
             labjack.Bind(wx.EVT_CHOICE, self._on_choice_labjack)
             labjack.Enable(False)
 
             analog_strings = [str(volt_range) for volt_range in ANALOG_RANGES]
-            voltage_ranges = wx.Choice(self, id=wx.ID_ANY, choices=analog_strings)
+            voltage_ranges = wx.Choice(box, id=wx.ID_ANY, choices=analog_strings)
             voltage_ranges.SetSelection(0)
             voltage_ranges.Enable(False)
             voltage_ranges.Hide()
@@ -223,54 +227,58 @@ class HardwarePanel(wx.Panel):
                 border=self.border,
             )
             vertical_pos += 1
-            logger.debug(f"hardware:  {hardware}")
             new_hardware = HardwareRow(
                 name, in_use, labjack, voltage_ranges
             )  # min_graph, max_graph, voltage_ranges)
-            if hardware in hardware_config:
+            if hard_name in ctx.user_config.hardware:
+                hard_cfg = ctx.user_config.hardware[hard_name]
                 labjack.Enable(True)
                 name.Enable(True)
                 in_use.SetValue(True)
                 new_hardware.in_use_all = True
-                labjack_value = LABJACK_PIN_LIST.index(hardware_config[hardware]["labjack_input"])
+                labjack_value = LABJACK_PIN_LIST.index(hard_cfg.labjack_input)
                 labjack.SetSelection(labjack_value)
                 voltage_ranges.Enable(True)
 
-                if (
-                    "voltage_range" in hardware_config[hardware]
-                    and "A" in hardware_config[hardware]["labjack_input"]
-                ):
-                    volt_index = ANALOG_RANGES.index(hardware_config[hardware]["voltage_range"][1])
+                if "A" in hard_cfg.labjack_input:
+                    volt_index = ANALOG_RANGES.index(hard_cfg.voltage_range[1])
                     voltage_ranges.SetSelection(volt_index)
 
-            elif "user" in hardware.lower() and user_input_count < len(user_input_list):
+            elif is_user_hard and user_input_count < len(user_input_list):
+                assert isinstance(name, wx.TextCtrl)
                 voltage_ranges.Enable(True)
-                if "voltage_range" in hardware_config[hardware]:
-                    voltage_ranges.SetSelection(hardware_config[hardware]["voltage_range"])
+                # if "voltage_range" in hardware_config[hardware]:
+                if hard_name in ctx.user_config.hardware:
+                    hard_cfg = ctx.user_config.hardware[hard_name]
+                    # voltage_ranges.SetSelection(str(hard_cfg.voltage_range))  # TODO
+                else:
+                    hard_cfg = config.HardwareItemConfig()
 
                 labjack.Enable(True)
                 name.Enable(True)
                 in_use.SetValue(True)
                 new_hardware.in_use_all = True
                 new_hardware.in_use_all = True
-                name.SetValue(user_input_list[user_input_count])
-                labjack_value = LABJACK_PIN_LIST.index(
-                    hardware_config[user_input_list[user_input_count]]["labjack_input"]
-                )
+                cur_user = user_input_list[user_input_count]
+                name.SetValue(cur_user)
+                labjack_value = LABJACK_PIN_LIST.index(hard_cfg.labjack_input)
                 labjack.SetSelection(labjack_value)
                 user_input_count += 1
 
             self.hardware_list.append(new_hardware)
         self._update_lists(self.hardware_list)
 
-        labjack_box = wx.StaticBox(self, label="Labjack Setup")
-        hardware_sizer = wx.StaticBoxSizer(labjack_box, wx.HORIZONTAL)
+        hardware_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         hardware_sizer.Add(labjack_sizer, 1, wx.EXPAND | wx.ALL, 15)
         return hardware_sizer
 
-    def _get_serial_numbers(self):
-        cam_queue = Queue()
-        camera = CamProcess(cam_queue)
+    def _get_serial_numbers_from_config(self) -> None:
+        for name, cam in self._rcp_context.user_config.cameras.items():
+            self.cam_serial_numbers.append(cam.serial)
+
+    def _get_serial_numbers(self) -> None:
+        cam_queue: Queue[Any] = Queue()
+        camera = CamProcessListCameras(cam_queue)
         camera.start()
         while True:
             serial_number = cam_queue.get()
@@ -278,17 +286,20 @@ class HardwarePanel(wx.Panel):
                 break
             self.cam_serial_numbers.append(serial_number)
         camera.join()
+        if len(self.cam_serial_numbers) == 0:
+            logger.warning("No camera serial number found in listing cameras, using config data")
+            self._get_serial_numbers_from_config()
 
-    def _setup_camera_panel(self):
+    def _setup_camera_panel(self) -> wx.StaticBoxSizer:
         first_cam = True
         self._get_serial_numbers()
-        cam_config = self.user_config["cameras"]
+        box = wx.StaticBox(self, label="Camera Setup")
         grid_sizer = wx.GridBagSizer(len(CAMERA_HEADERS), len(self.cam_serial_numbers))
         vertical_pos = 0
         horizontal_pos = 0
 
         for header in CAMERA_HEADERS:
-            new_header = wx.StaticText(self, label=header)
+            new_header = wx.StaticText(box, label=header)
             grid_sizer.Add(
                 new_header,
                 pos=(vertical_pos, horizontal_pos),
@@ -299,30 +310,29 @@ class HardwarePanel(wx.Panel):
             horizontal_pos += 1
         vertical_pos += 1
 
-        for key in cam_config:
-            in_use = wx.CheckBox(self, id=wx.ID_ANY)
+        for key, cfg in self._rcp_context.user_config.cameras.items():
+            in_use = wx.CheckBox(box, id=wx.ID_ANY)
             in_use.Bind(wx.EVT_CHECKBOX, self.update_options)
-
-            name = wx.StaticText(self, label=key)
+            name = wx.StaticText(box, label=key)
             name.Enable(False)
 
-            serial = wx.Choice(self, choices=self.cam_serial_numbers)
+            serial = wx.Choice(box, choices=self.cam_serial_numbers)
             serial.Bind(wx.EVT_CHOICE, self._on_choice_cameras)
             serial.Enable(False)
 
             is_primary = (
-                wx.RadioButton(self, style=wx.RB_GROUP) if first_cam else wx.RadioButton(self)
+                wx.RadioButton(box, style=wx.RB_GROUP) if first_cam else wx.RadioButton(box)
             )
 
             self.framerate_decrease_options = ["1", "2"]
             framerate_decrease = wx.Choice(
-                self, id=wx.ID_ANY, choices=self.framerate_decrease_options
+                box, id=wx.ID_ANY, choices=self.framerate_decrease_options
             )
             framerate_decrease.Enable(False)
             # gig_e = wx.CheckBox(self, id=wx.ID_ANY)
             # gig_e.Enable(False)
 
-            flip_vid = wx.CheckBox(self, id=wx.ID_ANY)
+            flip_vid = wx.CheckBox(box, id=wx.ID_ANY)
             flip_vid.Enable(False)
 
             first_cam = False
@@ -369,7 +379,7 @@ class HardwarePanel(wx.Panel):
             )
             vertical_pos += 1
 
-            if cam_config[key]["in_use"] and (cam_config[key]["serial"] in self.cam_serial_numbers):
+            if cfg.in_use and cfg.serial in self.cam_serial_numbers:
                 new_camera.in_use_all = True
                 in_use.SetValue(True)
                 name.Enable(True)
@@ -378,30 +388,26 @@ class HardwarePanel(wx.Panel):
                 # gig_e.Enable(True)
                 framerate_decrease.Enable(True)
                 flip_vid.Enable(True)
-                flip_vid.SetValue(cam_config[key]["flip"])
+                flip_vid.SetValue(cfg.flip)
                 # gig_e.SetValue(cam_config[key]["gig_e"])
                 # try:
-                index = self.framerate_decrease_options.index(
-                    str(cam_config[key]["framerate_decrease_factor"])
-                )
+                index = self.framerate_decrease_options.index(str(cfg.framerate_decrease_factor))
                 framerate_decrease.SetSelection(index)
                 # except:
                 #     pass
-                is_primary.SetValue(cam_config[key]["ismaster"])
-                cam_index = self.cam_serial_numbers.index(cam_config[key]["serial"])
+                is_primary.SetValue(cfg.ismaster)
+                cam_index = self.cam_serial_numbers.index(cfg.serial)
                 serial.SetSelection(cam_index)
 
             self.camera_list.append(new_camera)
         self._update_lists(self.camera_list, is_labjack=False)
 
-        camera_box = wx.StaticBox(self, label="Camera Setup")
-        camera_sizer = wx.StaticBoxSizer(camera_box, wx.HORIZONTAL)
+        camera_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         camera_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, 15)
 
         return camera_sizer
 
-    def hardware_radio_pressed(self, event):
-        # update to show active hardware
+    def _set_hardware_true(self) -> None:
         self.select_protocol = False
         for hardware in self.hardware_list:
             if hardware.in_use_all:
@@ -411,9 +417,13 @@ class HardwarePanel(wx.Panel):
             if camera.in_use_all:
                 camera.in_use.SetValue(True)
             camera.in_use.Enable(True)
-        self.update_options(event)
 
-    def task_radio_pressed(self, event):
+    def hardware_radio_pressed(self, event: wx.Event) -> None:
+        # update to show active hardware
+        self._set_hardware_true()
+        self._update_options()
+
+    def task_radio_pressed(self, event: wx.Event) -> None:
         # update to show available hardware for task
         self.select_protocol = True
 
@@ -445,7 +455,10 @@ class HardwarePanel(wx.Panel):
         self._update_lists(self.hardware_list)
         self._update_lists(self.camera_list, is_labjack=False)
 
-    def update_options(self, event):
+    def update_options(self, event: wx.Event) -> None:
+        self._update_options()
+
+    def _update_options(self) -> None:
         for hardware in self.hardware_list:
             if self.hardware_radio.GetValue():
                 if hardware.in_use.GetValue():
@@ -490,16 +503,17 @@ class HardwarePanel(wx.Panel):
             self._update_lists(self.hardware_list)
             self._update_lists(self.camera_list, is_labjack=False)
 
-    def save_event(self, event):
-        camera_dict = self._create_camera_dict()
-        if not camera_dict:
+    def save_event(self, event: wx.Event) -> None:
+        ctx = self._rcp_context
+        cameras = self._update_cameras_config()
+        if cameras is None:
             return
-        self.user_config["cameras"] = camera_dict
-        hardware_dict = self._create_hardware_dict()
-        if not hardware_dict:
+        ctx.user_config.cameras = cameras
+        hardware_items_cfg = self._create_hardware_config()
+        if hardware_items_cfg is None:
             WarningHandler(WarnCat.NO_HARDWARE).display()
             return
-        self.user_config["hardware"] = hardware_dict
+        ctx.user_config.hardware = hardware_items_cfg
 
         if self.select_protocol:
             self.args = []
@@ -512,58 +526,62 @@ class HardwarePanel(wx.Panel):
                 if camera.in_use.GetValue():
                     name = self._get_name(camera)
                     self.args.append(name)
-            self.task_config[self.task]["settings"] = self.args
-            write_config("taskconfig.yaml", self.task_config)
-        write_config("userdata.yaml", self.user_config)
+            self.tasks_config[self.task].settings = self.args
+            config.save_rcp_tasks_config(
+                self.tasks_config, ctx.config_dir / constants.DEFAULT_TASKS_CONFIG_FILE_NAME
+            )
+        config.save_rcp_user_config(
+            ctx.user_config, ctx.config_dir / constants.DEFAULT_USER_CONFIG_FILE_NAME
+        )
         dlg = wx.MessageDialog(
             None, "Hardware settings saved!", "Notification", wx.OK | wx.ICON_INFORMATION
         )
         dlg.ShowModal()
-        dlg.Destroy()
+        dlg.Close()
 
-    def _create_hardware_dict(self):
-        hardware_dict = {}
-        for hardware in self.hardware_list:
-            if hardware.in_use_all:
-                labjack_pin = hardware.labjack.GetCurrentSelection()
+    def _create_hardware_config(self) -> config.HardwareDictConfig | None:
+        cfg = config.HardwareDictConfig()
+        for hard_row in self.hardware_list:
+            if hard_row.in_use_all:
+                labjack_pin = hard_row.labjack.GetCurrentSelection()
                 if labjack_pin == -1:
                     WarningHandler(WarnCat.HARDWARE).display()
-                    return
-                name = self._get_name(hardware)
+                    return None
+                name = self._get_name(hard_row)
                 if not name:
                     WarningHandler(WarnCat.NAME).display()
-                    return
-                labjack_list = hardware.labjack.GetStrings()
+                    return None
+                labjack_list = hard_row.labjack.GetStrings()
                 labjack_value = labjack_list[labjack_pin]
-                voltage_range = [0, 1]
+                voltage_range: tuple[float, float] = (0, 1)
                 if "A" in labjack_value:
                     voltage = float(
-                        hardware.voltage_range.GetStrings()[
-                            hardware.voltage_range.GetCurrentSelection()
+                        hard_row.voltage_range.GetStrings()[
+                            hard_row.voltage_range.GetCurrentSelection()
                         ]
                     )
-                    voltage_range = [voltage * -1, voltage]
-                hardware_dict[name] = {
-                    "labjack_input": labjack_value,
-                    "voltage_range": voltage_range,
-                    "graph": "",
-                }
-        return hardware_dict
+                    voltage_range = (voltage * -1, voltage)
+                cfg[name] = config.HardwareItemConfig(
+                    labjack_input=labjack_value,
+                    voltage_range=voltage_range,
+                )
+        return cfg
 
-    def _create_camera_dict(self):
-        camera_dict = self.user_config["cameras"]
+    def _update_cameras_config(self) -> config.CamerasDictConfig | None:
+        ctx = self._rcp_context
+        cameras = ctx.user_config.cameras
         for camera in self.camera_list:
+            cam_name = self._get_name(camera)
             if camera.in_use_all:
                 serial = camera.serial.GetCurrentSelection()
                 if serial == -1:
                     WarningHandler(WarnCat.SERIAL).display()
-                    return
-                if self._get_name(camera) in camera_dict:
-                    camera_dict[self._get_name(camera)]["ismaster"] = camera.is_primary.GetValue()
-                    camera_dict[self._get_name(camera)]["serial"] = camera.serial.GetStrings()[
-                        serial
-                    ]
-                    camera_dict[self._get_name(camera)]["in_use"] = camera.in_use_all
+                    return None
+                cam_cfg = cameras.get(cam_name)
+                if cam_cfg is not None:
+                    cam_cfg.ismaster = camera.is_primary.GetValue()
+                    cam_cfg.serial = camera.serial.GetStrings()[serial]
+                    cam_cfg.in_use = camera.in_use_all
                     # if camera.gig_e.GetValue():
                     #     camera_dict[self._get_name(camera)]["framerate"] = int(240/2)
                     # else:
@@ -571,70 +589,56 @@ class HardwarePanel(wx.Panel):
                     frame_decrease = self.framerate_decrease_options[
                         camera.framerate_decrease.GetSelection()
                     ]
-                    camera_dict[self._get_name(camera)]["framerate_decrease_factor"] = int(
-                        frame_decrease
-                    )
+                    cam_cfg.framerate_decrease_factor = int(frame_decrease)
                     # camera_dict[self._get_name(camera)]["gig_e"] = camera.gig_e.GetValue()
-                    camera_dict[self._get_name(camera)]["flip"] = camera.flip_vid.GetValue()
+                    cam_cfg.flip = camera.flip_vid.GetValue()
 
                 else:
                     frame_decrease = self.framerate_decrease_options[
                         camera.framerate_decrease.GetSelection()
                     ]
-                    camera_dict[self._get_name(camera)] = {
-                        "ismaster": camera.is_primary.GetValue(),
-                        "serial": camera.serial.GetStrings()[serial],
-                        "in_use": camera.in_use_all,
-                        "framerate_decrease_factor": int(
-                            frame_decrease
-                        ),  # "gig_e": camera.gig_e.GetValue(),
-                        "flip": camera.flip_vid.GetValue(),
-                    }
-
+                    cameras[cam_name] = config.CameraConfig(
+                        ismaster=camera.is_primary.GetValue(),
+                        serial=camera.serial.GetStrings()[serial],
+                        in_use=camera.in_use_all,
+                        framerate_decrease_factor=int(frame_decrease),
+                        # "gig_e": camera.gig_e.GetValue(),
+                        flip=camera.flip_vid.GetValue(),
+                    )
             else:
-                camera_dict[self._get_name(camera)]["in_use"] = False
-                camera_dict[self._get_name(camera)]["ismaster"] = False
-        return camera_dict
+                cam_cfg = cameras[cam_name]
+                cam_cfg.in_use = False
+                cam_cfg.ismaster = False
+        return cameras
 
-    def protocol_event(self, event):
-        self.args = []
-        for hardware in self.hardware_list:
-            if hardware.in_use.GetValue():
-                name = self._get_name(hardware)
-                self.args.append(name)
-        for camera in self.camera_list:
-            if camera.in_use.GetValue():
-                name = self._get_name(camera)
-                self.args.append(name)
-        self.task_config[self.task]["settings"] = self.args
-        write_config("taskconfig.yaml", self.task_config)
-        self.update()
-        self.close(wx.ID_OK)
+    def _get_name(self, hardware: HardwareRow | CameraRow) -> str:
+        lbl = hardware.name.GetLabel()
+        if lbl != "":
+            return lbl
+        assert isinstance(hardware.name, wx.TextCtrl)
+        return hardware.name.GetValue()
 
-    def _get_name(self, hardware):
-        return (
-            hardware.name.GetLabel() if hardware.name.GetLabel() != "" else hardware.name.GetValue()
-        )
-
-    def _on_choice_labjack(self, event):
+    def _on_choice_labjack(self, event: wx.Event) -> None:
         self._update_lists(self.hardware_list)
 
-    def _on_choice_cameras(self, event):
+    def _on_choice_cameras(self, event: wx.Event) -> None:
         self._update_lists(self.camera_list, is_labjack=False)
 
-    def _update_lists(self, item_list: list[CameraRow] | list[HardwareRow], is_labjack=True):
+    def _update_lists(
+        self, item_list: list[CameraRow] | list[HardwareRow], is_labjack=True
+    ) -> None:
         selected_list = []
         primary_list = LABJACK_PIN_LIST if is_labjack else self.cam_serial_numbers
         for hardware in item_list:
-            choice_list = hardware.labjack if is_labjack else hardware.serial
-            if type(choice_list) == wx.Choice and choice_list.GetSelection() != -1:
+            choice_list = hardware.labjack if isinstance(hardware, HardwareRow) else hardware.serial
+            if isinstance(choice_list, wx.Choice) and choice_list.GetSelection() != -1:
                 selection = choice_list.GetSelection()
                 choices = choice_list.GetStrings()
                 selection = choices[selection]
                 original_selection = primary_list.index(selection)
                 selected_list.append(original_selection)
         for hardware in item_list:
-            choice_list = hardware.labjack if is_labjack else hardware.serial
+            choice_list = hardware.labjack if isinstance(hardware, HardwareRow) else hardware.serial
             try:
                 selection = choice_list.GetSelection()
                 if selection != -1:
@@ -652,17 +656,17 @@ class HardwarePanel(wx.Panel):
                 choice_list.SetItems(new_options)
                 if selection != -1:
                     choice_list.SetSelection(new_options.index(selection))
-
-                    if "A" in primary_list[original_selection]:
-                        hardware.voltage_range.Show()
-                    else:
-                        hardware.voltage_range.Hide()
+                    if isinstance(hardware, HardwareRow):
+                        if "A" in primary_list[original_selection]:
+                            hardware.voltage_range.Show()
+                        else:
+                            hardware.voltage_range.Hide()
                     self.Layout()
-            except:
-                pass
+            except Exception as err:
+                logger.exception("Error update lists: %s", err)
 
-    def update_task(self):
-        if self.task == None:
+    def update_task(self) -> None:
+        if self.task == "":
             for hardware in self.hardware_list:
                 hardware.in_use.Enable(False)
                 hardware.name.Enable(False)
@@ -673,7 +677,7 @@ class HardwarePanel(wx.Panel):
         elif self.select_protocol:
             for hardware in self.hardware_list:
                 name = self._get_name(hardware)
-                if name in self.task_config[self.task]["settings"] and hardware.in_use_all:
+                if name in self.tasks_config[self.task].settings and hardware.in_use_all:
                     hardware.in_use.SetValue(True)
                     hardware.in_use.Enable(True)
                     hardware.name.Enable(True)
@@ -682,24 +686,14 @@ class HardwarePanel(wx.Panel):
                     hardware.in_use.SetValue(False)
             for camera in self.camera_list:
                 name = self._get_name(camera)
-                if name in self.task_config[self.task]["settings"] and camera.in_use_all:
+                if name in self.tasks_config[self.task].settings and camera.in_use_all:
                     camera.in_use.SetValue(True)
                     camera.in_use.Enable(True)
                     camera.name.Enable(True)
                 else:
                     camera.in_use.SetValue(False)
 
-    def cancel_event(self, event):
-        self.close(wx.CANCEL)
-
-    def close(self, value):
-        self.dialog.EndModal(value)
-        self.dialog.Destroy()
-
-    def show(self):
-        return self.dialog.ShowModal()
-
-    def set_task(self, task):
+    def set_task(self, task: str) -> None:
         self.task = task
         # update to show available hardware for task
         if self.IsShown() and self.protocol_radio.GetValue():
@@ -731,19 +725,11 @@ class HardwarePanel(wx.Panel):
             self._update_lists(self.hardware_list)
             self._update_lists(self.camera_list, is_labjack=False)
 
-    def reset_hardware(self):
+    def reset_hardware(self) -> None:
         if not self.hardware_radio.GetValue():
             self.hardware_radio.SetValue(True)
-            self.select_protocol = False
-            for hardware in self.hardware_list:
-                if hardware.in_use_all:
-                    hardware.in_use.SetValue(True)
-                hardware.in_use.Enable(True)
-            for camera in self.camera_list:
-                if camera.in_use_all:
-                    camera.in_use.SetValue(True)
-                camera.in_use.Enable(True)
-            self.update_options(None)
+            self._set_hardware_true()
+            self._update_options()
 
-    def get_task(self):
+    def get_task(self) -> str:
         return self.task

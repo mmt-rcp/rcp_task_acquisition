@@ -1,15 +1,22 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
-from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.ToneTaps.ToneTaps import ToneTapsClosed
+from rcp_task_acquisition.tasks.UpdrsTap.BasicTaps import BasicTaps
+from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panel/UpdrsTap")
+logger = get_logger(__name__)
 
 
-class FingerTapPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+class FingerTapPanel(TrialPanelWithInstructPlayback):
+    task_trial_item_config = TaskTrialClassConfig(
+        "motor_task_finger_taps", "Finger Tap: Motor Variant", "fingertapmotor", BasicTaps
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = "left"
         self.type = None
         self.trial_is_active = False
@@ -18,7 +25,7 @@ class FingerTapPanel(TrialPanel):
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
-        self.instruction_paths = BASIC_TAPS_PATH
+        self.instruction_paths = BASIC_TAPS_PATHS
         self.start_video_button.Enable(True)
         self.SetSizer(vertical_sizer)
 
@@ -94,7 +101,7 @@ class FingerTapPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         # self.seconds = 10
         self.trial_is_active = True
         self.left_radio.Enable(False)
@@ -103,11 +110,12 @@ class FingerTapPanel(TrialPanel):
         self.start_video_button.Enable(False)
         # self.trial_text.SetLabel(f"Trial # {number}")
 
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
         type_index = self.task_type.GetSelection()
-        task_type = None
-        if type_index != -1:
+        if type_index == -1:
+            task_type = ""
+        else:
             task_type = self.task_type_list[type_index]
 
         return self.tap_hand, task_type
@@ -139,3 +147,13 @@ class FingerTapPanel(TrialPanel):
             self.seconds -= 1
             if self.seconds >= 0:
                 self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
+
+
+class ToneTapsPanel(FingerTapPanel):
+    # seems unused
+
+    task_trial_item_config = TaskTrialClassConfig("tone_taps", "...", "fingertapmotor", BasicTaps)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.seconds_text.Hide()

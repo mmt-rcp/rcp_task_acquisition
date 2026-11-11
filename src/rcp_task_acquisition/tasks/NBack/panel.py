@@ -3,32 +3,37 @@ from datetime import datetime
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.NBack.NBack import N_back
 from rcp_task_acquisition.tasks.NBack.configs import NBACK_TYPES
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/NBack")
+logger = get_logger(__name__)
 
 
 class NbackPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig("n_back", "Nback", "nback", N_back)
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.trial_type = "real"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_nback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    def _setup_nback(self):
+    def _setup_nback(self) -> wx.GridBagSizer:
         self.choice_list = ["1-back", "2-back"]
 
         self.practice = wx.RadioButton(self, label="Practice Trial", style=wx.RB_GROUP)
         self.real = wx.RadioButton(self, label="Real Trial")
+        self._group_radio_trial_kinds = (self.practice, self.real)
 
         trial = wx.StaticText(self, label="Select N-back")
         self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES, size=(200, -1))
         self.nback_choice.SetSelection(0)
 
         text = wx.StaticText(self, label="Select trial type")
-        self.continue_button = wx.ToggleButton(self, label="Start Trial")
+        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
 
         grid_sizer = wx.GridBagSizer(5, 4)
 
@@ -57,33 +62,20 @@ class NbackPanel(TrialPanel):
         )
         return grid_sizer
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-        self.selections = {
-            "type": NBACK_TYPES[self.nback_choice.GetSelection()],
-            "trial": self.trial_type,
-        }
-        self.timestamps[f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z"] = "next_trial_selected"
-
-    def update_trial(self, number):
-        self.trial_text.SetLabel(f"Selection for Trial # {number}")
-
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
         self.nback_choice.Enable(False)
-        self.practice.Enable(False)
+        for radio in self._group_radio_trial_kinds:
+            radio.Enable(False)
 
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
-
-    def reset(self, number):
+    def reset(self, count: int) -> None:
         self.nback_choice.Enable(True)
-        self.practice.Enable(True)
+        for radio in self._group_radio_trial_kinds:
+            radio.Enable(True)
         self.continue_button.Enable(True)
         self.continue_button.Enable(True)
         self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Start Trial")
+        self.continue_button.SetLabel("Begin Trial")

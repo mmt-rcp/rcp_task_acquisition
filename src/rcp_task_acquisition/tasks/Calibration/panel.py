@@ -1,23 +1,39 @@
 import wx
 
+import numpy as np
+from matplotlib.image import AxesImage
+
+from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/NaturalisticSpeechPanel")
+logger = get_logger(__name__)
 
 
-class Calibration(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+class CalibrationPanel(TrialPanel):
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
         self.display_mins = 0
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._set_up_timer(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
-
         self.rest_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
+
+    # def Show(self, show: bool = True):
+    #     logger.debug("showing with show=%s", show)
+    #     # self._frame_patient.Show(show)
+    #     ret = super().Show(show)
+    #     self.Update()
+    #     return ret
+    #
+    # def Hide(self):
+    #     logger.debug("Hide()")
+    #     # self._frame_patient.Hide()
+    #     return super().Hide()
 
     def _set_up_timer(self):
         self.seconds_text = wx.StaticText(self, label="Time: 0 mins, 0 secs")
@@ -27,7 +43,7 @@ class Calibration(TrialPanel):
         )
         return grid_sizer
 
-    def reset(self, number):
+    def reset(self, count: int):
         self.seconds = 0
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
 

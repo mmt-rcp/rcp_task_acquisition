@@ -1,46 +1,47 @@
-import platform
-from multiprocessing import Process
-import numpy as np
 import ctypes
+import multiprocessing
+from multiprocessing import sharedctypes
+from typing import Any
+import time
+from typing import Optional, Any
 
-if platform.system() == "Windows":
-    import win32api, win32process, win32con
-else:
-    win32api = win32process = win32con = None
-
-
+import numpy as np
 from labjack import ljm
 
+from rcp_task_acquisition.utils import win_os
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.process import set_high_prio
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, SharedFloat
 
-logger = get_logger("./models/LabjackProcess")
+logger = get_logger(__name__)
 
 
-class LabJackDataStream(Process):
+class LabJackDataStream(ProcessWithLogging):
     def __init__(
         self,
-        arr_length,
-        is_finished,
-        labjack_arr,
-        create_csv,
-        folder_queue,
-        labjack_list,
-        graph_indices,
-        button_pressed,
-        inputs,
-        button_list,
-        press_counter,
-        constants,
-        voltage_ranges,
-        stream_started,
-        scan_rate,
-        handshake,
+        arr_length: int,
+        is_finished: SharedBool,
+        labjack_arr: sharedctypes.SynchronizedArray,
+        create_csv: SharedBool,
+        folder_queue: multiprocessing.Queue,
+        labjack_list: list[str],
+        graph_indices: tuple[SharedInt, SharedInt, SharedInt],
+        button_pressed: SharedBool,
+        inputs: tuple[list[str], list[int], list[int]],
+        button_list: list[tuple[int, str]],
+        press_counter: SharedInt,
+        constants: list[int],
+        voltage_ranges: tuple[tuple[float, float], ...],
+        stream_started: SharedBool,
+        scan_rate: SharedFloat,
+        handshake: SharedInt,
         grasp_ready,
         grasp_task,
-    ):
+    ) -> None:
         self.is_success = True
-        self.voltage_range = {}
+        self.voltage_range: dict[str, tuple[float, float]] = {}
         for index, val in enumerate(labjack_list):
             if "A" in val:
                 self.voltage_range[val] = voltage_ranges[index]
@@ -50,9 +51,9 @@ class LabJackDataStream(Process):
         self.attemptedscanRate = 40000
         self.button_pressed = button_pressed
         self.press_counter = press_counter
-        self.analog_inputs = inputs[0]
-        self.digital_inputs = inputs[1]
-        self.extended_inputs = inputs[2]
+        self.analog_inputs: list[str] = inputs[0]
+        self.digital_inputs: list[int] = inputs[1]
+        self.extended_inputs: list[int] = inputs[2]
         self.stream_started = stream_started
         self.actualscanRate = scan_rate
         self.grasp_task = grasp_task
@@ -63,15 +64,18 @@ class LabJackDataStream(Process):
         for item in self.extended_inputs:
             self.digital_inputs.append(item + 8)
         logger.debug(
-            f"analog: {self.analog_inputs}, digital: {self.digital_inputs}, extended: {self.extended_inputs}"
+            "analog: %s, digital: %s, extended: %s",
+            self.analog_inputs,
+            self.digital_inputs,
+            self.extended_inputs,
         )
 
         self.scan_list = self.analog_inputs
         self.scan_num = len(self.scan_list)
         if self.digital_inputs:
             self.scan_num += 1
-        logger.debug(self.extended_inputs)
-        logger.debug(self.digital_inputs)
+        logger.debug("extended_inputs: %s", self.extended_inputs)
+        logger.debug("digital_inputs: %s", self.digital_inputs)
         self.graph_arr = labjack_arr
         self.numpy_arr = np.empty((6, self.attemptedscanRate * 2))
         self.numpy_arr.fill(np.nan)
@@ -79,7 +83,7 @@ class LabJackDataStream(Process):
         self.create_csv = create_csv
         self.folder_queue = folder_queue
         self.session_file = ""
-        self.labjack_csv = None
+        self.labjack_csv = ""
         self.results = np.empty(self.scan_num * SCANS_PER_READ)
         self.results.fill(np.nan)
         self.graph_indices = graph_indices
@@ -87,41 +91,72 @@ class LabJackDataStream(Process):
         self.button_list = button_list
         self.constants = constants
         self.extended = False
-        self.voltage_ranges = []
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
         if self.digital_inputs or self.extended_inputs:
             aScanList.append(2580)
 
-        input_names = []
-        voltage_ranges = []
-        for key in self.voltage_range:
+        input_names: list[str] = []
+        work_voltage_ranges: list[float] = []
+        for key, volt_range in self.voltage_range.items():
             input_names.append(f"{key}_RANGE")
-            voltage_ranges.append(float(self.voltage_range[key][1]))
-        input_names.append("STREAM_CLOCK_SOURCE")
-        voltage_ranges.append(0)
-        self.input_names = input_names
-        self.voltage_ranges = voltage_ranges
+            work_voltage_ranges.append(volt_range[1])
 
-    def _set_high_prio(
-        self,
-        *,
-        win32api=win32api,
-        win32process=win32process,
-        win32con=win32con,  # noqa
-    ):
-        if win32api is None:
-            pass  # todo
-        else:
-            pid = win32api.GetCurrentProcessId()
-            handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
-            ok = win32process.SetPriorityClass(handle, win32process.HIGH_PRIORITY_CLASS)
-            if not ok:
-                logger.warning(
-                    "Could not set current process to high prio: %s", win32api.GetLastError()
-                )
+        input_names.append("STREAM_CLOCK_SOURCE")
+        work_voltage_ranges.append(0)
+        self.input_names = input_names
+        self.voltage_ranges = work_voltage_ranges
+        logger.verbose("voltages_ranges: %s", self.voltage_ranges)
+        self.handle: Optional[int] = None  # ljm handle ; it's a fd basically
+
+    def _disconnect(self):
+        handle = self.handle
+        if handle is None:
+            return
+        self.handle = None
+        try:
+            ljm.eStreamStop(handle)
+        except ljm.ljm.LJMError as err:
+            logger.warning("eStreamStop failed: %s ; but continuing..", err)
+        finally:
+            ljm.close(handle)
+
+    def _attempt_connect(self, scan_list):
+        self._disconnect()
+        try:
+            self.__attempt_connect(scan_list)
+            return
+        except ljm.ljm.LJMError as err:
+            logger.warning("LJM: failed attempt connect: %s..", err, exc_info=True, stacklevel=2)
+            # if err.errorCode == 2605:  # STREAM_IS_ACTIVE
+            #     ljm.eStreamStop(self.handle)
+        self._disconnect()
+        ljm.closeAll()
+        time.sleep(3)
+        self.__attempt_connect(scan_list)
+
+    def __attempt_connect(self, scan_list):
+        numAddresses = len(scan_list)
+        self.handle = ljm.openS("ANY", "ANY", "ANY")
+        try:
+            ljm.eStreamStop(self.handle)
+        except ljm.ljm.LJMError as err:
+            logger.verbose("eStreamStop before connect: %s ; but continuing", err)
+        # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
+        # ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 0)
+        ljm_buff_sz = ljm.readLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE")
+        logger.verbose("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE=%s", ljm_buff_sz)
+        # see: https://share.google/aimode/dbpqwwqov0aM2cwJs
+        # Key Details
+        # • Default Value: 0 (uses the operating system default, which typically enables auto-tuning).
+        # This is recommended for most use cases.
+        ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
+        self.actualscanRate.value = ljm.eStreamStart(
+            self.handle, SCANS_PER_READ, numAddresses, scan_list, self.attemptedscanRate
+        )
+        logger.success("started LJM stream on %s", self.handle)
 
     def run(self):
-        self._set_high_prio()
+        set_high_prio()
         first_write = True
         logger.debug("Start labjack stream.")
         write_to_csv = False
@@ -133,46 +168,51 @@ class LabJackDataStream(Process):
         aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
         if self.digital_inputs or self.extended_inputs:
             aScanList.append(2580)
-        logger.debug(aScanList)
-        numAddresses = len(aScanList)
-        try:
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
-        except:
-            ljm.closeAll()
-            self.handle = ljm.openS("ANY", "ANY", "ANY")
-            ljm.writeLibraryConfigS("LJM_STREAM_TCP_RECEIVE_BUFFER_SIZE", 4194304)
-            ljm.eWriteNames(
-                self.handle, len(self.input_names), self.input_names, self.voltage_ranges
-            )
-            self.actualscanRate.value = ljm.eStreamStart(
-                self.handle, SCANS_PER_READ, numAddresses, aScanList, self.attemptedscanRate
-            )
+        logger.debug("ljm: addresses=%s", aScanList)
+
         self.stream_started.value = True
         while not self.finished.value:
+            if self.handle is None:
+                try:
+                    self._attempt_connect(aScanList)
+                except ljm.ljm.LJMError as err:
+                    logger.error("Failed open LJM: %s ; will retry in 1s", err)
+                    time.sleep(1)
+                    continue
+
             if self.create_csv.value:
                 self.labjack_csv = self.folder_queue.get()
                 write_to_csv = True
                 self.create_csv.value = False
-            data = ljm.eStreamRead(self.handle)
+
+            try:
+                data = ljm.eStreamRead(self.handle)
+            except ljm.ljm.LJMError as err:
+                logger.verbose("ljm.eStreamRead failed: %s", err)
+                # if err.errorCode == 1263:  # LJME_NO_RESPONSE_BYTES_RECEIVED
+                # ljm.eStreamStop(self.handle)
+                self._disconnect()
+                ljm.closeAll()
+                continue
+
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
                 logger.warning("ERROR!! OVERFLOW!!")
                 # return
-                logger.warning(f"prev data[1]: {data_1}")
-                logger.warning(f"prev data[2]: {data_2}")
-                logger.warning(f"data[1]: {data[1]}")
-                logger.warning(f"data[2]: {data[2]}")
+                logger.warning("prev data[1]: %s", data_1)
+                logger.warning("prev data[2]: %s", data_2)
+                logger.warning("data[1]: %s", data[1])
+                logger.warning("data[2]: %s", data[2])
+                # ljm.eStreamStop(self.handle)
+                self._disconnect()
+                ljm.closeAll()
+                # self._attempt_connect(aScanList)
+                continue
+
             data_1 = data[1]
             data_2 = data[2]
             if int(data[1]) > 48:
-                logger.debug(f"buffer value:  {data[1]}")
+                logger.debug("buffer value:  %s", data[1])
             results = self.results.reshape((self.scan_num, SCANS_PER_READ), order="F")
 
             ints = results[-1].astype(np.uint16)
@@ -180,8 +220,19 @@ class LabJackDataStream(Process):
                 16, SCANS_PER_READ, order="F"
             )  # [::-1]
 
+            for button in self.button_list:
+                reshape_list = new_list
+
+                self.button_pressed.value = not np.all(reshape_list[button[0]])
+                if debounce == 0 and self.button_pressed.value:
+                    self.press_counter.value += 1
+                    logger.debug("press#: %s", self.press_counter.value)
+                    debounce = 1
+                if np.all(reshape_list[button[0]][-min_off_samples:]):
+                    debounce = 0
+
             if self.grasp_task:
-                if self.grasp_index == None:
+                if self.grasp_index is None:
                     self.grasp_index = self.analog_inputs.index("AIN7")
                 if not np.all(new_list[1]):
                     if new_list[1][0] != 0:
@@ -189,17 +240,6 @@ class LabJackDataStream(Process):
                         self.rest_time.value = (1 / self.actualscanRate.value) * idx
                     self.grasp_ready.value = True
 
-            if self.button_list:
-                for button in self.button_list:
-                    reshape_list = new_list
-
-                    self.button_pressed.value = not np.all(reshape_list[button[0]])
-                    if debounce == 0 and self.button_pressed.value:
-                        self.press_counter.value += 1
-                        logger.debug(f"press#: {self.press_counter.value}")
-                        debounce = 1
-                    if np.all(reshape_list[button[0]][-min_off_samples:]):
-                        debounce = 0
             if write_to_csv:
                 self.write_csv(results, first_write)
                 first_write = False
@@ -207,8 +247,7 @@ class LabJackDataStream(Process):
 
         self.stop()
 
-    def graph(self, results, digital):  # , extended):
-        new_list = []
+    def graph(self, results: np.ndarray, digital: np.ndarray) -> None:  # , extended):
         new_list = [digital[item] for item in self.digital_inputs]
 
         new_results = np.vstack((results[:-1], new_list))
@@ -242,7 +281,7 @@ class LabJackDataStream(Process):
             len(self.numpy_arr.flatten())
         )[:] = self.numpy_arr.flatten()
 
-    def write_csv(self, results, write_headers=False):
+    def write_csv(self, results: np.ndarray, write_headers: bool = False) -> None:
         if not self.labjack_csv:
             self.labjack_csv = self.session_file  # os.path.join(self.sessionFolder, filename)
         with open(self.labjack_csv, "ab") as file:
@@ -255,19 +294,16 @@ class LabJackDataStream(Process):
                 )
             np.savetxt(file, results.T, fmt="%f", delimiter=",")
 
-    def set_folder(self, session_dir):
+    def set_folder(self, session_dir) -> None:
         self.session_file = session_dir
 
     def stop(self):
-        try:
-            ljm.eStreamStop(self.handle)
-        except:
-            logger.debug("labjack stream already stopped")
+        self._disconnect()
+        ljm.closeAll()
         self.create_csv.value = False
         self.session_file = ""
         self.labjack_csv = ""
         self.numpy_arr[:] = np.nan
-        ljm.closeAll()
 
-    def is_successful(self):
+    def is_successful(self) -> bool:
         return self.is_success

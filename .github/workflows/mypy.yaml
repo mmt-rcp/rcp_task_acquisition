@@ -1,0 +1,27 @@
+name: Check MyPy
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Git Line Endings
+        run: |
+          sudo git config --system core.autocrlf false
+          sudo git config --system core.eol crlf
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+      - name: Install check tool
+        run: |
+          python -V
+          python -m pip install mypy "types-pyaudio" "types-pyserial" "types-PyYAML" "types-pywin32" 
+          # -e .[mypy] --find-links ./library
+      - name: Run MyPy
+        run: |
+          mypy --disable-error-code import-not-found --disable-error-code import-untyped --disable-error-code call-overload src
+        env:
+          FORCE_COLOR: "1"

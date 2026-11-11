@@ -5,6 +5,7 @@ import os
 import random
 import time
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from psychopy import core, event, visual
@@ -14,8 +15,9 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.constants import CODE_DIR
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import SharedBool, TaskMetaData, SharedInt
 
-logger = get_logger("./tasks/NBack")
+logger = get_logger(__name__)
 
 LETTERS = ["D", "F", "H", "J", "K", "L", "M", "S", "T", "V"]
 
@@ -46,7 +48,7 @@ PARAMS = {
     "stimTime": 0.5,  # time stimulus is on in seconds,
 }
 # basedir = "/home/rcp/task-acquisition/tasks"
-imdir = os.path.join(CODE_DIR, "tasks", "NBack", "stimuli")
+IMAGES_DIR = os.path.join(CODE_DIR, "tasks", "NBack", "stimuli")
 # nReps = 3 # Number of reps to do of all stimuli
 # randomSeed = 0 # Random seed
 # nBackDegree = 1 # What is the N in N-Back?
@@ -77,7 +79,7 @@ def _is_practice_block(trial_num: int) -> bool:
     return trial_num == 10
 
 
-def _all_stimuli_paths() -> list[Path]:
+def _all_stimuli_paths() -> list[str]:
     # """Return the list of all available stimuli paths (length = STIMULI_COUNT)."""
     # base = cfg.RESOURCES_DIR / "stimuli"
     # paths = [base / f"attneave_{i}.png" for i in range(1, cfg.STIMULI_COUNT + 1)]
@@ -90,7 +92,7 @@ def _all_stimuli_paths() -> list[Path]:
 
 def _create_deterministic_sequence(
     n_back_level: int, total_trials: int
-) -> tuple[list[Path], list[Answer]]:
+) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence with exact target count and repetition constraints.
 
@@ -105,6 +107,8 @@ def _create_deterministic_sequence(
         Tuple containing stimulus paths and corresponding answer sequence
     """
     all_paths = _all_stimuli_paths()
+    stimulus_paths: list[str] = []
+    answers: list[Answer] = []
 
     while True:  # Keep generating until valid sequence found
         # Step 1: Generate random sequence using available stimuli (1-10)
@@ -138,11 +142,9 @@ def _create_deterministic_sequence(
             continue  # Regenerate if too many consecutive repeats
 
         # Step 5: Valid sequence found - convert to paths and generate answers
-        stimulus_paths = [
+        stimulus_paths.extend(
             all_paths[num - 1] for num in sequence_numbers
-        ]  # Convert 1-based to 0-based indexing
-
-        answers = []
+        )  # Convert 1-based to 0-based indexing
 
         for pos in range(len(sequence_numbers)):
             if pos < n_back_level:
@@ -152,14 +154,18 @@ def _create_deterministic_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
         logger.info(
-            f"Generated deterministic {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+            "Generated deterministic %s-back sequence: %s targets in %s trials",
+            n_back_level,
+            target_count,
+            total_trials,
         )
-        return stimulus_paths, answers
+        break
+    return stimulus_paths, answers
 
 
 def _create_practice_sequence(
     n_back_level: int, total_trials: int
-) -> tuple[list[Path], list[Answer]]:
+) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for practice blocks with 3 targets.
 
@@ -174,6 +180,9 @@ def _create_practice_sequence(
         Tuple containing stimulus paths and corresponding answer sequence
     """
     all_paths = _all_stimuli_paths()
+
+    stimulus_paths: list[str] = []
+    answers: list[Answer] = []
 
     while True:  # Keep generating until valid sequence found
         # Step 1: Generate random sequence using available stimuli (1-10)
@@ -222,13 +231,17 @@ def _create_practice_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
 
-        logger.info(
-            f"Generated practice {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
-        )
-        return stimulus_paths, answers
+        break
+    logger.info(
+        "Generated practice %s-back sequence: %s targets in %s trials",
+        n_back_level,
+        target_count,
+        total_trials,
+    )
+    return stimulus_paths, answers
 
 
-def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
+def pull_stimuli_1back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for 1-back tasks.
 
@@ -244,7 +257,7 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 1-back practice block with {trial_num} trials")
+        logger.info("Detected 1-back practice block with %s trials", trial_num)
         return _create_practice_sequence(1, trial_num)
 
     # Regular experimental block
@@ -252,13 +265,15 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"1-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "1-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(1, trial_num)
 
 
-def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
+def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for 2-back tasks.
 
@@ -274,7 +289,7 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 2-back practice block with {trial_num} trials")
+        logger.info("Detected 2-back practice block with %s trials", trial_num)
         return _create_practice_sequence(2, trial_num)
 
     # Regular experimental block
@@ -282,21 +297,23 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"2-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "2-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(2, trial_num)
 
 
 class N_back(bases.StimulusBase):
-    def __init__(self, base_vars, button):
+    def __init__(self, base_vars: dict[str, Any], button: SharedBool):
         super().__init__(**base_vars)
         self.button = button
         self.trial = 0
-        self.is_real = None
-        self.type = None
+        self.is_real: bool = False
+        self.type: int = -1
         self.button_press = False
-        self.instructions = None
+        self.instructions: dict[str, str] = {}
         self.letters = {
             "D": visual.TextStim(self.display, text="D", name="trial", pos=(-100, 0), height=1000),
             "F": visual.TextStim(self.display, text="F", name="trial", pos=(-50, 0), height=1000),
@@ -309,15 +326,15 @@ class N_back(bases.StimulusBase):
             "T": visual.TextStim(self.display, text="T", name="trial", pos=(-100, 0), height=1000),
             "V": visual.TextStim(self.display, text="V", name="trial", pos=(-100, 0), height=1000),
         }
-        self.params = copy.deepcopy(PARAMS)
+        self._params: dict[str, Any] = copy.deepcopy(PARAMS)
 
     # Sets up display window, fixation cross, text pages and image stimuli
-    def setupWinStims(self, imdir):
+    def setupWinStims(
+        self, imdir: str
+    ) -> tuple[visual.TextStim, visual.ImageStim, visual.ImageStim]:
         fixation = visual.TextStim(self.display, text="+", name="FixationCross", height=50)
-        texts = []
 
         # Initialize the image stimuli
-        picture_list = []
         correct_img = visual.ImageStim(
             self.display,
             image=os.path.join(imdir, cfg.CORRECT_IMG),
@@ -330,13 +347,12 @@ class N_back(bases.StimulusBase):
             name=cfg.INCORRECT_IMG,
             size=[300, 300],
         )
-        logger.debug(f"ims: {correct_img}, {incorrect_img}")
+        logger.debug("ims: %s, %s", correct_img, incorrect_img)
         # for fi in os.listdir(imdir) :
         #     ims.append(visual.ImageStim(self.display, image=os.path.join(imdir, fi), name=fi, size=[300, 300]))
         #     picture_list.append(fi)
 
-        self.metadata = picture_list
-        return (fixation, texts, correct_img, incorrect_img)
+        return fixation, correct_img, incorrect_img
 
     # Sets up trial data structure and stimuli presentation order
     def setupTrialData(self, nReps, ims, randomSeed, ISITime, stimTime, nBackDegree):
@@ -388,7 +404,7 @@ class N_back(bases.StimulusBase):
         self.display.switch_patch()
         return [timeData, thisFlipTime]
 
-    def present(self, test=True, getTime=False):
+    def present(self, test=True, getTime=False) -> None:
         # clear global event keys
         self.trial += 1
 
@@ -400,7 +416,7 @@ class N_back(bases.StimulusBase):
         logger.debug(self.type)
         logger.debug(self.is_real)
         # Initialize the display window
-        fixation, _texts, correct_ims, incorrect_ims = self.setupWinStims(imdir)
+        fixation, correct_ims, incorrect_ims = self.setupWinStims(IMAGES_DIR)
         # Set up a dataframe to hold time data
         timeDataColumns = ["Event_Name", "Trial_Num", "Time_Since_Start"]
         timeData = pd.DataFrame(columns=timeDataColumns)
@@ -430,13 +446,12 @@ class N_back(bases.StimulusBase):
                 trial_list.append(trials)
                 answer_list.append(answers)
 
-        self.params[f"trial_{self.trial}"] = {
+        self._params[f"trial_{self.trial}"] = {
             "trials": list(trial_list),
             "reps_per_trial": len(list(trial_list)),
             "n_back_type": self.type,
             "real": self.is_real,
         }
-        self.trial_list = trial_list
         for index, _ in enumerate(text):
             while not self.button.value:
                 if self.finish.value == 2:
@@ -445,24 +460,24 @@ class N_back(bases.StimulusBase):
                 self.display.flip()
                 # time.sleep(5)
                 time.sleep(0.05)
-            while self.button.value:
+            while self.button.value and self.finish.value == 0:
                 time.sleep(0.05)
             if self.finish.value == 2:
                 self.display.flip()
-                self.is_real = None
+                self.is_real = False
                 self.button_press = False
                 return
         self.play_tone()
         core.wait(0.05)
         timeData, fixFlipTime = self.showAndLog(
-            self.display, timeData, 0, fixation, self.params["ISITime"], "Initial_Fixation_Shown"
+            self.display, timeData, 0, fixation, self._params["ISITime"], "Initial_Fixation_Shown"
         )
 
         for index, trial_set in enumerate(trial_list):
             for t_index, trial in enumerate(trial_set):
                 if self.finish.value == 2:
                     self.display.flip()
-                    self.is_real = None
+                    self.is_real = False
                     self.button_press = False
                     return
                 trial_vis = self.letters[trial]
@@ -472,7 +487,7 @@ class N_back(bases.StimulusBase):
                     timeData,
                     0,
                     trial_vis,
-                    self.params["stimTime"],
+                    self._params["stimTime"],
                     "Trial_Shown",
                     True,
                 )
@@ -481,7 +496,7 @@ class N_back(bases.StimulusBase):
                     timeData,
                     0,
                     fixation,
-                    self.params["ISITime"],
+                    self._params["ISITime"],
                     "Initial_Fixation_Shown",
                 )
                 if not self.is_real:
@@ -519,7 +534,7 @@ class N_back(bases.StimulusBase):
             if index < len(trial_list) - 1:
                 if self.finish.value == 2:
                     self.display.flip()
-                    self.is_real = None
+                    self.is_real = False
                     self.button_press = False
                     return
 
@@ -534,29 +549,28 @@ class N_back(bases.StimulusBase):
                     timeData,
                     0,
                     fixation,
-                    self.params["ISITime"],
+                    self._params["ISITime"],
                     "Initial_Fixation_Shown",
                 )
 
         timeData, _fixFlipTime = self.showAndLog(
             self.display, timeData, 0, end_text, 2, "Trial_Shown"
         )
-        self.is_real = None
+        self.is_real = False
         self.button_press = False
-        logger.debug(f"RUN PARAMS: {self.params}")
+        logger.debug("RUN PARAMS: %s", self._params)
 
-    def saveMetadata(self, name, sessionFolder):
-        logger.debug(f"PARAMS: {self.params}")
-        return self.params
+    def saveMetadata(self) -> TaskMetaData:
+        logger.debug("PARAMS: %s", self._params)
+        return self._params
 
-    def update_data(self, selections):
-        self.is_real = selections[0] == "real"
-        self.type = 1 if selections[1] == "1-back" else 2
+    def update_data(self, data: tuple[str, str]) -> None:
+        self.is_real = data[0] == "real"
+        self.type = 1 if data[1] == "1-back" else 2
+        # self._params["n_back_type"] = self.type
+        # self._params["real"] = self.is_real
 
-        # self.params["n_back_type"] = self.type
-        # self.params["real"] = self.is_real
-
-    def intertrial_instructions(self):
+    def intertrial_instructions(self) -> list[visual.TextStim]:
         texts = []
         string = (
             "You will now have a 10 second break.\n"
@@ -571,7 +585,7 @@ class N_back(bases.StimulusBase):
         )
         return texts
 
-    def practice_instructions(self):
+    def practice_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "practice_welcome"
@@ -607,7 +621,7 @@ class N_back(bases.StimulusBase):
             )
         return texts
 
-    def real_instructions(self):
+    def real_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "task_instructions"
@@ -629,13 +643,3 @@ class N_back(bases.StimulusBase):
             )
 
         return texts
-
-    def finish(self):
-        label = "end_text"
-        return visual.TextStim(
-            self.display,
-            text=("Task complete\nThank you for participating!"),
-            name=label,
-            wrapWidth=1000,
-            height=50,
-        )
