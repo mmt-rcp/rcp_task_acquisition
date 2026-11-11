@@ -462,8 +462,9 @@ class MainFrame(wx.Frame):
             logger.debug("started timer")
 
             if isinstance(trial_panel, VerbalFluencyPanel) and trial_panel.first:
+                # special case
                 self.count = 0
-                trial_panel.continue_button.SetLabel("Begin Trial")
+                trial_panel.continue_button.SetLabel("Start Trial")
                 trial_panel.switch_panel()
                 data = trial_panel.get_trials()
                 self._update_data(data)
