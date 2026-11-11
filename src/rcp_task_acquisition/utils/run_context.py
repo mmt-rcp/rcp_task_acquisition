@@ -10,7 +10,7 @@ class RcpRunContext:
     base_dir: Path = constants.REPO_BASE_DIR  # for "database" files, and also default RawDataDir
     # should be todo: put it in user config file
 
-    config_dir: Path = constants.CODE_CONFIG_DIR_PATH
+    config_dir: Path = constants.DEFAULT_CONFIG_DIR_PATH
 
     user_config: RcpUserConfig
     tasks_config: RcpTasksGroupConfig

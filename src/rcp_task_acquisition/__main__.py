@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import shlex
+import shutil
 import sys
 import threading
 import time
@@ -20,6 +21,8 @@ from rcp_task_acquisition.utils.task_acquisistion_version import __version__ as 
 
 class App(wx.App):
     """RCP Task Acquisition"""
+
+    switch_panel: "rcp_task_acquisition.panels.SwitchPanel.SwitchPanel"  # type: ignore
 
     def __init__(self, rcp_context: RcpRunContext):
         self._action_thread: None | threading.Thread = None
@@ -118,9 +121,23 @@ class App(wx.App):
         wx.CallAfter(self.OnLoadDone)  # must be executed in main UI thread
 
     def OnLoadDone(self):
-        panel = self.SwitchPanel(rcp_context=self._rcp_context)
+        self.switch_panel = self.SwitchPanel(rcp_context=self._rcp_context)
         self._load_app_dialog.Hide()
         self._load_app_dialog.Close()
+        cfg_dir = self._rcp_context.config_dir
+        if not cfg_dir.exists():
+            msgbox = wx.MessageDialog(
+                wx.GetActiveWindow(),
+                f"Copy builtin config to {cfg_dir} ?",
+                "Default config dir missing",
+                wx.YES_NO | wx.ICON_QUESTION,
+            )
+            ret = msgbox.ShowModal()
+            if ret == wx.ID_YES:
+                shutil.copytree(constants.CODE_CONFIG_DIR_PATH, cfg_dir)
+                wx.MessageBox("Relaunch application", "please launch again the application")
+                self.switch_panel.launch_panel.dialog.Close()
+                wx.Exit()
 
 
 def run_app():
@@ -130,7 +147,7 @@ def run_app():
 
     cfg_dir = args.config_dir
     if cfg_dir is None:
-        cfg_dir = Path(constants.CODE_CONFIG_DIR_PATH)
+        cfg_dir = constants.DEFAULT_CONFIG_DIR_PATH
 
     console_start_log_level = (
         os.getenv("RCP_CONSOLE_LOG_LEVEL", "INFO") if args.log_level is None else args.log_level
@@ -151,13 +168,16 @@ def run_app():
     try:
         user_cfg_data, tasks_cfg_data = config.load_rcp_config(cfg_dir)
         user_cfg = user_cfg_data[0]
-    except BaseException as err:
+        task_cfg = tasks_cfg_data[0]
+    except Exception as err:
         # save_err = err
         user_cfg_data = tasks_cfg_data = None
         logger.error("Could not load config from %s: %s", cfg_dir, err)
+        logger.notice("Using temporary config..")
         user_cfg = config.RcpUserConfig(
             unitRef="unitME", RawDataDir=str(constants.DEFAULT_RAW_DATA_DIR)
         )
+        task_cfg = config.RcpTasksGroupConfig()
 
     log_file_path = trial.get_new_log_file(
         base_dir=user_cfg.RawDataDir,
@@ -177,14 +197,14 @@ def run_app():
 
     rc = -1
     try:
-        if user_cfg_data is None:
-            # logger.error("Exiting given config load failed.")
-            return 1
+        # if user_cfg_data is None:
+        #     # logger.error("Exiting given config load failed.")
+        #     return 1
 
         rcp_context = RcpRunContext(
             config_dir=cfg_dir,
             user_config=user_cfg,
-            tasks_config=tasks_cfg_data[0],
+            tasks_config=task_cfg,
         )
 
         app = App(rcp_context=rcp_context)
