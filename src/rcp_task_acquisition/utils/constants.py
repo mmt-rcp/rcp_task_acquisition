@@ -1,17 +1,27 @@
 import os
+import platform
 from enum import Enum
 from pathlib import Path
 
 from psychopy import core
 
-CODE_DIR = Path(__file__).resolve().parent.parent
-REPO_BASE_DIR = CODE_DIR.parent.parent
+CODE_DIR = Path(__file__).resolve().parent.parent  # src/rcp_task_aquisition
+REPO_BASE_DIR = CODE_DIR.parent.parent  # top repo dir
 
-CODE_CONFIG_DIR_PATH = Path(REPO_BASE_DIR, "config_files")
-DEFAULT_USER_CONFIG_PATH = Path(CODE_CONFIG_DIR_PATH, "userdata.yaml")
-DEFAULT_TASKS_CONFIG_PATH = Path(CODE_CONFIG_DIR_PATH, "taskconfig.yaml")
+if platform.system() == "Windows":
+    DEFAULT_CONFIG_DIR_PATH = Path("C:/Users/Public/Documents/rcp_config")
+    DEFAULT_RAW_DATA_DIR = Path("D:/RawDataLocal")
+else:
+    DEFAULT_CONFIG_DIR_PATH = Path.home() / ".config/rcp_task_acquisition"
+    DEFAULT_RAW_DATA_DIR = Path.home() / "RawDataLocal"
 
-DEFAULT_RAW_DATA_DIR = Path(r"D:\RawDataLocal")
+
+DEFAULT_USER_CONFIG_FILE_NAME = Path("userdata.yaml")
+DEFAULT_TASKS_CONFIG_FILE_NAME = Path("taskconfig.yaml")
+
+CODE_CONFIG_DIR_PATH = REPO_BASE_DIR / "config_files"
+DEFAULT_USER_CONFIG_PATH = DEFAULT_CONFIG_DIR_PATH / DEFAULT_USER_CONFIG_FILE_NAME
+DEFAULT_TASKS_CONFIG_PATH = DEFAULT_CONFIG_DIR_PATH / DEFAULT_TASKS_CONFIG_FILE_NAME
 
 
 STIM_CONFIG_FILE_NAME = "visualStimulusConfig.yaml"
