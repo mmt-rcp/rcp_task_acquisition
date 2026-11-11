@@ -6,7 +6,7 @@ import PySpin
 import wx
 
 from rcp_task_acquisition.models.Warnings import WarnCat, WarningHandler
-from rcp_task_acquisition.utils import config
+from rcp_task_acquisition.utils import config, constants
 from rcp_task_acquisition.utils.config import HardwareItem, RcpTasksGroupConfig
 from rcp_task_acquisition.utils.constants import (
     ANALOG_RANGES,
@@ -525,11 +525,11 @@ class HardwarePanel(wx.Panel):
                     self.args.append(name)
             self.tasks_config[self.task].settings = self.args
             config.save_rcp_tasks_config(
-                self.tasks_config, ctx.config_dir.joinpath("taskconfig.yaml")
+                self.tasks_config, ctx.config_dir / constants.DEFAULT_TASKS_CONFIG_FILE_NAME
             )
-            # write_config("taskconfig.yaml", self.task_config)
-        config.save_rcp_user_config(ctx.user_config, ctx.config_dir.joinpath("userdata.yaml"))
-        # write_config("userdata.yaml", dataclasses.asdict(ctx.user_config))
+        config.save_rcp_user_config(
+            ctx.user_config, ctx.config_dir / constants.DEFAULT_USER_CONFIG_FILE_NAME
+        )
         dlg = wx.MessageDialog(
             None, "Hardware settings saved!", "Notification", wx.OK | wx.ICON_INFORMATION
         )
