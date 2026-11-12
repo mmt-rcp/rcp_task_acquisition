@@ -285,7 +285,6 @@ class MainFrame(wx.Frame):
             self.grasp_count,
             rcp_context=rcp_context,
         )
-        self.startingSession = False
         self.rest_timer = wx.Timer(
             self
         )  # 800ms recurrent timer, started/stopped when trial is begin/ended
@@ -381,7 +380,6 @@ class MainFrame(wx.Frame):
             lj_path = os.path.join(self.sess_dir, self.path_base + "_labjack.txt")
             msg = f"P{self.path_base}x"
             self.lj.add_csv(lj_path, self.serial_device, msg)
-            self.startingSession = True
             controls_panel.session_button.SetLabel("End Task")
             # self.hardware_button.Enable(False)
             if isinstance(trial_panel, VowelSpacePanel):

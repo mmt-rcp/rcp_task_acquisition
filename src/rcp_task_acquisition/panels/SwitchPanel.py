@@ -90,9 +90,6 @@ class SwitchPanel:
             logger.debug("close from launch panel, preventing timer start")
             # if close of main launch panel, then don't switch panels.
             return
-        if 0:
-            self.switch_panel()  # tried this, which is indirectly called by the disable_timer,
-        # but for some reason don't get the same visual result.
         self.disable_timer.StartOnce(200)
 
     def disable_panel(self) -> None:
