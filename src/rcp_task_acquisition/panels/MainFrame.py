@@ -802,7 +802,10 @@ class MainFrame(wx.Frame):
         meta["participant_details"] = self.launch_args["participant_detail"]
 
         meta["task"] = self.task
-        meta["task_settings"] = self._rcp_context.tasks_config[self.task].settings
+        task_settings = self._rcp_context.tasks_config.get(self.task)
+        if task_settings is None:
+            logger.warning("no task settings for task %r", self.task)
+        meta["task_settings"] = None if task_settings is None else task_settings.settings
 
         # if self.task == "verbal_fluency":
         #     self.meta["trial_data"]["categories"] = self.trial_panel.add_metadata()
