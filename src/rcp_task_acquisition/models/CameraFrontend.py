@@ -262,7 +262,7 @@ class CamerasFrontend:
 
     def live_stop(self) -> None:
         self.stopAq()
-        time.sleep(2)
+        # time.sleep(2)
 
     def on_cam_update(self, cam: CamSettings, frame: np.ndarray) -> None:
         redraw = False
@@ -477,8 +477,8 @@ class CamerasFrontend:
             error += "\n" + "\n".join(error_message)
         if error != "":
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
-        if cam_errors:
-            raise RuntimeError(f"Cameras failed: {cam_errors}")
+        # NB:
+        # don't raise errors. callers expect action to succeed always. unless interrupted or such.
 
     def updateSettings(self) -> None:
         aqW = []
