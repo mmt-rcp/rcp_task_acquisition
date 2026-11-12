@@ -406,12 +406,16 @@ class MainFrame(wx.Frame):
                 with wx.EventBlocker(trial_panel.continue_button):
                     trial_panel.continue_button.SetValue(False)
                 self.trial_event()
+            if controls_panel.hardware_button.GetValue():
+                # end hardware test if it was running
+                with wx.EventBlocker(controls_panel.hardware_button):
+                    controls_panel.hardware_button.SetValue(False)
+                self.hardwareFeed()
             if self.recording:
                 self.cams.stop_recording()
             self.trial_panel.end_task()
             self.put_to_stimulus(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
-
             self.finish.value = 0
             graph_panel.labjack_stream_button.Enable(True)
             if graph_panel.labjack_stream_button.GetValue():
@@ -664,7 +668,7 @@ class MainFrame(wx.Frame):
             with wx.EventBlocker(cam_panel.play):
                 cam_panel.play.SetValue(False)
             self.shared.value = -1
-        elif cam_panel.play.GetValue() == True or button_label == "Hardware Test":
+        elif cam_panel.play.GetValue() or button_label == "Hardware Test":
             logger.debug("liveFeed->Hardware test: %r", button_label)
             if button_label == "Hardware Test":
                 self.Enable()
@@ -709,7 +713,7 @@ class MainFrame(wx.Frame):
             ]
             self.enable_group(buttons, False)
 
-    def hardwareFeed(self, event: wx.Event) -> None:
+    def hardwareFeed(self) -> None:
         controls_panel = self.controls_panel
         cam_panel = controls_panel.cam_panel
         graph_panel = self.graph_panel
@@ -1230,7 +1234,7 @@ class MainFrame(wx.Frame):
         if handle == self.controls_panel.session_button:
             self.Bind(wx.EVT_TIMER, lambda _: self.run_task(), self.disable_timer)
         if handle == self.controls_panel.hardware_button:
-            self.Bind(wx.EVT_TIMER, self.hardwareFeed, self.disable_timer)
+            self.Bind(wx.EVT_TIMER, lambda _: self.hardwareFeed(), self.disable_timer)
         if handle == self.graph_panel.labjack_stream_button:
             self.Bind(wx.EVT_TIMER, self.labjack_stream, self.disable_timer)
         self.Disable()
