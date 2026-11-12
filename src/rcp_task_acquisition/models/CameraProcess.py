@@ -260,8 +260,15 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             except Exception as err:
                 logger.error("spin cam DeInit failed: %s", err)
             ctx.cam = None
-        for i in self.idList:
-            ctx.cam_list.RemoveBySerial(str(i))
+        for serial_id in self.idList:
+            try:
+                ctx.cam_list.RemoveBySerial(serial_id)
+            except Exception as err:
+                if isinstance(err, PySpin.SpinnakerException) and err.errorcode == -1009:
+                    # serial not found
+                    pass
+                else:
+                    logger.error("remove serial %s: %s", serial_id, err)
         ctx.cam_list.Clear()
         ctx.system.ReleaseInstance()  # Release instance
 
