@@ -632,6 +632,8 @@ class MainFrame(wx.Frame):
         self._set_cam_panel_enable(False)
 
     def _stop_hardware_test(self) -> None:
+        self.finish.value = 2
+        self.put_to_stimulus(StimulusMessage.END_TASK)
         self.cam_test.value = False
         self.hardware_test = False
         graph_panel = self.graph_panel
@@ -641,7 +643,6 @@ class MainFrame(wx.Frame):
         graph_panel.contrast_test.Enable(True)
         self.set_focus()
         self.set_contrast()
-        self.finish.value = 2
         graph_panel.hardware_panel.Hide()
         self.hardware_test = False
 
@@ -651,14 +652,16 @@ class MainFrame(wx.Frame):
         button_label = cam_panel.play.GetLabel()
         if button_label == "Abort":
             logger.debug("liveFeed->Abort")
-            cam_panel.rec.SetValue(False)
+            with wx.EventBlocker(cam_panel.rec):
+                cam_panel.rec.SetValue(False)
             self.recordCam()
             if wx.MessageBox(
                 "Are you sure?", caption="Abort", style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
             ):
                 shutil.rmtree(self.sess_dir)
-                time.sleep(5)
-            cam_panel.play.SetValue(False)
+                # time.sleep(5)
+            with wx.EventBlocker(cam_panel.play):
+                cam_panel.play.SetValue(False)
             self.shared.value = -1
         elif cam_panel.play.GetValue() == True or button_label == "Hardware Test":
             logger.debug("liveFeed->Hardware test: %r", button_label)

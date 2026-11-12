@@ -20,11 +20,11 @@ class HardwareTest(bases.StimulusBase):
         self.display.flip()
         clock = core.Clock()
         logger.debug("before present loop ; flash=%s clock=%s", self.flash_time, clock.getTime())
-        while self.finish.value == 0:
+        while self.finish.value == 0 and not self._task_end_requested:
             self.check_commands(0)
             p0 = time.perf_counter()
             cnt = -1
-            while clock.getTime() < self.flash_time:
+            while clock.getTime() < self.flash_time and not self._task_end_requested:
                 self.check_commands(0)
                 cnt += 1
                 # logger.debug("loop1")

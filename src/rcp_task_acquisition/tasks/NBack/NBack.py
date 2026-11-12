@@ -381,7 +381,7 @@ class N_back(bases.StimulusBase):
         self.display.switch_patch()
         thisFlipTime, _flip_diff = win.flip()
         timeData.loc[len(timeData)] = [name, triali, thisFlipTime]
-        while gClock.getTime() - thisFlipTime < dur:
+        while gClock.getTime() - thisFlipTime < dur and not self._task_end_requested:
             stim.draw()
             if draw_patch:
                 # self.display.switch_patch()
@@ -442,14 +442,14 @@ class N_back(bases.StimulusBase):
             "real": self.is_real,
         }
         for index, _ in enumerate(text):
-            while not self.button.value:
+            while not self.button.value and not self._task_end_requested:
                 if self.finish.value == 2:
                     break
                 text[index].draw()
                 self.display.flip()
                 # time.sleep(5)
                 time.sleep(0.05)
-            while self.button.value and self.finish.value == 0:
+            while self.button.value and self.finish.value == 0 and not self._task_end_requested:
                 time.sleep(0.05)
             if self.finish.value == 2:
                 self.display.flip()

@@ -141,19 +141,23 @@ class StimulusThread(ProcessWithLogging):
             self.stimulus.update_data(trial_data)
 
     def _handle_run_task(self) -> None:
-        self.shared.value = 0
-        # Main loop for presenting stimuli
-        tStart = time.perf_counter()
         stimulus = self.stimulus
         logger.info(f"Presenting {self.task} ; stimu=%s", stimulus)
+        if stimulus is None:
+            raise RuntimeError("stimulus not initialised")
+        self.shared.value = 0
+        # Main loop for presenting stimulus
+        tStart = time.perf_counter()
         if self.shared.value == -1:
             self.alive = False
             return
-        if stimulus is not None:
-            stimulus.set_first_frame(self.frame.value)
+        stimulus.prepare_run_task_trial(first_frame=self.frame.value)
         self.window.reset_stimulus_frame()
-        if stimulus is not None:
+        try:
             stimulus.present()
+        except Exception as err:
+            logger.exception("stimulus present failed: %s ; but continuing", err)
+
         self.window.idle(time_list=[])
         self.window.flip()
         self.totalStimFrames += self.window.stimulus_frame
@@ -314,6 +318,9 @@ class StimulusThread(ProcessWithLogging):
 
     def close_window(self) -> None:
         self.alive = False
+        stimulus = self.stimulus
+        if stimulus is not None:
+            stimulus.end_stimulus()
         self.window.close()
         # self.p.join()
 
