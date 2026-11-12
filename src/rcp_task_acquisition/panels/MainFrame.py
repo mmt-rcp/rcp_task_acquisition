@@ -638,6 +638,7 @@ class MainFrame(wx.Frame):
 
     def _stop_hardware_test(self) -> None:
         self.finish.value = 2
+        self._show_patient_cams(False)
         self.put_to_stimulus(StimulusMessage.END_TASK)
         self.cam_test.value = False
         self.hardware_test = False
@@ -649,6 +650,7 @@ class MainFrame(wx.Frame):
         self.set_focus()
         self.set_contrast()
         graph_panel.hardware_panel.Hide()
+        self.controls_panel.show_patient_cams_button.Hide()
         self.hardware_test = False
 
     def liveFeed(self) -> None:
