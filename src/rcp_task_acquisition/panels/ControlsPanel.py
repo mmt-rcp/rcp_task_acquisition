@@ -30,7 +30,7 @@ class ControlsPanel(wx.Panel):
         psychopy_monitor: int,
         monitor_size: wx.Size,
         task="task",
-    ):
+    ) -> None:
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
         self._psychopy_monitor = psychopy_monitor
         self._psychopy_size = monitor_size
