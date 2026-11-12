@@ -1179,10 +1179,6 @@ class MainFrame(wx.Frame):
             start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
             start_task_but.SetLabel("Start Task")
         start_task_but.Disable()  # will be enabled when cameras are initialized
-        # if self.task == "all_hardware":
-        #     controls_panel.session_button.Enable(False)
-        # else:
-        #     controls_panel.session_button.Enable(True)
         if self.video_start is not None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
             self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
@@ -1201,7 +1197,7 @@ class MainFrame(wx.Frame):
         self.put_to_stimulus(StimulusMessage.INITIALIZE)
 
         def cb(error: BaseException | None):
-            start_task_but.Enable()
+            start_task_but.Enable(self.task != "all_hardware")
 
         self.initCams(callback=cb)
         self.Show()
