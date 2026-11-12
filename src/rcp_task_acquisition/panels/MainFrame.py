@@ -1115,6 +1115,7 @@ class MainFrame(wx.Frame):
 
     def init_and_show(self, launch_args: dict[str, Any]) -> None:
         logger.verbose("show(): launch_args=%s", launch_args)
+        controls_panel = self.controls_panel
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
@@ -1130,7 +1131,7 @@ class MainFrame(wx.Frame):
             logger.debug("task %r not in tasks_cfg (%s)", self.task, tuple(tasks_cfg))
             args = user_cfg.hardware
             cams_cfg = user_cfg.cameras
-            self.controls_panel.show_cams()
+            controls_panel.show_cams()
             self.main_framerate = user_cfg.cam_config.framerate
         else:
             logger.debug("populating cameras and hardware configs")
@@ -1138,7 +1139,7 @@ class MainFrame(wx.Frame):
             args = config.HardwareDictConfig()
             self.main_framerate = 0
             task_cfg = tasks_cfg[self.task]
-            self.controls_panel.hide_cams()
+            controls_panel.hide_cams()
             for hard_name in task_cfg.settings:
                 if hard_name in user_cfg.hardware:
                     args[hard_name] = user_cfg.hardware[hard_name]
@@ -1156,7 +1157,6 @@ class MainFrame(wx.Frame):
             HardwareListsType, tuple(zip(*sorted_hardware))
         )
         self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.main_framerate)
-        controls_panel = self.controls_panel
         with wx.EventBlocker(controls_panel.cam_panel.init):
             controls_panel.cam_panel.init.SetValue(True)
         controls_panel.update_task(task)
@@ -1178,7 +1178,11 @@ class MainFrame(wx.Frame):
             self.calibrate = False
             start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
             start_task_but.SetLabel("Start Task")
-        start_task_but.Disable()  # will be enabled when cameras are initialized
+        #
+        # will be enabled when cameras are initialized:
+        start_task_but.Disable()
+        controls_panel.hardware_button.Disable()
+        #
         if self.video_start is not None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
             self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
@@ -1198,6 +1202,7 @@ class MainFrame(wx.Frame):
 
         def cb(error: BaseException | None):
             start_task_but.Enable(self.task != "all_hardware")
+            controls_panel.hardware_button.Enable()
 
         self.initCams(callback=cb)
         self.Show()
