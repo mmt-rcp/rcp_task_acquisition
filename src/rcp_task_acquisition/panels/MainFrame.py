@@ -299,6 +299,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self._on_timer_task_start_end, self._timer_task_start_end)
 
     def _on_timer_task_start_end(self, event: wx.Event) -> None:
+        logger.debug("timer_task_start_end: enabling session_button")
         self.controls_panel.session_button.Enable()
 
     def put_to_stimulus(self, data, *, timeout=3) -> None:
@@ -709,8 +710,6 @@ class MainFrame(wx.Frame):
             self.enable_group(buttons, False)
 
     def hardwareFeed(self, event: wx.Event) -> None:
-        # clicked_button = event.GetEventObject()
-        # button_label = clicked_button.GetLabel()
         controls_panel = self.controls_panel
         cam_panel = controls_panel.cam_panel
         graph_panel = self.graph_panel
@@ -729,8 +728,12 @@ class MainFrame(wx.Frame):
                     graph_panel.labjack_stream_button.Enable(False)
                     graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
-            self.trial_panel.continue_button.Disable()
+            if isinstance(self.trial_panel, CalibrationPanel):
+                self.trial_panel.continue_button.Disable()
+            controls_panel.session_button.Disable()
         else:
+            # if isinstance(self.trial_panel, CalibrationPanel):
+            controls_panel.session_button.Enable()
             self.trial_panel.continue_button.Enable()
             self.shared.value = -1
             if self.liveTimer.IsRunning():
@@ -1051,6 +1054,7 @@ class MainFrame(wx.Frame):
                 trial_panel.show()
                 self.prepare_file(self.task, self.participant)
                 trial_panel.continue_button.Hide()
+                controls_panel.hardware_button.Disable()
             if self.task == "all_hardware":
                 self.prepare_file(self.task, self.participant)
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
@@ -1069,6 +1073,7 @@ class MainFrame(wx.Frame):
             self.liveTimer.Stop()
             self._set_cam_p_for_record_enabled(True)
             if self.calibrate:
+                controls_panel.hardware_button.Enable()
                 controls_panel.session_button.SetLabel("Record Cameras")
                 self.trial_panel.rest_timer.Stop()
                 # self.trial_panel.hide()  # this also cancel the task/trial 1s timer
