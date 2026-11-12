@@ -650,6 +650,7 @@ class MainFrame(wx.Frame):
         graph_panel = self.graph_panel
         button_label = cam_panel.play.GetLabel()
         if button_label == "Abort":
+            logger.debug("liveFeed->Abort")
             cam_panel.rec.SetValue(False)
             self.recordCam()
             if wx.MessageBox(
@@ -660,6 +661,7 @@ class MainFrame(wx.Frame):
             cam_panel.play.SetValue(False)
             self.shared.value = -1
         elif cam_panel.play.GetValue() == True or button_label == "Hardware Test":
+            logger.debug("liveFeed->Hardware test: %r", button_label)
             if button_label == "Hardware Test":
                 self.Enable()
                 self.hardware_test = True
@@ -678,6 +680,7 @@ class MainFrame(wx.Frame):
             self._set_to_live()
 
         else:
+            logger.debug("liveFeed->stop")
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
@@ -982,7 +985,7 @@ class MainFrame(wx.Frame):
         self.Close()
 
     def Hide(self) -> bool:
-        logger.debug("hidding ")
+        logger.debug("MainFrame.Hide()")
         self.lj.stop_labjack()
         self.video_timer.Stop()
         self.rest_timer.Stop()

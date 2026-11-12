@@ -66,7 +66,12 @@ class SwitchPanel:
         cur_panel = self.active_panel
         next_panel = cur_panel.switch_panel()
         logger.verbose("switch_panel, going to %s", next_panel)
-        self.active_panel = next_panel
+        try:
+            self._switch_panel_exec(cur_panel)
+        finally:
+            self.active_panel = next_panel
+
+    def _switch_panel_exec(self, cur_panel: ActivePanel) -> None:
         if cur_panel == ActivePanel.LAUNCH:
             self.launch_panel.Hide()
             self.task_frame.controls_panel.quit_button.SetLabel("Exit to Launch Menu")
@@ -78,6 +83,7 @@ class SwitchPanel:
             self.launch_panel.Show()
 
     def _on_disable_panel(self, event: wx.Event) -> None:
+        # mainframe quit / close
         logger.verbose("on_disable_panel: event=%s ; from=%s", event, event.GetEventObject())
         self.disable_panel()
         if isinstance(event, wx.CloseEvent) and event.GetEventObject() == self.launch_panel.dialog:
@@ -93,14 +99,15 @@ class SwitchPanel:
         """
         Disable the current shown panel while enabling other panel
         """
+        logger.verbose("disable_panel: active=%s", self.active_panel)
         if self.active_panel == ActivePanel.LAUNCH:
             self.launch_panel.protocol_button.SetLabel("Loading...")
             self.launch_panel.enable_gui(False)
         else:
             self.task_frame.put_to_stimulus(StimulusMessage.SHOW_WINDOW)
             self.task_frame.controls_panel.quit_button.SetLabel("Loading...")
-            self.task_frame.Hide()
             self.task_frame.Disable()
+            self.task_frame.Hide()
 
     def exit_event(self) -> None:
         self.task_frame.Hide()
