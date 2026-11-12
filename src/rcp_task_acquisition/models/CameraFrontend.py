@@ -481,8 +481,10 @@ class CamerasFrontend:
         # don't raise errors. callers expect action to succeed always. unless interrupted or such.
 
     def updateSettings(self) -> None:
-        aqW = []
+        self.aqH = [0] * len(self._cam_by_idx)
+        self.aqW = [0] * len(self._cam_by_idx)
         aqH = []
+        aqW = []
         errors = {}
         for cam_d in self._cam_by_idx:
             try:
