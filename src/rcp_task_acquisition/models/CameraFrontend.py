@@ -439,12 +439,17 @@ class CamerasFrontend:
         self.camaq.value = 0
         threshold = 1
 
-        def request_cam_stop(cam_id: str):
+        def request_cam_stop_send(cam_id: str):
             cam_d = self.cam_dict.get(cam_id)
             if cam_d is None:
                 return
             logger.verbose("requesting camera stop to %s", cam_d.name)
             cam_d.put_to(CameraCommand.STOP, timeout=1)
+
+        def request_cam_stop_recv(cam_id: str):
+            cam_d = self.cam_dict.get(cam_id)
+            if cam_d is None:
+                return
             ret = cam_d.get_from(timeout=3)
             logger.debug("received rsp = %r from cam", ret)
             if ret != "done":
@@ -460,13 +465,20 @@ class CamerasFrontend:
         cam_errors = {}
         for camID in self.secondary_cams:
             try:
-                request_cam_stop(camID)
+                request_cam_stop_send(camID)
+            except Exception as err:
+                cam_errors[camID] = err
+
+        for camID in self.secondary_cams:
+            try:
+                request_cam_stop_recv(camID)
             except Exception as err:
                 cam_errors[camID] = err
 
         for camID in self.primary_cams:
             try:
-                request_cam_stop(camID)
+                request_cam_stop_send(camID)
+                request_cam_stop_recv(camID)
             except Exception as err:
                 cam_errors[camID] = err
 
