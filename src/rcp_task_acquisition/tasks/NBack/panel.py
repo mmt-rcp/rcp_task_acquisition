@@ -75,10 +75,9 @@ class NbackPanel(TrialPanel):
             radio.Enable(False)
 
     def reset(self, count: int) -> None:
-        self.nback_choice.Enable(True)
+        self.nback_choice.Enable()
         for radio in self._group_radio_trial_kinds:
-            radio.Enable(True)
-        self.continue_button.Enable(True)
-        self.continue_button.Enable(True)
+            radio.Enable()
+        self.continue_button.Enable()
         self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")

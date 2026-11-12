@@ -205,7 +205,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.first = True
         self.prompt_text.SetLabel("")
         self.seconds_text.SetLabel("")
-        self.continue_button.Enable(True)
+        # self.continue_button.Enable(True)  done higher level
         self.continue_button.SetLabel("Begin Trial")
         self.video_title.SetLabel("")
         self.start_video_button.SetValue(False)

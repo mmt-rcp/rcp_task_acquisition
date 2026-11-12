@@ -392,6 +392,7 @@ class MainFrame(wx.Frame):
                 trial_panel.update_trial(trial, syllable)
             trial_panel.start_new_task()
             trial_panel.show()
+            trial_panel.set_begin_trial_enabled(not controls_panel.hardware_button.GetValue())
             # if not self.rest_timer.IsRunning():
             #     self.rest_timer.Start(1000)
         else:
@@ -734,7 +735,7 @@ class MainFrame(wx.Frame):
                     graph_panel.labjack_stream_button.Enable(False)
                     graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
-            self.trial_panel.continue_button.Disable()  # always when hardware test
+            self.trial_panel.set_begin_trial_enabled(False)  # always when hardware test
             if isinstance(self.trial_panel, CalibrationPanel):
                 controls_panel.session_button.Disable()
         else:

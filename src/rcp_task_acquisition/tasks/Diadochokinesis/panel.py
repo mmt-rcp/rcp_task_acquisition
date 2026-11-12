@@ -208,7 +208,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.video_buttons = []
         self.other_buttons = []
         self.next_button.Enable(True)
-        self.continue_button.Enable(True)
+        # self.continue_button.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
         self.syllable_text.SetLabel(f"Syllable: {self.syllable}")
         self.trial_text.SetLabel(f"Trial # {self.trial_number_}")

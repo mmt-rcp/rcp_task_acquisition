@@ -190,20 +190,16 @@ class TrialPanel(wx.Panel):
         return self.start_video_button, self.pause_video_button
 
     def start_video(self):
-        self.continue_button.Enable(False)
-        self.repeat_trial_button.Enable(False)
+        self.set_begin_trial_enabled(False)
 
     def stop_video(self):
-        self.continue_button.Enable(True)
-        self.repeat_trial_button.Enable(True)
+        self.set_begin_trial_enabled(True)
 
     def pause_video(self):
-        self.continue_button.Enable(True)
-        self.repeat_trial_button.Enable(True)
+        self.set_begin_trial_enabled(True)
 
     def resume_video(self):
-        self.continue_button.Enable(False)
-        self.repeat_trial_button.Enable(False)
+        self.set_begin_trial_enabled(False)
 
     def run_trial(self, count) -> None:
         self.start_trial()
@@ -214,6 +210,14 @@ class TrialPanel(wx.Panel):
 
     def on_timer(self, event: wx.Event) -> None:
         pass
+
+    def set_begin_trial_enabled(self, enabled: bool = True):
+        """can be extended by subclasses"""
+        self.continue_button.Enable(enabled)
+        self.repeat_trial_button.Enable(enabled)
+        next_button: wx.ToggleButton | None = getattr(self, "next_button", None)
+        if next_button is not None:
+            next_button.Enable(enabled)
 
     def start_new_task(self) -> None:
         self.trial_number = 0
