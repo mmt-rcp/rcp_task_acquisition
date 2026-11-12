@@ -130,9 +130,10 @@ class TrialPanel(wx.Panel):
             ims.set_clim(0, 255)
             self.im.append(ims)
             # self.cam_crop.update_crop(idx, axe, cam.frame_dims)
-        cam0 = cams[0]
-        cam1 = cams[1]
-        imp.update_names([cam0.name, cam1.name])
+        if len(cams) >= 2:
+            cam0 = cams[0]
+            cam1 = cams[1]
+            imp.update_names([cam0.name, cam1.name])
         imp.draw()
 
     def Close(self, force: bool = False) -> bool:

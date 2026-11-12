@@ -186,7 +186,6 @@ class ControlsPanel(wx.Panel):
         #
 
         self.task_panel = self.get_task_panel(task)
-        self.show_patient_cams_button.Hide()
 
         self.task_sizer.Add(
             self.task_panel,
