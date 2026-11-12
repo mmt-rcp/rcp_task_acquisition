@@ -1141,7 +1141,6 @@ class MainFrame(wx.Frame):
         trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
         trial_panel.add_timer(self.stimulus_timer)
         first_two_cams = self.cams.camera_settings[:2]
-        self.trial_panel.prepare_cams(first_two_cams)
         trial_panel.prepare_cams(first_two_cams)
         self.image_panel.draw()
         start_task_but = controls_panel.session_button
