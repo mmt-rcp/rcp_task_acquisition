@@ -370,7 +370,6 @@ class Camera:
             msg = "Xx"
             self.serial.ser.write(msg.encode())
         error_message = []
-        video_errors = []
         self.camaq.value = 0
         threshold = 1
         for cam in self.secondary_cams:
@@ -387,16 +386,16 @@ class Camera:
                 if int(update) > threshold:
                     error_message.append(f"{update}% of camera frames dropped for {cam}")
                 self.cam_dict[cam].camq_p2read.get()
-        logger.warning(error_message)
-        error = ""
-        if video_errors:
-            error = "\n" + "\n".join(video_errors)
-        if error_message:
-            if error == "":
-                error += "\n"
-            error += "\n" + "\n".join(error_message)
-        if error != "":
-            self.warning.update_error(WarnCat.FRAMES, info=error).display()
+        logger.warning("errors: %s", error_message)
+        # error = ""
+        # if video_errors:
+        #     error = "\n" + "\n".join(video_errors)
+        # if error_message:
+        #     if error == "":
+        #         error += "\n"
+        #     error += "\n" + "\n".join(error_message)
+        # if error != "":
+        #     self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
     def updateSettings(self, event):
         self.user_cfg = file_utils.read_config("userdata.yaml")
