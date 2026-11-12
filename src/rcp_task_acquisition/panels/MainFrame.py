@@ -728,11 +728,10 @@ class MainFrame(wx.Frame):
                     graph_panel.labjack_stream_button.Enable(False)
                     graph_panel.labjack_stream_button.SetLabel("Stop Labjack")
             self._set_to_live()
+            self.trial_panel.continue_button.Disable()  # always when hardware test
             if isinstance(self.trial_panel, CalibrationPanel):
-                self.trial_panel.continue_button.Disable()
-            controls_panel.session_button.Disable()
+                controls_panel.session_button.Disable()
         else:
-            # if isinstance(self.trial_panel, CalibrationPanel):
             controls_panel.session_button.Enable()
             self.trial_panel.continue_button.Enable()
             self.shared.value = -1
