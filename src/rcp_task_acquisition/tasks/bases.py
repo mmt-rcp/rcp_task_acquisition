@@ -86,17 +86,6 @@ class StimulusBase:
         self.display.draw_patch()
         self.play_tone()
 
-    def create_csv(self, name, sessionFolder, metadata, start_frame, columns=None) -> None:
-        sessionFolderPath = Path(sessionFolder)
-        if sessionFolderPath.exists() == False:
-            return
-        csv_name = sessionFolderPath.joinpath(f"{name}-{int(start_frame)}.csv")
-
-        data = pd.DataFrame(metadata)
-        if columns:
-            data.columns = columns
-        data.to_csv(csv_name, index=False)
-
     def prepare_run_task_trial(self, *, first_frame: int = 0):
         self._task_end_requested = False
         self.first_frame = first_frame

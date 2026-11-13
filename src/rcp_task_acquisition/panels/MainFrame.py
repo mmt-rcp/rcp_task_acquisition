@@ -23,6 +23,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.backend_bases
 
+from rcp_task_acquisition.gui import call_in_gui
 from rcp_task_acquisition.models.CameraFrontend import CamerasFrontend
 from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.models.LabjackFrontend import LabjackFrontend
@@ -934,6 +935,7 @@ class MainFrame(wx.Frame):
             self.Enable(True)
 
             # self.controls_panel.session_button.Enable(True)
+            @call_in_gui
             def cb(error: BaseException | None) -> None:
                 if error is None:
                     first_two_cams = self.cams.camera_settings[:2]

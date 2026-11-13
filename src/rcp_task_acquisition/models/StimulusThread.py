@@ -101,7 +101,7 @@ class StimulusThread(ProcessWithLogging):
             StimulusMessage.VOWEL_SPACE: self._handle_vowel_space,
             StimulusMessage.CLOSE_WINDOW: self._handle_close_window,
             StimulusMessage.PLAY_INSTRUCTIONS: self._handle_play_instructions,
-            StimulusMessage.ADD_INSTRUCTIONS: self._handle_add_instructions,
+            StimulusMessage.ADD_INSTRUCTIONS: self._handle_add_instructions,  # UNUSED
             StimulusMessage.HARDWARE_TEST: self._handle_hardware_test,
             StimulusMessage.SHOW_WINDOW: self._handle_show_window,
             StimulusMessage.HIDE_WINDOW: self._handle_hide_window,
@@ -126,7 +126,13 @@ class StimulusThread(ProcessWithLogging):
         self.init_stimuli()
 
     def _handle_send_metadata(self) -> None:
-        self.send_metadata()
+        stimuli = self.stimulus
+        if stimuli is None:
+            logger.warning("No stimuli received")
+            self._send_to_main_proc(None)
+            return
+        results = stimuli.saveMetadata()
+        self._send_to_main_proc(results)
 
     def _handle_update_task(self) -> None:
         msg = self._get_from_command_queue()
@@ -195,7 +201,7 @@ class StimulusThread(ProcessWithLogging):
         logger.debug("play instructions: %r", msg)
         self.play_video(msg)
 
-    def _handle_add_instructions(self) -> None:
+    def _handle_add_instructions(self) -> None:  # UNUSED
         msg = self._get_from_command_queue()
         self.setup_videos(msg)
         # self.setup_videos(video_filename_dict)
@@ -278,8 +284,7 @@ class StimulusThread(ProcessWithLogging):
             reach_grasp=ReachGrasp,
             tone_taps_closed=ToneTapsClosed,
             verb_generation=VerbGeneration,
-            # calibrate_face=CalibrationTask,
-            # calibrate_top=CalibrationTask,
+            all_hardware=StimulusBase,
         ).get(self.task, None)
         if base_cls is None:
             if "calibrate" in self.task:
@@ -303,18 +308,6 @@ class StimulusThread(ProcessWithLogging):
         if self.stimulus is not None:
             self.stimulus.end_stimulus()
         self.window.idle(time_list=[])
-        # self.send_metadata()
-
-    def send_metadata(self) -> None:
-        # logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
-        stimuli = self.stimulus
-        if stimuli is None:
-            logger.warning("No stimuli received")
-            return
-        # ctx = self._rcp_context
-        # task_cfg = ctx.tasks_config[self.task]
-        results = stimuli.saveMetadata()  # TODO: not sure what's going on
-        self._send_to_main_proc(results)
 
     def close_window(self) -> None:
         self.alive = False
@@ -322,9 +315,8 @@ class StimulusThread(ProcessWithLogging):
         if stimulus is not None:
             stimulus.end_stimulus()
         self.window.close()
-        # self.p.join()
 
-    def setup_videos(self, video_filename_dict) -> None:
+    def setup_videos(self, video_filename_dict) -> None:  # UNUSED
         pass
 
     def play_video(self, trial: str) -> None:
