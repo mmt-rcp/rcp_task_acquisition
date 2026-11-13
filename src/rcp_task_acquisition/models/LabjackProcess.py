@@ -214,13 +214,11 @@ class LabJackDataStream(ProcessWithCommands):
             self.stream_started.set()
             if first:
                 first = False
-                logger.verbose("first read: data=%s: %s", type(data), data)
+                logger.verbose("first read: data[1:]=%s", data[1:])
 
-            self.results[:] = np.asarray(data[0])
+            res = self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
-                logger.warning(
-                    "ERROR!! OVERFLOW!! data[:10]=%s data[-10:]=%s", data[:10], data[-10:]
-                )
+                logger.warning("ERROR!! OVERFLOW!! data[:10]=%s data[-10:]=%s", res[:10], res[-10:])
                 # return
                 logger.warning("prev data[1]: %s", data_1)
                 logger.warning("prev data[2]: %s", data_2)
@@ -233,7 +231,7 @@ class LabJackDataStream(ProcessWithCommands):
             data_1 = data[1]
             data_2 = data[2]
             if int(data[1]) > 48:
-                logger.debug("buffer value:  %s", data[1])
+                logger.debug("buffer value: %s", data[1])
             results = self.results.reshape((self.scan_num, SCANS_PER_READ), order="F")
 
             ints = results[-1].astype(np.uint16)
