@@ -7,6 +7,7 @@ from multiprocessing import sharedctypes
 from pathlib import Path
 from typing import Optional, Any
 
+import PySpin
 import numpy as np
 from labjack import ljm
 
@@ -83,9 +84,6 @@ class LabJackDataStream(ProcessWithCommands):
         self.button_list = button_list
         self.constants = constants
         self.extended = False
-        aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
-        if self.digital_inputs or self.extended_inputs:
-            aScanList.append(2580)
 
         input_names: list[str] = []
         work_voltage_ranges: list[float] = []
@@ -113,21 +111,24 @@ class LabJackDataStream(ProcessWithCommands):
         finally:
             ljm.close(handle)
 
-    def _attempt_connect(self, scan_list):
+    def _attempt_connect(self):
         self._disconnect()
         try:
-            self.__attempt_connect(scan_list)
+            self.__attempt_connect()
             return
         except ljm.ljm.LJMError as err:
-            logger.warning("LJM: failed attempt connect: %s..", err, exc_info=True, stacklevel=2)
+            logger.warning("LJM: failed attempt connect: %s..", err)
             # if err.errorCode == 2605:  # STREAM_IS_ACTIVE
             #     ljm.eStreamStop(self.handle)
-        self._disconnect()
-        ljm.closeAll()
-        time.sleep(3)
-        self.__attempt_connect(scan_list)
+        self.stop()
+        time.sleep(1.5)
+        self.__attempt_connect()
 
-    def __attempt_connect(self, scan_list):
+    def __attempt_connect(self):
+        scan_list = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
+        logger.debug("ljm: addresses=%s", scan_list)
+        if self.digital_inputs or self.extended_inputs:
+            scan_list.append(2580)
         numAddresses = len(scan_list)
         self.handle = ljm.openS("ANY", "ANY", "ANY")
         try:
@@ -143,11 +144,10 @@ class LabJackDataStream(ProcessWithCommands):
         # • Default Value: 0 (uses the operating system default, which typically enables auto-tuning).
         # This is recommended for most use cases.
         ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
-        self.actualscanRate.value = ljm.eStreamStart(
+        scan_rate = self.actualscanRate.value = ljm.eStreamStart(
             self.handle, SCANS_PER_READ, numAddresses, scan_list, self.attemptedscanRate
         )
-
-        logger.success("started LJM stream on %s", self.handle)
+        logger.success("started LJM stream on %s ; scan_rate=%s", self.handle, scan_rate)
 
     @ProcessWithCommands.relay_to
     def add_csv(self, path: Path | str) -> None:
@@ -181,18 +181,22 @@ class LabJackDataStream(ProcessWithCommands):
         debounce = 0
         min_off_samples = round(self.attemptedscanRate * 0.01)  # minimum button release duration
 
-        aScanList = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
-        if self.digital_inputs or self.extended_inputs:
-            aScanList.append(2580)
-        logger.debug("ljm: addresses=%s", aScanList)
+        p_next_reconnect = time.perf_counter()
+        first = True
 
         while not self._exit_requested:
             if self.handle is None:
+                first = True
+                p_now = time.perf_counter()
+                if p_now < p_next_reconnect:
+                    time.sleep(0.01)
+                    continue
                 try:
-                    self._attempt_connect(aScanList)
+                    self._attempt_connect()
                 except ljm.ljm.LJMError as err:
                     logger.error("Failed open LJM: %s ; will retry in 1s", err)
-                    time.sleep(1)
+                    self.stop()
+                    p_next_reconnect = time.perf_counter() + 2.5
                     continue
 
             try:
@@ -201,24 +205,29 @@ class LabJackDataStream(ProcessWithCommands):
                 logger.verbose("ljm.eStreamRead failed: %s", err)
                 # if err.errorCode == 1263:  # LJME_NO_RESPONSE_BYTES_RECEIVED
                 # ljm.eStreamStop(self.handle)
-                self._disconnect()
-                ljm.closeAll()
+                self.stop()
+                p_next_reconnect = (
+                    time.perf_counter() + 2.5
+                )  # eventually necessary to allow flush of previous
                 continue
 
             self.stream_started.set()
+            if first:
+                first = False
+                logger.verbose("first read: data=%s: %s", type(data), data)
 
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
-                logger.warning("ERROR!! OVERFLOW!!")
+                logger.warning(
+                    "ERROR!! OVERFLOW!! data[:10]=%s data[-10:]=%s", data[:10], data[-10:]
+                )
                 # return
                 logger.warning("prev data[1]: %s", data_1)
                 logger.warning("prev data[2]: %s", data_2)
                 logger.warning("data[1]: %s", data[1])
                 logger.warning("data[2]: %s", data[2])
-                # ljm.eStreamStop(self.handle)
-                self._disconnect()
-                ljm.closeAll()
-                # self._attempt_connect(aScanList)
+                self.stop()
+                p_next_reconnect = time.perf_counter() + 3
                 continue
 
             data_1 = data[1]
@@ -298,5 +307,8 @@ class LabJackDataStream(ProcessWithCommands):
 
     def stop(self):
         self._disconnect()
-        ljm.closeAll()
+        try:
+            ljm.closeAll()
+        except PySpin.SpinnakerException as err:
+            logger.warning("ljm.closeAll() failed: %s ; but continuing", err)
         self.numpy_arr[:] = np.nan
