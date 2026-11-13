@@ -7,6 +7,7 @@ from multiprocessing import sharedctypes
 from pathlib import Path
 from typing import Optional, Any
 
+import PySpin
 import numpy as np
 from labjack import ljm
 
@@ -181,13 +182,19 @@ class LabJackDataStream(ProcessWithCommands):
         debounce = 0
         min_off_samples = round(self.attemptedscanRate * 0.01)  # minimum button release duration
 
+        p_next_reconnect = time.perf_counter()
+
         while not self._exit_requested:
             if self.handle is None:
+                p_now = time.perf_counter()
+                if p_now < p_next_reconnect:
+                    time.sleep(0.01)
+                    continue
                 try:
                     self._attempt_connect()
                 except ljm.ljm.LJMError as err:
                     logger.error("Failed open LJM: %s ; will retry in 1s", err)
-                    time.sleep(1)
+                    p_next_reconnect = p_now + 2
                     continue
 
             try:
@@ -205,16 +212,14 @@ class LabJackDataStream(ProcessWithCommands):
 
             self.results[:] = np.asarray(data[0])
             if -9999 in self.results:
-                logger.warning("ERROR!! OVERFLOW!!")
+                logger.warning("ERROR!! OVERFLOW!! data[:10]=%s", data[:10])
                 # return
                 logger.warning("prev data[1]: %s", data_1)
                 logger.warning("prev data[2]: %s", data_2)
                 logger.warning("data[1]: %s", data[1])
                 logger.warning("data[2]: %s", data[2])
-                # ljm.eStreamStop(self.handle)
-                self._disconnect()
-                ljm.closeAll()
-                # self._attempt_connect(aScanList)
+                self.stop()
+                p_next_reconnect = time.perf_counter() + 3
                 continue
 
             data_1 = data[1]
@@ -294,5 +299,8 @@ class LabJackDataStream(ProcessWithCommands):
 
     def stop(self):
         self._disconnect()
-        ljm.closeAll()
+        try:
+            ljm.closeAll()
+        except PySpin.SpinnakerException as err:
+            logger.warning("ljm.closeAll() failed: %s ; but continuing", err)
         self.numpy_arr[:] = np.nan
