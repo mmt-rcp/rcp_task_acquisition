@@ -1201,9 +1201,6 @@ class MainFrame(wx.Frame):
             start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
             start_task_but.SetLabel("Start Task")
         #
-        # will be enabled when cameras are initialized:
-        start_task_but.Disable()
-        controls_panel.hardware_button.Disable()
         #
         if self.video_start is not None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
@@ -1225,6 +1222,16 @@ class MainFrame(wx.Frame):
         def cb(error: BaseException | None):
             start_task_but.Enable(self.task != "all_hardware")
             controls_panel.hardware_button.Enable()
+            controls_panel.session_button.Enable()
+            controls_panel.Enable()
+            self.Enable()
+
+        # will be enabled when cameras are initialized:
+        start_task_but.Disable()
+        controls_panel.hardware_button.Disable()
+        controls_panel.session_button.Disable()
+        controls_panel.Disable()
+        self.Disable()
 
         self.initCams(callback=cb)
         self.Show()
