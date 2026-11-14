@@ -34,8 +34,8 @@ logger = get_logger(__name__)
 class StimulusMessage(str, Enum):
     INITIALIZE = "init_stimulus"
     UPDATE_TASK = "update_task"
-    RUN_TASK = "run_stimulus"
-    END_TASK = "end_stimulus"
+    RUN_TASK_TRIAL = "run_stimulus"  # begin trial
+    END_TASK_TRIAL = "end_stimulus"  # end trial
     ADD_INSTRUCTIONS = "create_instructions"  # unused
     PLAY_INSTRUCTIONS = "play_instructions"
     UPDATE_DATA = "update_data"
@@ -95,9 +95,9 @@ class StimulusThread(ProcessWithLogging):
             StimulusMessage.SEND_METADATA: self._handle_send_metadata,
             StimulusMessage.UPDATE_TASK: self._handle_update_task,
             StimulusMessage.UPDATE_DATA: self._handle_update_data,
-            StimulusMessage.RUN_TASK: self._handle_run_task,
+            StimulusMessage.RUN_TASK_TRIAL: self._handle_run_task,
             StimulusMessage.RESET_TASK: self._handle_reset_task,
-            StimulusMessage.END_TASK: self._handle_end_task,
+            StimulusMessage.END_TASK_TRIAL: self._handle_end_task,
             StimulusMessage.VOWEL_SPACE: self._handle_vowel_space,
             StimulusMessage.CLOSE_WINDOW: self._handle_close_window,
             StimulusMessage.PLAY_INSTRUCTIONS: self._handle_play_instructions,

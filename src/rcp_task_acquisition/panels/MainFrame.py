@@ -367,13 +367,13 @@ class MainFrame(wx.Frame):
         self._timer_task_start_end.StartOnce(1500)
         #
         if controls_panel.session_button.GetValue():
-            self.msgq.put(StimulusMessage.INITIALIZE)
+            self.finish.value = 0
+            self.put_to_stimulus(StimulusMessage.INITIALIZE)
             # this recreates a new stimulus instance in the stimulus process.
             self.start_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
             self.start_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.task_active = True
             self.count = 0
-            self.finish.value = 0
             is_success = self.lj.start_labjack()
             if not is_success:
                 controls_panel.session_button.SetValue(False)
@@ -419,9 +419,7 @@ class MainFrame(wx.Frame):
             if self.recording:
                 self.cams.stop_recording()
             self.trial_panel.end_task()
-            self.put_to_stimulus(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
-            self.finish.value = 0
             graph_panel.labjack_stream_button.Enable(True)
             if graph_panel.labjack_stream_button.GetValue():
                 graph_panel.labjack_stream_button.SetValue(False)
@@ -491,11 +489,12 @@ class MainFrame(wx.Frame):
             trial_panel.continue_button.SetLabel("Stop Trial")
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.liveTimer.Start(self.cameras_live_timer_refresh_delay_ms)
-            self.put_to_stimulus(StimulusMessage.RUN_TASK)
+            self.put_to_stimulus(StimulusMessage.RUN_TASK_TRIAL)
         else:
             logger.debug("stopping episode")
             self.controls_panel.hardware_button.Enable()
             self.finish.value = 2
+            self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
             self.rest_timer.Stop()
             if isinstance(trial_panel, SaraPanel):
                 trial_panel.show_scoring()
@@ -644,7 +643,7 @@ class MainFrame(wx.Frame):
     def _stop_hardware_test(self) -> None:
         self.finish.value = 2
         self._show_patient_cams(False)
-        self.put_to_stimulus(StimulusMessage.END_TASK)
+        self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
         self.cam_test.value = False
         self.hardware_test = False
         graph_panel = self.graph_panel
