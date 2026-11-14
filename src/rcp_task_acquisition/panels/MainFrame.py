@@ -357,7 +357,6 @@ class MainFrame(wx.Frame):
         """Start/Stop New Task (not trial)"""
         graph_panel = self.graph_panel
         controls_panel = self.controls_panel
-        trial_panel = self.trial_panel
         logger.verbose("run_task called task_but=%s", controls_panel.session_button.GetValue())
         self.Enable()
         # disable task button (start/stop),
@@ -374,6 +373,8 @@ class MainFrame(wx.Frame):
             self.task_active = True
             self.count = 0
             self.finish.value = 0
+            self._start_new_task_trial_panel(self.task)
+            trial_panel = self.trial_panel
             is_success = self.lj.start_labjack()
             if not is_success:
                 controls_panel.session_button.SetValue(False)
@@ -400,6 +401,7 @@ class MainFrame(wx.Frame):
             # if not self.rest_timer.IsRunning():
             #     self.rest_timer.Start(1000)
         else:
+            trial_panel = self.trial_panel
             self.task_active = False
             self.serial_device.write("A")
             #
@@ -418,7 +420,7 @@ class MainFrame(wx.Frame):
                 self.hardwareFeed()
             if self.recording:
                 self.cams.stop_recording()
-            self.trial_panel.end_task()
+            trial_panel.end_task()
             self.put_to_stimulus(StimulusMessage.END_TASK)
             self.labjack_scan_rate = self.lj.stop_labjack()
             self.finish.value = 0
@@ -744,7 +746,7 @@ class MainFrame(wx.Frame):
                 controls_panel.session_button.Disable()
         else:
             controls_panel.session_button.Enable()
-            self.trial_panel.continue_button.Enable()
+            self.trial_panel.set_begin_trial_enabled(True)
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
@@ -1138,9 +1140,44 @@ class MainFrame(wx.Frame):
         else:
             event.Skip()
 
+    def _start_new_task_trial_panel(self, task: str) -> None:
+        controls_panel = self.controls_panel
+        controls_panel.update_task(task)
+        trial_panel = self.trial_panel = controls_panel.get_trial_panel()
+        trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
+        trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
+        trial_panel.add_timer(self.stimulus_timer)
+        first_two_cams = self.cams.camera_settings[:2]
+        trial_panel.prepare_cams(first_two_cams)
+        self.image_panel.draw()
+        start_task_but = controls_panel.session_button
+        if isinstance(trial_panel, CalibrationPanel):
+            self.calibrate = True
+            start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
+            start_task_but.SetLabel("Record Cameras")
+        else:
+            self.calibrate = False
+            start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
+            start_task_but.SetLabel("Start Task")
+        self.video_start, self.video_pause = trial_panel.get_video_buttons()
+        if self.video_start is not None:
+            self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
+            # if self.video_pause is not None:
+            self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
+            if isinstance(trial_panel, (DdkPanel, VowelSpacePanel)):
+                trial_panel.syllable_start_video_button.Bind(
+                    wx.EVT_TOGGLEBUTTON, self.play_instructions
+                )
+                trial_panel.syllable_pause_video_button.Bind(
+                    wx.EVT_TOGGLEBUTTON, self.pause_instructions
+                )
+            if isinstance(trial_panel, VowelSpacePanel):
+                trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
+
     def init_and_show(self, launch_args: dict[str, Any]) -> None:
         logger.verbose("show(): launch_args=%s", launch_args)
         controls_panel = self.controls_panel
+        controls_panel.show_patient_cams_button.Hide()
         self.labjack_scan_rate = None
         self.cams.reset_variables()
         self.hardware_test = False
@@ -1184,41 +1221,22 @@ class MainFrame(wx.Frame):
         self.cams.setup(cams_cfg, user_cfg.cam_config.is_unconnected, self.main_framerate)
         with wx.EventBlocker(controls_panel.cam_panel.init):
             controls_panel.cam_panel.init.SetValue(True)
-        controls_panel.update_task(task)
-        trial_panel = self.trial_panel = controls_panel.get_trial_panel()
-        trial_panel.continue_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
-        trial_panel.repeat_trial_button.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.trial_event())
+
+        self._start_new_task_trial_panel(task)
+        trial_panel = self.trial_panel
+
         self.lj.update_hardware(
             hardware_lists,
             is_grasp=isinstance(trial_panel, ReachGraspPanel),
         )
         self.press_count.value = 0
-        self.video_start, self.video_pause = trial_panel.get_video_buttons()
+
         start_task_but = controls_panel.session_button
-        if isinstance(trial_panel, CalibrationPanel):
-            self.calibrate = True
-            start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
-            start_task_but.SetLabel("Record Cameras")
-        else:
-            self.calibrate = False
-            start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())
-            start_task_but.SetLabel("Start Task")
+        # will be enabled when cameras are initialized:
+        start_task_but.Disable()
+        controls_panel.hardware_button.Disable()
         #
-        #
-        if self.video_start is not None:
-            self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
-            self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
-            if isinstance(trial_panel, (DdkPanel, VowelSpacePanel)):
-                trial_panel.syllable_start_video_button.Bind(
-                    wx.EVT_TOGGLEBUTTON, self.play_instructions
-                )
-                trial_panel.syllable_pause_video_button.Bind(
-                    wx.EVT_TOGGLEBUTTON, self.pause_instructions
-                )
-            if isinstance(trial_panel, VowelSpacePanel):
-                trial_panel.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
         self.participant_monitor.update_screen()
-        trial_panel.add_timer(self.stimulus_timer)
         self._update_task(task)
         self.put_to_stimulus(StimulusMessage.INITIALIZE)
 
