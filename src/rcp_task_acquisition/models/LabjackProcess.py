@@ -1,7 +1,6 @@
 import ctypes
 import io
-import multiprocessing
-import queue
+import threading
 import time
 from multiprocessing import sharedctypes
 from pathlib import Path
@@ -14,7 +13,7 @@ from labjack import ljm
 from rcp_task_acquisition.utils.constants import SCANS_PER_READ
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.process import set_high_prio
-from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging, ProcessWithCommands
+from rcp_task_acquisition.utils.multiprocess import ProcessWithCommands
 from rcp_task_acquisition.utils.typing import SharedBool, SharedInt, SharedFloat, SharedEvent
 
 logger = get_logger(__name__)
@@ -110,6 +109,7 @@ class LabJackDataStream(ProcessWithCommands):
             logger.warning("eStreamStop failed: %s ; but continuing..", err)
         finally:
             ljm.close(handle)
+            logger.debug("closed handle %s", handle)
 
     def _attempt_connect(self):
         self._disconnect()
@@ -125,11 +125,6 @@ class LabJackDataStream(ProcessWithCommands):
         self.__attempt_connect()
 
     def __attempt_connect(self):
-        scan_list = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
-        logger.debug("ljm: addresses=%s", scan_list)
-        if self.digital_inputs or self.extended_inputs:
-            scan_list.append(2580)
-        numAddresses = len(scan_list)
         self.handle = ljm.openS("ANY", "ANY", "ANY")
         try:
             ljm.eStreamStop(self.handle)
@@ -144,6 +139,14 @@ class LabJackDataStream(ProcessWithCommands):
         # • Default Value: 0 (uses the operating system default, which typically enables auto-tuning).
         # This is recommended for most use cases.
         ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
+        self._start_stream()
+
+    def _start_stream(self):
+        scan_list = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
+        logger.debug("ljm: addresses=%s", scan_list)
+        if self.digital_inputs or self.extended_inputs:
+            scan_list.append(2580)
+        numAddresses = len(scan_list)
         scan_rate = self.actualscanRate.value = ljm.eStreamStart(
             self.handle, SCANS_PER_READ, numAddresses, scan_list, self.attemptedscanRate
         )
@@ -216,16 +219,29 @@ class LabJackDataStream(ProcessWithCommands):
                 first = False
                 logger.verbose("first read: data[1:]=%s", data[1:])
 
-            res = self.results[:] = np.asarray(data[0])
-            if -9999 in self.results:
+            res = np.asarray(data[0])
+            self.results[:] = res
+            if -9999 in res:
                 logger.warning("ERROR!! OVERFLOW!! data[:10]=%s data[-10:]=%s", res[:10], res[-10:])
                 # return
                 logger.warning("prev data[1]: %s", data_1)
                 logger.warning("prev data[2]: %s", data_2)
                 logger.warning("data[1]: %s", data[1])
                 logger.warning("data[2]: %s", data[2])
-                self.stop()
-                p_next_reconnect = time.perf_counter() + 3
+                try:
+                    ljm.eStreamStop(self.handle)
+                except ljm.ljm.LJMError as err:
+                    logger.warning("eStreamStop failed: %s", err)
+                    self.stop()
+                    p_next_reconnect = time.perf_counter() + 3
+                    continue
+                time.sleep(1)
+                try:
+                    self._start_stream()
+                except ljm.ljm.LJMError as err:
+                    logger.error("eStreamStart failed: %s", err)
+                    self.stop()
+                    p_next_reconnect = time.perf_counter() + 3
                 continue
 
             data_1 = data[1]
