@@ -5,6 +5,7 @@ import shutil
 import time
 from multiprocessing import Array, Queue, Value
 from pathlib import Path
+from typing import Callable
 
 import cv2
 import numpy as np
@@ -12,6 +13,8 @@ import wx
 from matplotlib.image import AxesImage
 
 import rcp_task_acquisition.models.CameraProcess as spin
+from rcp_task_acquisition.algo import put_to_algo
+from rcp_task_acquisition.gui import call_in_gui
 from rcp_task_acquisition.models.CameraProcess import CameraCommand
 from rcp_task_acquisition.models.Crop import Crop
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
@@ -24,6 +27,7 @@ from rcp_task_acquisition.utils.camera_settings import FrameDims, CamSettings
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.typing import MaybeOkCallback
 
 logger = get_logger(__name__)
 
@@ -165,7 +169,17 @@ class CamerasFrontend:
         self.image_panel.update_names([cam0.name, cam1.name])
         self.image_panel.draw()
 
-    def initialize(self) -> bool:
+    @put_to_algo
+    def initialize(self, *, callback: MaybeOkCallback = None) -> bool:
+        try:
+            return self._initialize(callback=callback)
+        except BaseException as err:
+            logger.exception("Error intialize: %s", err)
+            if callback:
+                callback(err)
+            return False
+
+    def _initialize(self, *, callback: MaybeOkCallback = None) -> bool:
         self.serial.init_serial()
         self.initThreads()
         try:
@@ -173,17 +187,20 @@ class CamerasFrontend:
         except Exception as err:
             # NB: normally we don't need anymore this, at least for valid settings
             logger.exception("Error updating settings: %s", err)
-            logger.info("Trying to fix cameras. Please wait...")
-            self.deinitThreads()
-            self.camReset()
-            self.initThreads()
-            try:
-                self.updateSettings()
-            except Exception as err:
-                logger.exception("Error reupdating settings: %s", err)
-                return False
+            # logger.info("Trying to fix cameras. Please wait...")
+            # self.deinitThreads()
+            # self.camReset()
+            # self.initThreads()
+            # try:
+            #     self.updateSettings()
+            # except Exception as err:
+            #     logger.exception("Error reupdating settings: %s", err)
+            #     return False
+            if callback is not None:
+                callback(err)
+            return False
         self.get_exposure()
-        self.updateSettings()
+        self.updateSettings()  # reapplied ??
         self.camaq.value = 1
         self.startAq()
         time.sleep(0.5)
@@ -206,11 +223,16 @@ class CamerasFrontend:
             )
 
             cam.apply_new_dims(new_dims)
+        self._apply_cam_data()
+        if callback is not None:
+            callback(None)
+        return True
 
+    @call_in_gui
+    def _apply_cam_data(self):
         cam0, cam1 = self._cam_by_idx[self.cam_pointer : self.cam_pointer + 2]
         self.im[0].set_data(cam0.frame)
         self.im[1].set_data(cam1.frame)
-        return True
 
     def deinitialize(self) -> None:
         self.serial.close()
@@ -240,7 +262,7 @@ class CamerasFrontend:
 
     def live_stop(self) -> None:
         self.stopAq()
-        time.sleep(2)
+        # time.sleep(2)
 
     def on_cam_update(self, cam: CamSettings, frame: np.ndarray) -> None:
         redraw = False
@@ -331,24 +353,30 @@ class CamerasFrontend:
         self._prepare_cams()
         self.multi_cameras.clear()
         all_cams_serial = [c.serial for c in self._cam_by_idx]
-        for cam_d in self._cam_by_idx:
+        logger.notice("Starting initialisation of cameras")
+        for cam in self._cam_by_idx:
             multi_cam = spin.multiCam_DLC_Cam(
-                cam_d,
+                cam,
                 all_cams_serial,
                 self.camaq,
                 self.frmaq,
                 DOWNSAMPLE_VAL,
                 user_config=self._rcp_context.user_config,
             )
-            self.multi_cameras[cam_d.serial] = multi_cam
             multi_cam.start()
-        # time.sleep(1)
-        logger.notice("Starting initialisation of cameras")
-        for cam in self._cam_by_idx:
-            initialization = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
+            self.multi_cameras[cam.serial] = multi_cam
+            init_cmd = CameraCommand.INIT_M if cam.is_primary else CameraCommand.INIT_S
             try:
-                cam.put_to(initialization, timeout=1)
-                res = cam.get_from(timeout=5)  # initialisation can be slow somtimes
+                cam.put_to(init_cmd, timeout=0)
+            except Exception as err:
+                logger.error("%s: cannot initialize camera: %s", cam.name, err)
+                raise
+
+        p_timeout = time.perf_counter() + 10  # initialization can be slow sometimes
+        for cam in self._cam_by_idx:
+            remain = max(0, p_timeout - time.perf_counter())
+            try:
+                res = cam.get_from(timeout=remain)
             except Exception as err:
                 logger.error("%s: cannot initialize camera: %s", cam.name, err)
                 raise
@@ -360,25 +388,66 @@ class CamerasFrontend:
         errors = {}
         for cam in self._cam_by_idx:
             try:
-                cam.put_to(CameraCommand.RELEASE, timeout=1)
+                cam.put_to(CameraCommand.RELEASE, timeout=0)
+                cam.put_to(None, timeout=0)
             except Exception as err:
+                logger.error("%s: could not put RELEASE + None: %s", cam.name, err)
                 errors[cam.serial] = err
+        p_timeout = time.perf_counter() + 5
         for cam in self._cam_by_idx:
+            if cam.serial in errors:
+                continue
+            remain = max(0, p_timeout - time.perf_counter())
             try:
-                cam.get_from(timeout=3)
+                ret = cam.get_from(timeout=remain)
             except queue.Empty:
                 logger.warning("timeout get from p2read")
             except Exception as err:
-                errors[cam.serial] = err
+                logger.error("%s: read from output queue failed: %s", err)
+            else:
+                logger.debug("received rsp: %s", ret)
+
+        p_timeout = time.perf_counter() + 1.5
+        for cam in self._cam_by_idx:
+            multi_cam = self.multi_cameras.get(cam.serial)
+            if cam.name in errors or multi_cam is None:
+                continue
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
+
+        p_timeout = time.perf_counter() + 2
+        for cam in self._cam_by_idx:
+            multi_cam = self.multi_cameras.get(cam.serial)
+            if multi_cam is None:
+                continue
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
+            if multi_cam.is_alive():
+                logger.debug("terminating %s", multi_cam.name)
+                multi_cam.terminate()
+        for cam in self._cam_by_idx:
             cam.camq.close()
             cam.camq_p2read.close()
-        for cam in self._cam_by_idx:
-            multi_cam = self.multi_cameras[cam.serial]
-            multi_cam.terminate()
-            multi_cam.join(1)
+        p_timeout = time.perf_counter() + 1.5
+        for multi_cam in self.multi_cameras.values():
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
+            if multi_cam.is_alive():
+                logger.debug("killing %s", multi_cam.name)
+                multi_cam.kill()
+        p_timeout = time.perf_counter() + 1.5
+        for multi_cam in self.multi_cameras.values():
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
+            if multi_cam.exitcode is None:
+                logger.warning("%s not finished. but continuing", multi_cam.name)
+            else:
+                logger.verbose("%s finished. exitcode=%s", multi_cam.name, multi_cam.exitcode)
+
         self.cam_dict.clear()
         self.multi_cameras.clear()
         self._cam_by_idx.clear()
+        logger.info("all cameras stopped")
 
     def startAq(self) -> None:
         logger.verbose("startAq started")
@@ -390,10 +459,10 @@ class CamerasFrontend:
             self.camaq.value = 1
 
         for cam in self._cam_by_idx:
-            cam.put_to(CameraCommand.START, timeout=1)
+            cam.put_to(CameraCommand.START, timeout=0)
         for prim_cam_serial in self.primary_cams:
             cam = self.cam_dict[prim_cam_serial]
-            cam.put_to(CameraCommand.TRIG_OFF, timeout=1)
+            cam.put_to(CameraCommand.TRIG_OFF, timeout=0)
 
     def stopAq(self) -> None:
         logger.verbose("stopAq started")
@@ -404,12 +473,17 @@ class CamerasFrontend:
         self.camaq.value = 0
         threshold = 1
 
-        def request_cam_stop(cam_id: str):
+        def request_cam_stop_send(cam_id: str):
             cam_d = self.cam_dict.get(cam_id)
             if cam_d is None:
                 return
             logger.verbose("requesting camera stop to %s", cam_d.name)
             cam_d.put_to(CameraCommand.STOP, timeout=1)
+
+        def request_cam_stop_recv(cam_id: str):
+            cam_d = self.cam_dict.get(cam_id)
+            if cam_d is None:
+                return
             ret = cam_d.get_from(timeout=3)
             logger.debug("received rsp = %r from cam", ret)
             if ret != "done":
@@ -418,20 +492,27 @@ class CamerasFrontend:
                         error_message.append(f"{ret}% of camera frames dropped for {cam_d.name}")
                     ret = cam_d.get_from(timeout=1)
                     if ret != "done":
-                        logger.warning("unexpected response to cam stop: %s", ret)
+                        logger.warning("%s: unexpected response to cam stop: %s", cam_d.name, ret)
                 else:
-                    logger.warning("%s: unexpected rsp for STOP: %s", ret)
+                    logger.warning("%s: unexpected rsp for STOP: %s", cam_d.name, ret)
 
         cam_errors = {}
         for camID in self.secondary_cams:
             try:
-                request_cam_stop(camID)
+                request_cam_stop_send(camID)
+            except Exception as err:
+                cam_errors[camID] = err
+
+        for camID in self.secondary_cams:
+            try:
+                request_cam_stop_recv(camID)
             except Exception as err:
                 cam_errors[camID] = err
 
         for camID in self.primary_cams:
             try:
-                request_cam_stop(camID)
+                request_cam_stop_send(camID)
+                request_cam_stop_recv(camID)
             except Exception as err:
                 cam_errors[camID] = err
 
@@ -442,41 +523,56 @@ class CamerasFrontend:
             error += "\n" + "\n".join(error_message)
         if error != "":
             self.warning.update_error(WarnCat.FRAMES, info=error).display()
-        if cam_errors:
-            raise RuntimeError(f"Cameras failed: {cam_errors}")
+        # NB:
+        # don't raise errors. callers expect action to succeed always. unless interrupted or such.
 
     def updateSettings(self) -> None:
-        self.aqW = []
-        self.aqH = []
-        # self.recSet = []
+        # preset to 0 with required nbr of items:
+        aqH = self.aqH = [0] * len(self._cam_by_idx)
+        aqW = self.aqW = [0] * len(self._cam_by_idx)
+        # so that other code depending on it will be good regardless of success below.
+        message = "crop" if self.crop else "full"
         errors = {}
+        #
         for cam_d in self._cam_by_idx:
             try:
-                cam_d.put_to(CameraCommand.UPDATE_SETTINGS, timeout=1)
-                suc_test = cam_d.get_from(timeout=2)
-                if suc_test == -1:
-                    raise RuntimeError("camera unresponsive")
+                cam_d.put_to(CameraCommand.UPDATE_SETTINGS, timeout=0)
             except Exception as err:
                 logger.error("%s: could not update settings: %s", cam_d.name, err)
                 errors[cam_d.name] = err
-                self.aqW.append(0)
-                self.aqH.append(0)
-                continue
-                # raise ValueError("Cameras unresponsive")
-            message = "crop" if self.crop else "full"
-            cam_d.put_to(message, timeout=1)
 
-            # self.recSet.append(self.cam_dict[camID].get_from())
+        p_timeout = time.perf_counter() + 3
+        for cam_d in self._cam_by_idx:
+            if cam_d.name in errors:
+                continue
+            remain = max(0, p_timeout - time.perf_counter())
             try:
-                width, height = cam_d.get_from(timeout=2)
+                ret = cam_d.get_from(timeout=remain)
+                if ret != "done":
+                    raise RuntimeError(f"camera failed: {ret}")
+            except Exception as err:
+                logger.error("%s: could not update settings: %s", cam_d.name, err)
+                errors[cam_d.name] = err
+            else:
+                try:
+                    cam_d.put_to(message, timeout=0)
+                except Exception as err:
+                    logger.error("%s: could not put crop/full: %s", cam_d.name, err)
+                    errors[cam_d.name] = err
+
+        p_timeout = time.perf_counter() + 3
+        for cam_d in self._cam_by_idx:
+            if cam_d.name in errors:
+                continue
+            remain = max(0, p_timeout - time.perf_counter())
+            try:
+                width, height = cam_d.get_from(timeout=remain)
             except Exception as err:
                 logger.error("could not read W/H: %s", err)
                 errors[cam_d.name] = err
-                self.aqW.append(0)
-                self.aqH.append(0)
             else:
-                self.aqW.append(width)
-                self.aqH.append(height)
+                aqW[cam_d.idx] = width
+                aqH[cam_d.idx] = height
         if errors:
             raise RuntimeError(f"{errors}")
 

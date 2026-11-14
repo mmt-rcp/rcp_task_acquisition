@@ -30,7 +30,7 @@ class ControlsPanel(wx.Panel):
         psychopy_monitor: int,
         monitor_size: wx.Size,
         task="task",
-    ):
+    ) -> None:
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
         self._psychopy_monitor = psychopy_monitor
         self._psychopy_size = monitor_size
@@ -228,7 +228,7 @@ class ControlsPanel(wx.Panel):
 
 
 class CameraControlPanel(wx.Panel):
-    def __init__(self, parent, button_width):
+    def __init__(self, parent: wx.Panel, button_width: int) -> None:
         super().__init__(parent, -1, style=wx.BORDER_NONE)
         box = wx.StaticBox(self, label="Camera Control")
         camsizer = wx.GridBagSizer(5, 5)

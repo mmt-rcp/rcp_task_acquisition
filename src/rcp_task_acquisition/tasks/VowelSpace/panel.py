@@ -147,7 +147,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
     def start_new_task(self) -> None:
         self.repeat = True
         # self.repeat_trial.Enable(False)
-        self.continue_button.Enable(True)
+        # self.continue_button.Enable(True)  done at higher level
         self.finish_text.SetLabel("")
 
     def start_video(self) -> None:

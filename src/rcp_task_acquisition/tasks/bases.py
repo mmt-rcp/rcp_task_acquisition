@@ -57,15 +57,16 @@ class StimulusBase:
         self.current_trial: str | None = None
         self.video_status = video_status
         self.timer = timer
-        self.start_test = False  # unused
         self.finish = finish
         self.trial = 0  # current trial nbr
         self.video_lock = video_lock
         self.first_frame = -1
         self.check_commands = check_commands
+        self._task_end_requested = False
 
     def end_stimulus(self):
-        """For subclass to customize"""
+        """For subclass to extend"""
+        self._task_end_requested = True
 
     def present(self) -> None:
         self.timer.value = 0
@@ -76,7 +77,7 @@ class StimulusBase:
         self.display.draw_patch()
         self.display.flip()
         clock = core.Clock()
-        while True:
+        while not self._task_end_requested:
             if self.finish.value == 2:
                 break
             self.timer.value = int(clock.getTime())
@@ -85,19 +86,9 @@ class StimulusBase:
         self.display.draw_patch()
         self.play_tone()
 
-    def create_csv(self, name, sessionFolder, metadata, start_frame, columns=None) -> None:
-        sessionFolderPath = Path(sessionFolder)
-        if sessionFolderPath.exists() == False:
-            return
-        csv_name = sessionFolderPath.joinpath(f"{name}-{int(start_frame)}.csv")
-
-        data = pd.DataFrame(metadata)
-        if columns:
-            data.columns = columns
-        data.to_csv(csv_name, index=False)
-
-    def set_first_frame(self, frame: int) -> None:
-        self.first_frame = frame
+    def prepare_run_task_trial(self, *, first_frame: int = 0):
+        self._task_end_requested = False
+        self.first_frame = first_frame
 
     def saveMetadata(self) -> TaskMetaData:
         """Returns the stimulus current metadata"""

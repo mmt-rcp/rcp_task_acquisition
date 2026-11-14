@@ -21,7 +21,7 @@ class Sara(bases.StimulusBase):
         self.display.draw_patch()
         self.display.flip()
         clock = core.Clock()
-        while self.finish.value == 0:
+        while self.finish.value == 0 and not self._task_end_requested:
             self.display.draw_patch()
             self.display.flip()
             self.timer.value = int(clock.getTime())

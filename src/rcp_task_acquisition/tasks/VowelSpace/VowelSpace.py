@@ -33,7 +33,7 @@ class VowelSpace(bases.StimulusBase):
         self.trial_bookends()
         self.play_vowel_phrase(str(self.current_trial))
 
-        while self.finish.value == 0:
+        while self.finish.value == 0 and not self._task_end_requested:
             self.display.draw_patch()
             self.display.flip()
 

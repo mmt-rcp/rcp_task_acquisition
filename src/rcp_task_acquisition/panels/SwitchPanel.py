@@ -1,5 +1,8 @@
+import queue
+import threading
 from enum import Enum
 
+import atexit
 import wx
 
 from rcp_task_acquisition.models.StimulusThread import StimulusMessage
@@ -24,6 +27,7 @@ class SwitchPanel:
     """Main "switch" (control-) panel"""
 
     def __init__(self, *, rcp_context: RcpRunContext) -> None:
+        super().__init__()
         self._rcp_context: RcpRunContext = rcp_context
         self.active_panel = ActivePanel.LAUNCH
         self.launch_panel = LaunchPanel(rcp_context=rcp_context)
@@ -58,46 +62,49 @@ class SwitchPanel:
         self.switch_panel()
 
     def switch_panel(self) -> None:
-        logger.verbose("switch_panel: active=%s", self.active_panel)
         # if launch panel showing, switching to show task panel & vice versa
-        if self.active_panel == ActivePanel.LAUNCH:
-            self.task_frame.Enable()
+        cur_panel = self.active_panel
+        next_panel = cur_panel.switch_panel()
+        logger.verbose("switch_panel, going to %s", next_panel)
+        try:
+            self._switch_panel_exec(cur_panel)
+        finally:
+            self.active_panel = next_panel
+
+    def _switch_panel_exec(self, cur_panel: ActivePanel) -> None:
+        if cur_panel == ActivePanel.LAUNCH:
+            self.launch_panel.Hide()
             self.task_frame.controls_panel.quit_button.SetLabel("Exit to Launch Menu")
             self.task_frame.init_and_show(self.launch_panel.metadata)
-            self.launch_panel.Hide()
-        else:
+        elif cur_panel == ActivePanel.TASK:
+            self.task_frame.Hide()
             self.launch_panel.protocol_button.SetLabel("Select Protocol")
             self.launch_panel.enable_gui(True)
-            self.task_frame.Hide()
             self.launch_panel.Show()
 
-        self.active_panel = self.active_panel.switch_panel()
-
     def _on_disable_panel(self, event: wx.Event) -> None:
+        # mainframe quit / close
         logger.verbose("on_disable_panel: event=%s ; from=%s", event, event.GetEventObject())
         self.disable_panel()
         if isinstance(event, wx.CloseEvent) and event.GetEventObject() == self.launch_panel.dialog:
             logger.debug("close from launch panel, preventing timer start")
             # if close of main launch panel, then don't switch panels.
             return
-        # self.switch_panel
-        if 0:
-            self.switch_panel()  # tried this, which is indirectly called by the disable_timer,
-        # but for some reason don't get the same visual result.
         self.disable_timer.StartOnce(200)
 
     def disable_panel(self) -> None:
         """
         Disable the current shown panel while enabling other panel
         """
+        logger.verbose("disable_panel: active=%s", self.active_panel)
         if self.active_panel == ActivePanel.LAUNCH:
             self.launch_panel.protocol_button.SetLabel("Loading...")
             self.launch_panel.enable_gui(False)
         else:
             self.task_frame.put_to_stimulus(StimulusMessage.SHOW_WINDOW)
             self.task_frame.controls_panel.quit_button.SetLabel("Loading...")
-            self.task_frame.Hide()
             self.task_frame.Disable()
+            self.task_frame.Hide()
 
     def exit_event(self) -> None:
         self.task_frame.Hide()

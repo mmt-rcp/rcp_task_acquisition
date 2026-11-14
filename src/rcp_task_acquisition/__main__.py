@@ -10,6 +10,8 @@ from pathlib import Path
 import wx
 import wx.adv
 
+import rcp_task_acquisition
+from rcp_task_acquisition.algo import Algo
 from rcp_task_acquisition.utils import config, logging, trial, constants
 from rcp_task_acquisition.utils.run_context import RcpRunContext
 from rcp_task_acquisition.utils.task_acquisistion_version import __version__ as app_version
@@ -28,6 +30,8 @@ class App(wx.App):
         self._action_thread: None | threading.Thread = None
         self._load_app_dialog: wx.Dialog
         self._rcp_context = rcp_context
+        self.SwitchPanel: "rcp_task_acquisition.panels.SwitchPanel.SwitchPanel | None" = None  # type: ignore
+        Algo.start_algo_thread()
         super().__init__()
 
     def _show_start_dialog(self):
@@ -145,6 +149,10 @@ class App(wx.App):
                 wx.MessageBox("Relaunch application", "please launch again the application")
                 self.switch_panel.launch_panel.dialog.Close()
                 wx.Exit()
+
+    def OnExit(self) -> int:
+        Algo.stop_algo_thread()
+        return 0
 
 
 def run_app():

@@ -173,7 +173,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.start_video_button.Enable(False)
         self.syllable_start_video_button.Enable(False)
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {DDK_TRIAL_TIME - self.timer.value} secs")
         else:
@@ -208,7 +208,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.video_buttons = []
         self.other_buttons = []
         self.next_button.Enable(True)
-        self.continue_button.Enable(True)
+        # self.continue_button.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
         self.syllable_text.SetLabel(f"Syllable: {self.syllable}")
         self.trial_text.SetLabel(f"Trial # {self.trial_number_}")
