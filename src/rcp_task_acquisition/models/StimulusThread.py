@@ -229,12 +229,16 @@ class StimulusThread(ProcessWithLogging):
         logger.info("entering main loop")
         while self.alive:
             # wx.Yield()
+            # self.window.flip()
             win_handle.flip()
+            # not sure which to use but the inner win_handle seems more appropriate.
             try:
-                self.check_command(0.05)
+                self.check_command(0.1)
             except Exception as err:
                 logger.exception("Error during main loop: %s", err)
+                self._handle_close_window()
                 break
+        logger.verbose("exiting")
 
     def check_command(self, timeout: float):
         self._reentrant_check_commands += 1
