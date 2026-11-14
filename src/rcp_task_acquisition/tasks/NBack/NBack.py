@@ -376,6 +376,7 @@ class N_back(bases.StimulusBase):
 
     # Show and log a stimulus
     def showAndLog(self, win, timeData, triali, stim, dur, name, draw_patch=False):
+        logger.debug("showAndLog %s %s %s %s", name, dur, triali, draw_patch)
         # stim.draw()
         # patch = draw_patch
         self.display.switch_patch()
@@ -490,8 +491,9 @@ class N_back(bases.StimulusBase):
                     "Initial_Fixation_Shown",
                 )
                 if not self.is_real:
+                    cur_ans = answer_list[index][t_index]
                     if self.button_press:
-                        if answer_list[index][t_index] == Answer.DIFFERENT:
+                        if cur_ans == Answer.DIFFERENT:
                             timeData, fixFlipTime = self.showAndLog(
                                 self.display,
                                 timeData,
@@ -500,21 +502,15 @@ class N_back(bases.StimulusBase):
                                 2,
                                 "Initial_Fixation_Shown",
                             )
-                        elif (
-                            answer_list[index][t_index] == Answer.SAME
-                            or answer_list[index][t_index] == Answer.NOGO
-                        ):
+                        elif cur_ans in {Answer.SAME, Answer.NOGO}:
                             timeData, fixFlipTime = self.showAndLog(
                                 self.display, timeData, 0, correct_ims, 2, "Initial_Fixation_Shown"
                             )
-                    elif (
-                        answer_list[index][t_index] == Answer.DIFFERENT
-                        or answer_list[index][t_index] == Answer.NOGO
-                    ):
+                    elif cur_ans in {Answer.DIFFERENT, Answer.NOGO}:
                         timeData, fixFlipTime = self.showAndLog(
                             self.display, timeData, 0, correct_ims, 2, "Initial_Fixation_Shown"
                         )
-                    elif answer_list[index][t_index] == Answer.SAME:
+                    elif cur_ans == Answer.SAME:
                         timeData, fixFlipTime = self.showAndLog(
                             self.display, timeData, 0, incorrect_ims, 2, "Initial_Fixation_Shown"
                         )
