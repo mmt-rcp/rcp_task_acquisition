@@ -537,25 +537,33 @@ class MainFrame(wx.Frame):
         self.trial_panel.repeat_event()
         self.trial_event()
 
+    _prev_finish_value = None
+    _prev_vid_status = None
+
     def update_intertrial(self, event: wx.Event) -> None:
         """Called by rest_timer recurrent timer (800ms)"""
-        logger.debug(
-            "update_intertrial: finish=%s, video=%s", self.finish.value, self.video_status.value
-        )
-        if self.video_status.value == VideoStatus.FINISHED:
-            logger.debug("in finish")
+        new_finish = self.finish.value
+        new_vid_stat = self.video_status.value
+        if (new_finish, new_vid_stat) != (self._prev_finish_value, self._prev_vid_status):
+            logger.verbose(
+                "update_intertrial: finish=%s, video=%s", self.finish.value, self.video_status.value
+            )
+            self._prev_finish_value = new_finish
+            self._prev_vid_status = new_vid_stat
+        if new_vid_stat == VideoStatus.FINISHED:
+            logger.debug("update_intertrial: video finished")
             self.trial_panel.stop_video()
             self.video_status.value = VideoStatus.NOT_PLAYING
-            logger.debug("called stop_video")
             self.rest_timer.Stop()
-        elif self.video_status.value == VideoStatus.ERROR:
+        elif new_vid_stat == VideoStatus.ERROR:
+            logger.verbose("update_intertrial: video error")
             self.trial_panel.stop_video()
             self.video_status.value = VideoStatus.NOT_PLAYING
             self.warning.update_error(WarnCat.VIDEO).display()
-        elif self.finish.value == 1 and not isinstance(
+        elif new_finish == 1 and not isinstance(
             self.controls_panel.task_panel, (NaturalisticSpeechPanel, VowelSpacePanel)
         ):
-            # logger.debug("in intertrial")
+            logger.verbose("update_intertrial: finish==1")
             self.participant_monitor.update_screen()
             self.cams.stop_recording()
             self.trial_panel.reset(self.count)
