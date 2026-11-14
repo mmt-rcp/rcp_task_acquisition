@@ -213,6 +213,7 @@ class TrialPanel(wx.Panel):
 
     def set_begin_trial_enabled(self, enabled: bool = True):
         """can be extended by subclasses"""
+        self.Enable(enabled)
         self.continue_button.Enable(enabled)
         self.repeat_trial_button.Enable(enabled)
         next_button: wx.ToggleButton | None = getattr(self, "next_button", None)
