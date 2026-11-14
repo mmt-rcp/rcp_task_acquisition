@@ -72,6 +72,9 @@ class MainFrame(wx.Frame):
 
     trial_panel: TrialPanel
 
+    cameras_live_timer_refresh_delay_ms = 150
+    patient_monitor_view_refresh_delay_ms = 50
+
     def __init__(self, parent: wx.Window | None = None, *, rcp_context: RcpRunContext) -> None:
         self._rcp_context = rcp_context
         self.task: str = ""
@@ -251,7 +254,7 @@ class MainFrame(wx.Frame):
         self.Bind(
             wx.EVT_TIMER, lambda _: self.participant_monitor.update_screen(), self.video_timer
         )
-        self.video_timer.Start(500)
+        self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
 
         def on_update_cameras_viewed(evt: wx.Event) -> None:
             self.cams.update_cameras_viewed(evt)
@@ -489,7 +492,7 @@ class MainFrame(wx.Frame):
             trial_panel.run_trial(self.count)
             trial_panel.continue_button.SetLabel("Stop Trial")
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
-            self.liveTimer.Start(150)
+            self.liveTimer.Start(self.cameras_live_timer_refresh_delay_ms)
             self.put_to_stimulus(StimulusMessage.RUN_TASK)
         else:
             logger.debug("stopping episode")
@@ -635,7 +638,7 @@ class MainFrame(wx.Frame):
     def _set_to_live(self) -> None:
         if not self.liveTimer.IsRunning():
             self.cams.live_start()
-            self.liveTimer.Start(150)
+            self.liveTimer.Start(self.cameras_live_timer_refresh_delay_ms)
             self.controls_panel.cam_panel.play.SetLabel("Stop")
             self.controls_panel.hardware_button.SetLabel("End Test")
         self._set_cam_panel_enable(False)
@@ -1075,7 +1078,7 @@ class MainFrame(wx.Frame):
             self._set_cam_p_for_record_enabled(False)
             cam_panel.rec.SetLabel("Stop")
             cam_panel.play.SetLabel("Abort")
-            self.liveTimer.Start(150)
+            self.liveTimer.Start(self.cameras_live_timer_refresh_delay_ms)
         else:
             if not self.recording:
                 return
@@ -1240,13 +1243,23 @@ class MainFrame(wx.Frame):
         def cb(error: BaseException | None):
             start_task_but.Enable(self.task != "all_hardware")
             controls_panel.hardware_button.Enable()
+            controls_panel.session_button.Enable()
+            controls_panel.Enable()
+            self.Enable()
+
+        # will be enabled when cameras are initialized:
+        start_task_but.Disable()
+        controls_panel.hardware_button.Disable()
+        controls_panel.session_button.Disable()
+        controls_panel.Disable()
+        self.Disable()
 
         self.initCams(callback=cb)
         self.Show()
 
     def Show(self, show: bool = True) -> bool:
         if show:
-            self.video_timer.Start(500)
+            self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
         return super().Show(show)
 
     def disable_gui(self, event: wx.Event) -> None:

@@ -405,11 +405,7 @@ class CamerasFrontend:
             except Exception as err:
                 logger.error("%s: read from output queue failed: %s", err)
             else:
-                logger.debug("%s: received response: %s", cam.name, ret)
-                try:
-                    cam.put_to(None, timeout=0)
-                except Exception as err:
-                    logger.warning("%s: timeout put to: %s", cam.name, err)
+                logger.debug("received rsp: %s", ret)
 
         p_timeout = time.perf_counter() + 1.5
         for cam in self._cam_by_idx:
@@ -418,25 +414,36 @@ class CamerasFrontend:
                 continue
             remain = max(0, p_timeout - time.perf_counter())
             multi_cam.join(remain)
-            if multi_cam.exitcode is not None:
-                logger.debug("%s finished. exitcode=%s", cam.name, multi_cam.exitcode)
 
+        p_timeout = time.perf_counter() + 2
         for cam in self._cam_by_idx:
             multi_cam = self.multi_cameras.get(cam.serial)
-            if cam.name in errors or multi_cam is None:
+            if multi_cam is None:
                 continue
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
             if multi_cam.is_alive():
                 logger.debug("terminating %s", multi_cam.name)
                 multi_cam.terminate()
-                multi_cam.join(1)
         for cam in self._cam_by_idx:
             cam.camq.close()
             cam.camq_p2read.close()
+        p_timeout = time.perf_counter() + 1.5
         for multi_cam in self.multi_cameras.values():
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
             if multi_cam.is_alive():
                 logger.debug("killing %s", multi_cam.name)
                 multi_cam.kill()
-                multi_cam.join(1)
+        p_timeout = time.perf_counter() + 1.5
+        for multi_cam in self.multi_cameras.values():
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
+            if multi_cam.exitcode is None:
+                logger.warning("%s not finished. but continuing", multi_cam.name)
+            else:
+                logger.verbose("%s finished. exitcode=%s", multi_cam.name, multi_cam.exitcode)
+
         self.cam_dict.clear()
         self.multi_cameras.clear()
         self._cam_by_idx.clear()
