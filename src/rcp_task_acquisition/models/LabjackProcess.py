@@ -133,6 +133,7 @@ class LabJackDataStream(ProcessWithCommands):
             scan_list = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
             if self.digital_inputs or self.extended_inputs:
                 scan_list.append(2580)
+            logger.verbose("getting addresses for %s: %s", self.scan_list, scan_list)
         self.handle = ljm.openS("ANY", "ANY", "ANY")
         self._prev_scan_list = scan_list
         try:
@@ -150,9 +151,9 @@ class LabJackDataStream(ProcessWithCommands):
         self._start_stream()
 
     def _start_stream(self):
-        scan_list = self._prev_scan_list
         ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
-        logger.debug("ljm: addresses=%s", scan_list)
+        logger.debug("wrote names: %s %s", self.input_names, self.voltage_ranges)
+        scan_list = self._prev_scan_list
         scan_rate = self.actualscanRate.value = ljm.eStreamStart(
             self.handle, SCANS_PER_READ, len(scan_list), scan_list, self.attemptedscanRate
         )
