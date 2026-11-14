@@ -308,6 +308,14 @@ class MainFrame(wx.Frame):
     def put_to_stimulus(self, data, *, timeout=3) -> None:
         self.msgq.put(data, timeout=timeout)
 
+    def flush_stimulus_input(self):
+        while True:
+            try:
+                lost = self.get_from_stimulus(timeout=0)
+            except queue.Empty:
+                break
+            logger.debug("missed stimulus result: %r", lost)
+
     def get_from_stimulus(self, *, timeout=3):
         return self.resultsq.get(timeout=timeout)
 
@@ -523,6 +531,7 @@ class MainFrame(wx.Frame):
     def next_trial(self, event: wx.Event) -> None:
         assert isinstance(self.trial_panel, VowelSpacePanel)
         self._update_data(False)
+        self.flush_stimulus_input()
         self.put_to_stimulus(StimulusMessage.VOWEL_SPACE)
         trial_info = self.get_from_stimulus()
         trial, syllable, finish = trial_info

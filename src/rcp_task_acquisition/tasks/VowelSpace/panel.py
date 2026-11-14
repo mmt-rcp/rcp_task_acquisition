@@ -131,6 +131,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         Updating with the current syllable
         Trials are 0-indexed so we add 1 here to be in a better format for showing
         """
+        logger.debug("update_trial: trial=%r syllable=%s", trial, syllable)
         self.current_text.SetLabel(f"Say {syllable} again")
         self.trial_text.SetLabel(f"Trial # {trial + 1}")
         self.current_syllable = syllable
