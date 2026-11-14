@@ -415,7 +415,7 @@ class CamerasFrontend:
             remain = max(0, p_timeout - time.perf_counter())
             multi_cam.join(remain)
 
-        p_timeout = time.perf_counter() + 1.5
+        p_timeout = time.perf_counter() + 2
         for cam in self._cam_by_idx:
             multi_cam = self.multi_cameras.get(cam.serial)
             if multi_cam is None:
@@ -428,7 +428,10 @@ class CamerasFrontend:
         for cam in self._cam_by_idx:
             cam.camq.close()
             cam.camq_p2read.close()
+        p_timeout = time.perf_counter() + 1.5
         for multi_cam in self.multi_cameras.values():
+            remain = max(0, p_timeout - time.perf_counter())
+            multi_cam.join(remain)
             if multi_cam.is_alive():
                 logger.debug("killing %s", multi_cam.name)
                 multi_cam.kill()
@@ -437,9 +440,9 @@ class CamerasFrontend:
             remain = max(0, p_timeout - time.perf_counter())
             multi_cam.join(remain)
             if multi_cam.exitcode is None:
-                logger.warning("%s not finished. but continuing", cam.name)
+                logger.warning("%s not finished. but continuing", multi_cam.name)
             else:
-                logger.verbose("%s finished. exitcode=%s", cam.name, multi_cam.exitcode)
+                logger.verbose("%s finished. exitcode=%s", multi_cam.name, multi_cam.exitcode)
 
         self.cam_dict.clear()
         self.multi_cameras.clear()
