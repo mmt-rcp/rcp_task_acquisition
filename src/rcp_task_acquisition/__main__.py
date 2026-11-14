@@ -100,9 +100,16 @@ class App(wx.App):
             # could be a wheel install.. todo
             up2date_status = None
         if up2date_status is not None:
-            wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP)
+            # win = wx.GetActiveWindow()  # it's None still here.
+            box = wx.MessageDialog(None, up2date_status, "Information")
+            # wx.CallLater(100, box.SetFocus)
+            box.ShowModal()
+
+            # wx.MessageBox(up2date_status, style=wx.STAY_ON_TOP)
 
     def OnInit(self):
+        # self._main_frame = wx.Frame(None)
+        # self._main_frame.Show()
         self._check_repo_status()
 
         if False:

@@ -98,22 +98,8 @@ class LaunchPanel:
             box, size=wx.Size(450, -1), style=wx.CB_DROPDOWN, choices=[]
         )
         self.get_participants()
-
-        # combo.Bind(wx.EVT_TEXT, self.update_list)
-        # combo.Bind(wx.EVT_TEXT_ENTER, self.on_enter)
-        # combo.Bind(wx.EVT_COMBOBOX, )
         combo.Bind(wx.EVT_COMBOBOX, self._participant_id_combo_event)
-        # # combo.Bind(wx.EVT_CHAR, combo_char)
-        # def combo_change(v, orig=combo.ChangeValue):
-        #     logger.debug("in combo change")
-        #     orig(v)
-        #     combo.SetInsertionPointEnd()
-        #     combo.GetParent().SetCursor(wx.Cursor(wx.CURSOR_ARROW))
-        #     combo.SetFocus()
-        #
-        # combo.ChangeValue = combo_change
 
-        # self.participant_id.Bind(wx.EVT_COMBOBOX_DROPDOWN, self.on_dropdown)
         self.participant_remove = wx.Button(box, size=button_width, label="Remove Participant")
         self.participant_add = wx.Button(box, size=button_width, label="Add New Participant")
         self.participant_add.Bind(wx.EVT_BUTTON, self.add_participant)
