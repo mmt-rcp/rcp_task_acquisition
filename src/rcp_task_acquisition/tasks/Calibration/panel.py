@@ -21,18 +21,6 @@ class CalibrationPanel(TrialPanel):
         vertical_sizer.Add(self._set_up_timer(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    # def Show(self, show: bool = True):
-    #     logger.debug("showing with show=%s", show)
-    #     # self._frame_patient.Show(show)
-    #     ret = super().Show(show)
-    #     self.Update()
-    #     return ret
-    #
-    # def Hide(self):
-    #     logger.debug("Hide()")
-    #     # self._frame_patient.Hide()
-    #     return super().Hide()
-
     def _set_up_timer(self):
         self.seconds_text = wx.StaticText(self, label="Time: 0 mins, 0 secs")
         grid_sizer = wx.GridBagSizer(5, 4)
@@ -41,11 +29,11 @@ class CalibrationPanel(TrialPanel):
         )
         return grid_sizer
 
-    def reset(self, count: int):
-        self.seconds = 0
+    def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         self.seconds += 1
         self.display_mins = int(self.seconds / 60)
         self.display_secs = self.seconds % 60

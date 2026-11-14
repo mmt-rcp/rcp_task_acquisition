@@ -146,11 +146,15 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self.continue_button.Enable(False)
             self.next_button.Enable(False)
 
+    def set_trial_running(self, running: bool):
+        super().set_trial_running(running)
+        self.next_button.Enable(not running)
+
     def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds = -1
         self.seconds_text.SetLabel("Time: 0 secs")
         self.syllable_text.SetLabel(f"Syllable: {self.syllable}")
-        self.next_button.Enable(True)
         self.continue_button.SetLabel("Repeat Trial")
         self.continue_button.SetValue(False)
 
@@ -166,8 +170,8 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         return value
 
     def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.seconds = DDK_TRIAL_TIME
-        self.trial_is_active = True
         self.continue_button.SetLabel("Stop Trial")
         self.next_button.Enable(False)
         self.start_video_button.Enable(False)
@@ -190,6 +194,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.set_live_status()
 
     def stop_video(self):
+        super().stop_video()
         self.set_stopped_status()
         self.next_button.Enable(True)
 

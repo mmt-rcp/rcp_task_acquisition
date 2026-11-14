@@ -100,7 +100,8 @@ class VerbGenerationPanel(TrialPanel):
 
     def on_timer(self, event: wx.Event) -> None:
         self.seconds += 1
-        self.display_mins = int(self.timer.value / 60)
-        self.display_secs = self.timer.value % 60
+        timer_val = self.timer.value
+        self.display_mins = int(timer_val / 60)
+        self.display_secs = timer_val % 60
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {self.display_mins} mins, {self.display_secs} secs")

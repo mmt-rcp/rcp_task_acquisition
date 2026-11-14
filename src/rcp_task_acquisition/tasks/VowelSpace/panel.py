@@ -156,9 +156,11 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.set_live_status()
 
     def stop_video(self) -> None:
+        super().stop_video()
         self.set_stopped_status()
 
     def pause_video(self) -> None:
+        super().pause_video()
         self.video_buttons[1].SetLabel("Resume Video")
 
     def resume_video(self) -> None:

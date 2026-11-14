@@ -597,9 +597,9 @@ class MainFrame(wx.Frame):
             logger.debug("done stopping: %s", self.video_status.value)
 
     def pause_instructions(self, event: wx.Event) -> None:
-        geo = event.GetEventObject()
-        assert isinstance(geo, wx.ToggleButton)
-        if geo.GetValue():
+        toggle = event.GetEventObject()
+        assert isinstance(toggle, wx.ToggleButton)
+        if toggle.GetValue():
             self.video_status.value = VideoStatus.PAUSED
             self.trial_panel.pause_video()
         else:
