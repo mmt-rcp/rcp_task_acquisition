@@ -463,6 +463,7 @@ class N_back(bases.StimulusBase):
         )
 
         for index, trial_set in enumerate(trial_list):
+            logger.debug("%s: %s", index, trial_set)
             for t_index, trial in enumerate(trial_set):
                 if self.finish.value == 2:
                     self.display.flip()
