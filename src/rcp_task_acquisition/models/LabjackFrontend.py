@@ -4,6 +4,7 @@ frontend.
 """
 
 import ctypes
+import multiprocessing
 import time
 import typing
 from multiprocessing import Array, Queue, Value
@@ -68,7 +69,7 @@ class LabjackFrontend:
         self.labjack_queue: Queue[Any] = Queue()
         self.grasp_ready = grasp_ready
         self.labjack_is_csv = Value(ctypes.c_bool, False)
-        self.stream_started = Value(ctypes.c_bool, False)
+        self.stream_started = multiprocessing.Event()
         self.labjack_is_finished = Value(ctypes.c_bool, True)
         self.scan_rate = Value(ctypes.c_float, 0)
         self.hardware_test = hardware_test
@@ -161,10 +162,7 @@ class LabjackFrontend:
         self.labjack_is_finished.value = False
         proc = self.labjack_process = LabJackDataStream(
             self.array_length,
-            self.labjack_is_finished,
             self.labjack_arr,
-            self.labjack_is_csv,
-            self.labjack_queue,
             self.labjack_list,
             self.hardware_indices,
             self.button_pressed,
@@ -185,6 +183,7 @@ class LabjackFrontend:
 
     def stop_labjack(self) -> float:
         self.labjack_timer.Stop()
+        self._close_labjack()
         for index, lj_input in enumerate(self.hardware_indices):
             self.graph_panel.update_yaxis([np.nan] * self.array_length, index, lj_input.value)
         for index, constant_inputs in enumerate(self.constants):
@@ -194,31 +193,25 @@ class LabjackFrontend:
         new_arr = np.empty(80000 * (len(self.hardware_indices) + 3))
         new_arr.fill(np.nan)
         labjack_arr = self.labjack_arr.get_obj()
+        flat = new_arr.flatten()
         np.frombuffer(labjack_arr, dtype=ctypes.c_double).reshape(  # type: ignore
             # eventual todo: cannot get type hint right yet with shared array and np.frombuffer(...)
-            len(new_arr.flatten())
-        )[:] = new_arr.flatten()
+            len(flat)
+        )[:] = flat
         self.graph_panel.draw()
-        self._close_labjack()
         logger.info("labjack stopped")
         return self.scan_rate.value
 
     def _close_labjack(self):
-        self.labjack_is_finished.value = True
-        self.labjack_is_csv.value = False
-        self.stream_started.value = False
         proc = self.labjack_process
-        if proc is None:
-            return
-        proc.join(1)
-        if proc.is_alive():
-            logger.warning("labjack process still alive, terminating")
-            proc.terminate()
-            proc.join(1)
-        self.labjack_process = None
+        if proc is not None:
+            proc.request_stop()
+            proc.wait_stopped()
+            self.labjack_process = None
+        self.stream_started.clear()
 
     def labjack_event(self, event: wx.Event) -> None:
-        if not self.labjack_is_finished.value and self.stream_started.value:
+        if self.is_active() and self.stream_started.is_set():
             arr_step = 0
             # if self.handshake.value == 1:
             y_plot_points = np.frombuffer(self.labjack_arr.get_obj(), "d", len(self.labjack_arr))  # type: ignore
@@ -270,22 +263,24 @@ class LabjackFrontend:
                 self.graph_panel.set_visible_const(index)
                 arr_step += self.array_length
             # if self.handshake.value == 1:
+            flat = y_plot_points.flatten()
             np.frombuffer(self.labjack_arr.get_obj(), dtype=ctypes.c_double).reshape(  # type: ignore
-                len(y_plot_points.flatten())
-            )[:] = y_plot_points.flatten()
+                len(flat)
+            )[:] = flat
             # self.handshake.value = 0
             self.graph_panel.draw()
 
     def add_csv(self, labjack_file: str, serial: SerialDevice, msg: str) -> None:
-        self.labjack_queue.put(labjack_file, timeout=1)
-        self.labjack_is_csv.value = True
-
+        proc = self.labjack_process
+        if proc is not None:
+            proc.add_csv(labjack_file)
         self.serial_state = 0
         self._serial_dev = serial
         self.msg = msg
 
     def is_active(self) -> bool:
-        return not self.labjack_is_finished.value
+        proc = self.labjack_process
+        return proc is not None and proc.is_alive()
 
     def _update_graph_list(self, event: wx.Event) -> None:
         selected_list = []

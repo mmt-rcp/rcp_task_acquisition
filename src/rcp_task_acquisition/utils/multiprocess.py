@@ -1,8 +1,10 @@
 import functools
 import logging.config
+import multiprocessing
 import multiprocessing.queues as mp_queues
 import os
 import queue
+import threading
 from multiprocessing import Process
 from typing import Callable
 
@@ -66,15 +68,15 @@ class ProcessWithRemoteFunction(Process):
 
 
 class ProcessWithLogging(Process):
-    _orig_run: Callable
+    __orig_run: Callable
 
     @classmethod
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        cls._orig_run = cls.run
+        cls.__orig_run = cls.run
         if cls.run is Process.run:
             # ensure no loop
-            cls._orig_run = void_run_no_target
+            cls.__orig_run = void_run_no_target
         else:
             del cls.run
 
@@ -95,7 +97,7 @@ class ProcessWithLogging(Process):
         self._args = args
         self._kwargs = kwargs
         if target is None:
-            target = self._orig_run
+            target = self.__orig_run
             # def run(self): takes no arg/kwarg, so need:
             args = ()
             kwargs = None  # type: ignore
@@ -110,3 +112,87 @@ class ProcessWithLogging(Process):
         except BaseException as err:
             logger.exception("exiting due to: %s", err)
             raise
+
+
+class ProcessWithCommands(ProcessWithLogging):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, target=self._pre_start_commands_handler, **kwargs)
+        self._command_queue = multiprocessing.Queue(maxsize=32)
+        self._exit_requested = False
+
+    @classmethod
+    def __init_subclass__(cls) -> None:
+        cls.__orig_run = cls.run
+        super().__init_subclass__()
+
+    @staticmethod
+    def relay_to(func=None, *, timeout=1):
+        """Decorator to relay (without waiting result) a function call to the process"""
+
+        def wrapped(self: "ProcessWithCommands", *args, **kwargs):
+            if self.pid == os.getpid():
+                func(self, *args, **kwargs)
+            else:
+                data = func.__name__, (args, None if len(kwargs) == 0 else kwargs)
+                self._command_queue.put(data, timeout=timeout)
+
+        return wrapped
+
+    def _pre_start_commands_handler(self) -> None:
+        thread = threading.Thread(
+            target=self._commands_handler_run, daemon=True, name="commands-handler"
+        )
+        thread.start()
+        self.__orig_run(*self._args, **self._kwargs)
+
+    def request_stop(self) -> None:
+        if self.is_alive():
+            self._command_queue.put_nowait(None)
+
+    def wait_stopped(self, *, timeout_term: float = 2, timeout_kill: float = 2) -> None:
+        self.join(timeout_term)
+        if self.exitcode is None:
+            logger.warning("timeout waiting %s exited, terminating..", self.name)
+            self.terminate()
+            self.join(timeout_kill)
+            if self.exitcode is None:
+                logger.warning("timeout waiting %s terminated, killing..", self.name)
+                self.kill()
+        logger.verbose("joined process %s, exitcode=%s", self.name, self.exitcode)
+
+    def _commands_handler_run(self) -> None:
+        get = self._command_queue.get
+        while True:
+            try:
+                raw = get(timeout=1)
+            except queue.Empty:
+                continue
+            except (SystemExit, KeyboardInterrupt) as err:
+                logger.notice("received %s ; exiting", err)
+                break
+            except Exception as err:
+                logger.error("could not read from command queue: %s", err)
+                break
+            if raw is None:
+                logger.verbose("received None, exiting")
+                break
+            try:
+                cmd, (args, kwargs) = raw
+            except (TypeError, ValueError):
+                logger.error("invalid data: %s ; exiting", raw)
+                break  # don't even try to continue, fatal error.
+            try:
+                func = getattr(self, cmd)
+            except AttributeError:
+                logger.error("unhandled command: %s", cmd)
+                continue
+            logger.notice("executing command %s", cmd)
+            try:
+                func(*args) if kwargs is None else func(*args, **kwargs)
+            except (SystemExit, KeyboardInterrupt) as err:
+                logger.notice("received %s ; exiting", err)
+                break
+            except Exception as err:
+                logger.exception("failed exec %s: %s", cmd, err)
+
+        self._exit_requested = True
