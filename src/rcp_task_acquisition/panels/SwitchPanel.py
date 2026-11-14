@@ -94,7 +94,7 @@ class SwitchPanel:
             self.launch_panel.protocol_button.SetLabel("Loading...")
             self.launch_panel.enable_gui(False)
         else:
-            self.task_frame.msgq.put(StimulusMessage.SHOW_WINDOW)
+            self.task_frame.put_to_stimulus(StimulusMessage.SHOW_WINDOW)
             self.task_frame.controls_panel.quit_button.SetLabel("Loading...")
             self.task_frame.Hide()
             self.task_frame.Disable()

@@ -21,19 +21,17 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.seconds = 0
         self.trial_number = 0
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        static_box_sizer = self.setup_instruction_playback()
         vertical_sizer.Add(self._setup_vs(), 0, wx.ALIGN_LEFT | wx.ALL, 10)
-        vertical_sizer.Add(
-            self.add_video_panel(static_box_sizer), 0, wx.ALIGN_LEFT | wx.ALL, self.border
-        )
-        self.SetSizerAndFit(vertical_sizer)
+        grid_box_video_panel = self.add_video_panel()
+        static_box_sizer = self.setup_instruction_playback()
+        static_box_sizer.Add(grid_box_video_panel, 1, wx.EXPAND | wx.ALL, self.border)
+        vertical_sizer.Add(static_box_sizer, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.current_syllable = ""
-        self.rest_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
         self.instruction_paths = VIDEO_PATHS
         self.video_title.SetLabel("Instructions Overview: ")
         self.start_video_button.Enable(True)
         self.new_trial = False
+        self.SetSizer(vertical_sizer)
 
     def _setup_vs(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
@@ -43,7 +41,6 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.finish_text = wx.StaticText(self, label="")
         self.finish_text.Wrap(299)
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
         self.next_button = wx.Button(self, label="Next Trial")
         # self.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
 
@@ -57,7 +54,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         grid_sizer.Add(
             self.finish_text, pos=(2, 0), span=(0, 6), flag=wx.ALIGN_LEFT | wx.ALL, border=5
         )
-
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button, pos=(3, 0), span=(0, 2), flag=wx.ALIGN_LEFT | wx.TOP, border=5
         )
@@ -66,13 +63,13 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def add_video_panel(self, static_box_sizer) -> wx.GridBagSizer:
+    def add_video_panel(self) -> wx.GridBagSizer:
         self.syllable_video_title = wx.StaticText(self, label="Phrase Instructions:")
         self.syllable_start_video_button = wx.ToggleButton(
-            self, label="Start Video", size=(self.button_width * 2, -1)
+            self, label="Start Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button = wx.ToggleButton(
-            self, label="Pause Video", size=(self.button_width * 2, -1)
+            self, label="Pause Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button.Enable(False)
 
@@ -98,9 +95,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
-
-        static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
-        return static_box_sizer
+        return grid_sizer
 
     def is_finish(self) -> None:
         self.finish_text.SetLabel("Task Finished! Press 'End Task' to save data.")
@@ -149,49 +144,19 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
             value = "introduction"
         return value
 
-    def start_new_trial(self) -> None:
+    def start_new_task(self) -> None:
         self.repeat = True
         # self.repeat_trial.Enable(False)
         self.continue_button.Enable(True)
         self.finish_text.SetLabel("")
 
-    def get_buttons(self) -> None:
-        if self.syllable_start_video_button.GetValue():
-            self.video_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
-            self.other_buttons = [self.start_video_button, self.pause_video_button]
-        elif self.start_video_button.GetValue():
-            self.video_buttons = [self.start_video_button, self.pause_video_button]
-            self.other_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
-
     def start_video(self) -> None:
         self.get_buttons()
         # self.next_button.Enable(False)
-        self.continue_button.Enable(False)
-        self.video_buttons[0].SetLabel("Stop Video")
-        self.video_buttons[0].Enable(True)
-        self.video_buttons[1].Enable(True)
-
-        self.other_buttons[0].Enable(False)
-        self.other_buttons[1].Enable(False)
+        self.set_live_status()
 
     def stop_video(self) -> None:
-        self.video_buttons[0].SetLabel("Start Video")
-        self.video_buttons[0].SetValue(False)
-        if self.video_buttons[1].GetValue():
-            self.video_buttons[1].SetValue(False)
-            self.video_buttons[1].SetLabel("Pause Video")
-
-        self.video_buttons[1].Enable(False)
-        self.other_buttons[0].Enable(True)
-
-        # self.next_button.Enable(True)
-        self.continue_button.Enable(True)
+        self.set_stopped_status()
 
     def pause_video(self) -> None:
         self.video_buttons[1].SetLabel("Resume Video")

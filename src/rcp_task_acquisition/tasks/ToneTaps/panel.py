@@ -41,9 +41,6 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
         self.right_radio.SetValue(True)
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
 
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
         grid_sizer = wx.GridBagSizer(5, 4)
 
         grid_sizer.Add(
@@ -77,6 +74,7 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(4, 0),

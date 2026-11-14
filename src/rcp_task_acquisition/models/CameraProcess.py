@@ -10,6 +10,7 @@ import numpy as np
 import PySpin
 
 from rcp_task_acquisition.models.AsyncVideoWriter import AsyncFFmpegGPUWriter  # AsyncVideoWriter
+from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.camera_utils import identify_dropped_frames
 from rcp_task_acquisition.utils.config import CameraConfig, RcpUserConfig
 from rcp_task_acquisition.utils.logger import get_logger
@@ -61,22 +62,15 @@ class CamCtx:
 class multiCam_DLC_Cam(ProcessWithLogging):
     def __init__(
         self,
-        camq: multiprocessing.Queue,
-        camq_p2read: multiprocessing.Queue,
-        camID: str,
+        cam_settings: CamSettings,
         idList: list[str],
-        frmdim: FrameDimsTupleT,
         aq: SharedInt,
         frm: SharedInt,
-        array4feed: SharedArray,
-        frmGrab: SharedInt,
         dwnsmplfac: int,
         *,
-        config: CameraConfig,
         user_config: RcpUserConfig,
-        name: str,
     ):
-        super().__init__(daemon=True, name=name)
+        super().__init__(daemon=True, name=cam_settings.name)
         # NB: passing the enum member for name creates an issue when the sub-process is created/spawned:
         # Traceback (most recent call last):
         #   File "<string>", line 1, in <module>
@@ -88,22 +82,12 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         #     import yaml
         # ModuleNotFoundError: No module named 'yaml'
         # sys.path must not be fully populated when the preparation_data is unpickled.
-        self._cam_config = config
+        self._cam_settings = cam_settings
         self._user_config = user_config
-        self.cam_name = name
-        self.camID = camID
-        self.camq = camq
-        self.camq_p2read = camq_p2read
         self.idList = idList
-        self.frmdim = frmdim
         self.aq = aq
         self.frm = frm
-        self.array4feed = array4feed
-        self.frmGrab = frmGrab
         self.framerate: float = 0
-        # self.actual_exposure = None
-        # self.actual_frame_rate = None
-        # self.video_thread = None
         self.dwnsmplfac = dwnsmplfac
         self.async_writer: AsyncFFmpegGPUWriter | None = None
 
@@ -123,9 +107,24 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             CameraCommand.RECORD_PREP: self._cmd_recordPrep,
         }
 
+    @property
+    def _cam_config(self):
+        return self._cam_settings.base_config
+
+    @property
+    def frmdim(self):
+        return self._cam_settings.frame_dims
+
+    @property
+    def frmGrab(self):
+        return self._cam_settings.frmGrab
+
+    def _get_data(self, *, timeout: float = 5):
+        return self._cam_settings.camq.get(timeout=timeout)
+
     def _put_response(self, data, *, timeout=3):
         # using default timeout of 3s so to not hang in case the main process fails to read it after any command.
-        self.camq_p2read.put(data, timeout=timeout)
+        self._cam_settings.camq_p2read.put(data, timeout=timeout)
 
     def run(self) -> None:
         ctx = CamCtx()
@@ -159,7 +158,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
         while True:
             try:  # get a new msg command
-                msg = self.camq.get(timeout=0.5)  # using 0.5s wait timeout,
+                msg = self._get_data(timeout=0.5)  # using 0.5s wait timeout,
                 # could even use more, given nothing else to check/wait on here.
             except Empty:
                 continue
@@ -182,7 +181,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.method = "none"
         ctx.system = PySpin.System.GetInstance()
         ctx.cam_list = ctx.system.GetCameras()
-        cam = ctx.cam_list.GetBySerial(self.camID)
+        cam = ctx.cam_list.GetBySerial(self._cam_settings.serial)
         # logger.debug("got cam %s", cam)
         # see https://stackoverflow.com/
         #   questions/64660434/node-is-not-writable-exception-after-a-camera-crash#comment116606723_65018769
@@ -191,9 +190,10 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam.BeginAcquisition()
         cam.EndAcquisition()
         cam.DeInit()
+        del cam
         # then we can:
-        ctx.cam = ctx.cam_list.GetBySerial(self.camID)  # and it should be all good.
-        logger.verbose("got spin cam instance: %s", cam)
+        ctx.cam = ctx.cam_list.GetBySerial(self._cam_settings.serial)  # and it should be all good.
+        logger.verbose("got spin cam instance: %s", ctx.cam)
 
     def _cmd_InitM(self, ctx: CamCtx) -> None:
         ctx.ismaster = True
@@ -244,7 +244,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self._put_response("done")
 
     def _cmd_recordPrep(self, ctx: CamCtx) -> None:
-        path_base = self.camq.get(timeout=1)
+        path_base = self._get_data()
         logger.debug("using base_path=%s", path_base)
         if self.async_writer is not None:
             logger.verbose("async_writer already running")
@@ -280,7 +280,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam.BeginAcquisition()
         if ctx.ismaster or ctx.isunconnected:
             self.frm.value = 0
-            data = self.camq.get(timeout=3)
+            data = self._get_data(timeout=3)
             logger.debug("master got data: %s", data)
             cam.TriggerMode.SetValue(PySpin.TriggerMode_Off)
 
@@ -355,7 +355,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                         ctx.frameSml[:, :, :] = frame_results[
                             :: self.dwnsmplfac, :: self.dwnsmplfac, :
                         ]
-                        self.array4feed[
+                        self._cam_settings.array4feed[
                             0 : int(ctx.aqH * ctx.aqW * 3 / self.dwnsmplfac / self.dwnsmplfac)
                         ] = ctx.frameSml.flatten()
                     self.frmGrab.value = 1
@@ -363,7 +363,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             if ctx.ismaster:
                 self.frm.value += 1
 
-        after_data = self.camq.get(timeout=2)
+        after_data = self._get_data(timeout=2)
         if after_data != CameraCommand.STOP:
             logger.error(
                 "Received unexpected %s after acquire ; aq_val=%s. but still processing",
@@ -381,7 +381,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             if async_writer.dropped_by_writer:
                 logger.error(
                     "%s: writer dropped %s frames because the queue filled",
-                    self.camID,
+                    self.name,
                     async_writer.dropped_by_writer,
                 )
             (dropped_frame, total_frames, files_len) = identify_dropped_frames(
@@ -390,23 +390,31 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             percentage_dropped = int(np.ceil((dropped_frame / total_frames) * 100))
             logger.debug(
                 "%s: total: %s, dropped: %s, len: %s",
-                self.camID,
+                self.name,
                 total_frames,
                 dropped_frame,
                 files_len,
             )
-            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.cam_name)
+            logger.debug("%s%% of camera frames dropped for %s", percentage_dropped, self.name)
             self._put_response(percentage_dropped)
 
-        cam.EndAcquisition()
-        cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
-        self.frmGrab.value = 0
-        if ctx.ismaster:
-            cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-            cam.LineSource.SetValue(PySpin.LineSource_FrameTriggerWait)
-            cam.LineInverter.SetValue(True)
-            cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
-            cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
+        if cam is not None:
+            try:
+                cam.EndAcquisition()
+                cam.TriggerMode.SetValue(PySpin.TriggerMode_On)
+            except PySpin.SpinnakerException as err:
+                if err.errorcode != -1010:
+                    logger.exception("Could not stop acquisition: %s", err, stacklevel=1)
+            self.frmGrab.value = 0
+            if ctx.ismaster:
+                try:
+                    cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                    cam.LineSource.SetValue(PySpin.LineSource_FrameTriggerWait)
+                    cam.LineInverter.SetValue(True)
+                    cam.LineSelector.SetValue(PySpin.LineSelector_Line1)
+                    cam.LineSource.SetValue(PySpin.LineSource_Counter0Active)
+                except PySpin.SpinnakerException as err:
+                    logger.exception("Could stop line trigger: %s", err, stacklevel=1)
         self._put_response("done")
         logger.success("successfully stopped acquisition")
 
@@ -544,7 +552,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         self._put_response("done")
 
     def _cmd_updateSettings_part2(self, ctx: CamCtx) -> None:
-        method = self.camq.get(timeout=3)
+        method = self._get_data(timeout=3)
         logger.debug("received method: %s ; prev=%s", method, ctx.method)
         ctx.method = method
         cam = ctx.cam

@@ -11,18 +11,27 @@ from rcp_task_acquisition.panels.ImagePanel import ImagePanel
 from rcp_task_acquisition.utils.camera_settings import CamSettings
 from rcp_task_acquisition.utils.logger import get_logger
 
+# on purpose at the end. prevent import loop cycle.
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
+
 logger = get_logger(__name__)
 
 
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
+    button_width = 150
+    _continue_button_width: int | None = None
+
+    @property
+    def continue_button_width(self) -> int:
+        return self.button_width
+
     def __init__(self, parent: wx.Window, *, patient_monitor: int = 0) -> None:
         super().__init__(parent)
         self.seconds = 0
         self.trial_number = 0
         self.countdown_start = 0
-        self.button_width = 76
         self.border = 5
         self.trial_is_active = False
         self.instruction_paths: dict[str, str] = {}  # now currently unused
@@ -34,16 +43,14 @@ class TrialPanel(wx.Panel):
         self.timer: sharedctypes.Synchronized[int]
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_buttons(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        self._buttons_grid = self._setup_buttons()
+        vertical_sizer.Add(self._buttons_grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-        self.rest_timer = wx.Timer(self)
+        self.rest_timer = wx.Timer(
+            self
+        )  # 1s recurrent timer, started/stopped when trial panel is shown/hidden
         self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
-
-        # if type(self) is TrialPanel:
-        #     self.continue_button.Show()
-        # else:
-        #     self.continue_button.Hide()
 
         # for camera views on patient screen:
         self.im: list[AxesImage] = []
@@ -135,8 +142,10 @@ class TrialPanel(wx.Panel):
         return super().Close(force=force)
 
     def _setup_buttons(self):
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
-        self.continue_button.Hide()
+        self.continue_button = wx.ToggleButton(
+            self, label="Begin Trial", size=(self.continue_button_width, -1)
+        )
+        self.continue_button.Show(type(self) is not TrialPanel)
         self.repeat_trial_button = wx.ToggleButton(self, label="Repeat Trial", size=(150, -1))
         self.repeat_trial_button.Hide()
         grid_sizer = wx.GridBagSizer(0, 0)
@@ -156,22 +165,25 @@ class TrialPanel(wx.Panel):
         )
         return grid_sizer
 
-    def reset(self, count):
+    def reset(self, count: int) -> None:
         self.seconds = 0
 
-    def show(self):
+    def show(self) -> None:
         logger.verbose("show()")
         self.rest_timer.Start(1000)
         self.Show()
 
-    def hide(self):
+    def end_task(self) -> None:
+        self.hide()
+
+    def hide(self) -> None:
         self.rest_timer.Stop()
         self.Hide()
 
-    def start_trial(self):
+    def start_trial(self) -> None:
         self.trial_is_active = True
 
-    def end_trial(self):
+    def end_trial(self) -> None:
         self.trial_is_active = False
 
     def get_video_buttons(self):
@@ -203,7 +215,7 @@ class TrialPanel(wx.Panel):
     def on_timer(self, event: wx.Event) -> None:
         pass
 
-    def start_new_trial(self) -> None:
+    def start_new_task(self) -> None:
         self.trial_number = 0
 
     def update_values(self) -> None:
@@ -228,7 +240,10 @@ class TrialPanelWithInstructPlayback(TrialPanel):
     video_buttons: list[wx.ToggleButton]
     other_buttons: list[wx.ToggleButton]
 
-    def setup_instruction_playback(self):
+    syllable_start_video_button: wx.ToggleButton
+    syllable_pause_video_button: wx.ToggleButton
+
+    def setup_instruction_playback(self) -> wx.StaticBoxSizer:
         vid_title = self.video_title = wx.StaticText(self, label="")
         start_but = self.start_video_button = wx.ToggleButton(
             self, label="Play Video", size=(150, -1)
@@ -289,6 +304,17 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         super().stop_video()
         self.pause_video_button.SetLabel("Pause Video")
 
+    def set_stopped_status(self):
+        self.video_buttons[0].SetLabel("Start Video")
+        self.video_buttons[0].SetValue(False)
+        if self.video_buttons[1].GetValue():
+            self.video_buttons[1].SetValue(False)
+            self.video_buttons[1].SetLabel("Pause Video")
+        self.video_buttons[1].Enable(False)
+        self.other_buttons[0].Enable(True)
+        self.continue_button.Enable(True)
+        # self.next_button.Enable(True)
+
     def pause_video(self):
         self.pause_video_button.SetLabel("Resume Video")
         super().pause_video()
@@ -297,6 +323,24 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         self.pause_video_button.SetLabel("Pause Video")
         super().resume_video()
 
+    def get_buttons(self) -> None:
+        if self.syllable_start_video_button.GetValue():
+            self.video_buttons = [
+                self.syllable_start_video_button,
+                self.syllable_pause_video_button,
+            ]
+            self.other_buttons = [self.start_video_button, self.pause_video_button]
+        elif self.start_video_button.GetValue():
+            self.video_buttons = [self.start_video_button, self.pause_video_button]
+            self.other_buttons = [
+                self.syllable_start_video_button,
+                self.syllable_pause_video_button,
+            ]
 
-from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
-# on purpose at the end. prevent import loop cycle.
+    def set_live_status(self):
+        self.continue_button.Enable(False)
+        self.video_buttons[0].SetLabel("Stop Video")
+        self.video_buttons[0].Enable(True)
+        self.video_buttons[1].Enable(True)
+        self.other_buttons[0].Enable(False)
+        self.other_buttons[1].Enable(False)

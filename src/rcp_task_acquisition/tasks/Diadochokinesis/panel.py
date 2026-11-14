@@ -33,22 +33,21 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         super().__init__(parent, *args, **kwargs)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        static_box_sizer = self.setup_instruction_playback()
         vertical_sizer.Add(self._setup_ddk(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
-        vertical_sizer.Add(
-            self.add_video_panel(static_box_sizer), 0, wx.ALIGN_LEFT | wx.ALL, self.border
-        )
-        self.SetSizerAndFit(vertical_sizer)
+        video_panel = self.add_video_panel()
+        static_box_sizer = self.setup_instruction_playback()
+        static_box_sizer.Add(video_panel, 1, wx.EXPAND | wx.ALL, self.border)
+        vertical_sizer.Add(static_box_sizer, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.instruction_paths = DDK_PATHS
         self.video_title.SetLabel("Instructions Overview: ")
         self.start_video_button.Enable(True)
+        self.SetSizer(vertical_sizer)
 
     def _setup_ddk(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         self.syllable_text = wx.StaticText(self, label=f"Syllable: {self.syllable}")
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
         self.next_button = wx.Button(self, label="Next Trial")
         self.next_button.Bind(wx.EVT_BUTTON, self.next_trial)
 
@@ -75,6 +74,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(3, 0),
@@ -91,15 +91,15 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def add_video_panel(self, static_box_sizer):
+    def add_video_panel(self) -> wx.GridBagSizer:
         self.syllable_video_title = wx.StaticText(
             self, label=f"Syllable ({self.syllable}) Instructions:"
         )
         self.syllable_start_video_button = wx.ToggleButton(
-            self, label="Play Video", size=(self.button_width * 2, -1)
+            self, label="Play Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button = wx.ToggleButton(
-            self, label="Pause Video", size=(self.button_width * 2, -1)
+            self, label="Pause Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button.Enable(False)
 
@@ -125,9 +125,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
-
-        static_box_sizer.Add(grid_sizer, 1, wx.EXPAND | wx.ALL, self.border)
-        return static_box_sizer
+        return grid_sizer
 
     def next_trial(self, event: wx.Event):
         logger.verbose(
@@ -182,47 +180,18 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self.seconds += 1
             self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
 
-    def get_buttons(self):
-        if self.syllable_start_video_button.GetValue():
-            self.video_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
-            self.other_buttons = [self.start_video_button, self.pause_video_button]
-        elif self.start_video_button.GetValue():
-            self.video_buttons = [self.start_video_button, self.pause_video_button]
-            self.other_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
-
-    def end_trial(self):
+    def end_trial(self) -> None:
         super().end_trial()
         self.syllable_start_video_button.Enable(True)
 
     def start_video(self):
         self.get_buttons()
         self.next_button.Enable(False)
-        self.continue_button.Enable(False)
-        self.video_buttons[0].SetLabel("Stop Video")
-        self.video_buttons[0].Enable(True)
-        self.video_buttons[1].Enable(True)
-
-        self.other_buttons[0].Enable(False)
-        self.other_buttons[1].Enable(False)
+        self.set_live_status()
 
     def stop_video(self):
-        self.video_buttons[0].SetLabel("Start Video")
-        self.video_buttons[0].SetValue(False)
-        if self.video_buttons[1].GetValue():
-            self.video_buttons[1].SetValue(False)
-            self.video_buttons[1].SetLabel("Pause Video")
-
-        self.video_buttons[1].Enable(False)
-        self.other_buttons[0].Enable(True)
-
+        self.set_stopped_status()
         self.next_button.Enable(True)
-        self.continue_button.Enable(True)
 
     def pause_video(self):
         self.video_buttons[1].SetLabel("Resume Video")
@@ -230,7 +199,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
     def resume_video(self):
         self.video_buttons[1].SetLabel("Pause Video")
 
-    def start_new_trial(self):
+    def start_new_task(self) -> None:
         self.trial_number_ = 1
         self.trials = {}
         self.syllable_count = 0
