@@ -675,7 +675,11 @@ class MainFrame(wx.Frame):
                 cam_panel.play.SetValue(False)
             self.shared.value = -1
         elif cam_panel.play.GetValue() or button_label == "Hardware Test":
-            logger.debug("liveFeed->Hardware test: %r", button_label)
+            logger.debug(
+                "liveFeed->Hardware test: play=%s button=%r",
+                cam_panel.play.GetValue(),
+                button_label,
+            )
             if button_label == "Hardware Test":
                 self.Enable()
                 self.hardware_test = True
