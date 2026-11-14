@@ -746,8 +746,8 @@ class MainFrame(wx.Frame):
             if isinstance(self.trial_panel, CalibrationPanel):
                 controls_panel.session_button.Disable()
         else:
+            self.trial_panel.set_begin_trial_enabled(True)
             controls_panel.session_button.Enable()
-            self.trial_panel.continue_button.Enable()
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()
