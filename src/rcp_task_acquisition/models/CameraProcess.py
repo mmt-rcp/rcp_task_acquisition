@@ -158,6 +158,14 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         logged_init_failed = False
 
         while True:
+            try:  # get a new msg command
+                msg = self._get_data(timeout=1)  # using 1s wait timeout,
+                # could even use more, given nothing else to check/wait on here.
+            except Empty:
+                continue
+            if msg is None:
+                logger.verbose("got None, exiting")
+                break
             if ctx.cam is None:
                 try:
                     self._init_spin(ctx)
@@ -167,14 +175,6 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                         logged_init_failed = True
                         logger.error("cannot init cam: %s", err)
                     self._execute_release(ctx)
-            try:  # get a new msg command
-                msg = self._get_data(timeout=1)  # using 1s wait timeout,
-                # could even use more, given nothing else to check/wait on here.
-            except Empty:
-                continue
-            if msg is None:
-                logger.verbose("got None, exiting")
-                break
             if ctx.cam is None:
                 self._put_response("done-failed: cam init failed")
                 continue
