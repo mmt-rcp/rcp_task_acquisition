@@ -42,10 +42,10 @@ class CamCtx:
     isunconnected = False
     is_decreased = False
     record_frame_rate: float = 0
-    cam_list: PySpin.CameraList
-    cam: PySpin.Camera | None = None
-    system: PySpin.SystemPtr
+    cam_list: PySpin.CameraList | None
+    system: PySpin.SystemPtr | None = None
     processor: PySpin.ImageProcessor
+    cam: PySpin.Camera | None = None
     aqW: int
     aqH: int
     frameSml: np.ndarray
@@ -175,10 +175,12 @@ class multiCam_DLC_Cam(ProcessWithLogging):
                         logged_init_failed = True
                         logger.error("cannot init cam: %s", err)
                     self._execute_release(ctx)
-            if ctx.cam is None:
-                self._put_response("done-failed: cam init failed")
-                continue
+                    self._put_response("done-failed: cam init failed")
+                    continue
             self._handle_cmd(ctx, msg)
+        # end while True
+        if ctx.cam is not None:
+            self._execute_release(ctx)
 
     @staticmethod
     def _validate_cam(cam: PySpin.Camera | None) -> PySpin.Camera:
@@ -201,9 +203,9 @@ class multiCam_DLC_Cam(ProcessWithLogging):
 
     def _init_spin(self, ctx: CamCtx) -> None:
         ctx.method = "none"
-        ctx.system = PySpin.System.GetInstance()
-        ctx.cam_list = ctx.system.GetCameras()
-        cam = ctx.cam_list.GetBySerial(self._cam_settings.serial)
+        system = ctx.system = PySpin.System.GetInstance()
+        cam_list = ctx.cam_list = system.GetCameras()
+        cam = cam_list.GetBySerial(self._cam_settings.serial)
         # logger.debug("got cam %s", cam)
         # see https://stackoverflow.com/
         #   questions/64660434/node-is-not-writable-exception-after-a-camera-crash#comment116606723_65018769
@@ -214,7 +216,7 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         cam.DeInit()
         del cam
         # then we can:
-        ctx.cam = ctx.cam_list.GetBySerial(self._cam_settings.serial)  # and it should be all good.
+        ctx.cam = cam_list.GetBySerial(self._cam_settings.serial)  # and it should be all good.
         logger.verbose("got spin cam instance: %s", ctx.cam)
 
     def _cmd_InitM(self, ctx: CamCtx) -> None:
@@ -222,19 +224,27 @@ class multiCam_DLC_Cam(ProcessWithLogging):
         ctx.ismaster = True
         cam.Init()
         self.create_primary(cam)
-        self._put_response("done")
+        cnt = 0
+        p0 = time.perf_counter()
         while cam.TLStream.StreamOutputBufferCount() > 0:
             _image = cam.GetNextImage(100)
             _image.Release()
+            cnt += 1
+        logger.verbose("init done: purged=%s dur=%.3f", cnt, time.perf_counter() - p0)
+        self._put_response("done")
 
     def _cmd_InitS(self, ctx: CamCtx) -> None:
         cam = self._validate_cam(ctx.cam)
         cam.Init()
         self.create_secondary(cam, ctx.is_decreased)
-        self._put_response("done")
+        cnt = 0
+        p0 = time.perf_counter()
         while cam.TLStream.StreamOutputBufferCount() > 0:
             _image = cam.GetNextImage(100)
             _image.Release()
+            cnt += 1
+        logger.verbose("init done: purged=%s dur=%.3f", cnt, time.perf_counter() - p0)
+        self._put_response("done")
 
     def _cmd_InitC(self, ctx: CamCtx) -> None:
         cam = self._validate_cam(ctx.cam)
@@ -260,17 +270,23 @@ class multiCam_DLC_Cam(ProcessWithLogging):
             except Exception as err:
                 logger.error("spin cam DeInit failed: %s", err)
             ctx.cam = None
-        for serial_id in self.idList:
-            try:
-                ctx.cam_list.RemoveBySerial(serial_id)
-            except Exception as err:
-                if isinstance(err, PySpin.SpinnakerException) and err.errorcode == -1009:
-                    # serial not found
-                    pass
-                else:
-                    logger.error("remove serial %s: %s", serial_id, err)
-        ctx.cam_list.Clear()
-        ctx.system.ReleaseInstance()  # Release instance
+        cam_list = ctx.cam_list
+        if cam_list is not None:
+            ctx.cam_list = None
+            for serial_id in self.idList:
+                try:
+                    cam_list.RemoveBySerial(serial_id)
+                except Exception as err:
+                    if isinstance(err, PySpin.SpinnakerException) and err.errorcode == -1009:
+                        # serial not found
+                        pass
+                    else:
+                        logger.error("remove serial %s: %s", serial_id, err)
+            cam_list.Clear()
+        system = ctx.system
+        if system is not None:
+            ctx.system = None
+            system.ReleaseInstance()  # Release instance
 
     def _cmd_Release(self, ctx: CamCtx) -> None:
         self._execute_release(ctx)
