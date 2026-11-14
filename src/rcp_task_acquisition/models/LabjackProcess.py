@@ -108,6 +108,7 @@ class LabJackDataStream(ProcessWithCommands):
         except ljm.ljm.LJMError as err:
             logger.warning("eStreamStop failed: %s ; but continuing..", err)
         finally:
+            self._prev_scan_list = None
             ljm.close(handle)
             logger.debug("closed handle %s", handle)
 
@@ -124,8 +125,16 @@ class LabJackDataStream(ProcessWithCommands):
         time.sleep(1.5)
         self.__attempt_connect()
 
+    _prev_scan_list = None
+
     def __attempt_connect(self):
+        scan_list = self._prev_scan_list
+        if scan_list is None:
+            scan_list = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
+            if self.digital_inputs or self.extended_inputs:
+                scan_list.append(2580)
         self.handle = ljm.openS("ANY", "ANY", "ANY")
+        self._prev_scan_list = scan_list
         try:
             ljm.eStreamStop(self.handle)
         except ljm.ljm.LJMError as err:
@@ -138,17 +147,14 @@ class LabJackDataStream(ProcessWithCommands):
         # Key Details
         # • Default Value: 0 (uses the operating system default, which typically enables auto-tuning).
         # This is recommended for most use cases.
-        ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
         self._start_stream()
 
     def _start_stream(self):
-        scan_list = ljm.namesToAddresses(len(self.scan_list), self.scan_list)[0]
+        scan_list = self._prev_scan_list
+        ljm.eWriteNames(self.handle, len(self.input_names), self.input_names, self.voltage_ranges)
         logger.debug("ljm: addresses=%s", scan_list)
-        if self.digital_inputs or self.extended_inputs:
-            scan_list.append(2580)
-        numAddresses = len(scan_list)
         scan_rate = self.actualscanRate.value = ljm.eStreamStart(
-            self.handle, SCANS_PER_READ, numAddresses, scan_list, self.attemptedscanRate
+            self.handle, SCANS_PER_READ, len(scan_list), scan_list, self.attemptedscanRate
         )
         logger.success("started LJM stream on %s ; scan_rate=%s", self.handle, scan_rate)
 
