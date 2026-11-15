@@ -75,6 +75,7 @@ class VowelSpace(bases.StimulusBase):
         return metadata
 
     def reset_task(self) -> None:
+        super().reset_task()
         self.trial = 0
         self.repeat_num = 0
         self.is_finished = False

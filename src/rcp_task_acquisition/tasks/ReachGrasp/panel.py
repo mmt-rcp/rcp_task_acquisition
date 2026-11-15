@@ -108,15 +108,19 @@ class ReachGraspPanel(TrialPanel):
         )
         return grid_sizer
 
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disable = not running
+        self.left_radio.Enable(disable)
+        self.right_radio.Enable(disable)
+        self.hand_text.Enable(disable)
+        self.object_text.Enable(disable)
+        self.large_object_radio.Enable(disable)
+        self.pinch_object_radio.Enable(disable)
+        self.poke_object_radio.Enable(disable)
+
     def run_trial(self, count: int) -> None:
-        self.seconds = 0
-        self.left_radio.Enable(False)
-        self.right_radio.Enable(False)
-        self.hand_text.Enable(False)
-        self.object_text.Enable(False)
-        self.large_object_radio.Enable(False)
-        self.pinch_object_radio.Enable(False)
-        self.poke_object_radio.Enable(False)
+        super().run_trial(count)
         self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
 
@@ -135,14 +139,8 @@ class ReachGraspPanel(TrialPanel):
         return self.reach_hand, self.grasp_object  # , self.pace
 
     def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds = 5
-        self.left_radio.Enable(True)
-        self.right_radio.Enable(True)
-        self.hand_text.Enable(True)
-        self.object_text.Enable(True)
-        self.large_object_radio.Enable(True)
-        self.pinch_object_radio.Enable(True)
-        self.poke_object_radio.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
         self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")

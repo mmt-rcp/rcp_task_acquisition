@@ -122,14 +122,14 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.shown_image.Enable(True)
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         # self.seconds+=1
         self.display_mins = int(self.timer.value / 60)
         self.display_secs = self.timer.value % 60
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {self.display_mins} mins, {self.display_secs} secs")
 
-    def update_image(self, event):
+    def update_image(self, event: wx.Event) -> None:
         self.selection = self.image_choice.GetSelection()
         if self.selection >= len(self.image_path):
             wx_image = wx.Image(250, 250, clear=True)

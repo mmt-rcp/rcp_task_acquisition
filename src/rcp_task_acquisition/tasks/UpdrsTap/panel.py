@@ -31,7 +31,6 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
 
     def _setup_fingertap(self):
         self.trial_text = wx.StaticText(self, label="Trial # 1")
-
         self.type_text = wx.StaticText(self, label="Select Speed:")
         self.task_type_list = ["Slow and methodical", "Faster", "Fast as possible"]
         self.task_type = wx.Choice(self, id=wx.ID_ANY, choices=self.task_type_list)
@@ -98,14 +97,13 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
-    def run_trial(self, count: int) -> None:
-        # self.seconds = 10
-        self.trial_is_active = True
-        self.left_radio.Enable(False)
-        self.right_radio.Enable(False)
-        self.hand_text.Enable(False)
-        self.start_video_button.Enable(False)
-        # self.trial_text.SetLabel(f"Trial # {number}")
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disable = not running
+        self.left_radio.Enable(disable)
+        self.right_radio.Enable(disable)
+        self.hand_text.Enable(disable)
+        self.task_type.Enable(disable)
 
     def get_result(self) -> tuple[str, str]:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
@@ -117,27 +115,21 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
 
         return self.tap_hand, task_type
 
-    def on_select(self, event):
+    def on_select(self, event: wx.Event) -> None:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
 
     def reset(self, count: int) -> None:
-        self.trial_is_active = False
+        super().reset(count)
         self.seconds = 11
-        self.left_radio.Enable(True)
-        self.right_radio.Enable(True)
-        self.hand_text.Enable(True)
         self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
-        # self.continue_button.Enable(False)
-        self.continue_button.SetValue(False)
         self.continue_button.SetLabel("Begin Trial")
         self.trial_text.SetLabel(f"Trial # {count + 1}")
-        self.start_video_button.Enable(True)
 
     def start_new_task(self) -> None:
-        self.trial_number = 0
+        super().start_new_task()
         self.trial_text.SetLabel("Trial # 1")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {BASIC_TAPS_TIME - self.timer.value} secs")
         else:

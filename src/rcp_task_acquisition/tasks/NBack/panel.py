@@ -69,12 +69,15 @@ class NbackPanel(TrialPanel):
         self.trial_type = "practice" if self.practice.GetValue() else "real"
         return self.trial_type, NBACK_TYPES[self.nback_choice.GetSelection()]
 
-    def run_trial(self, count: int) -> None:
-        self.nback_choice.Enable(False)
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disabled = not running
+        self.nback_choice.Enable(disabled)
         for radio in self._group_radio_trial_kinds:
-            radio.Enable(False)
+            radio.Enable(disabled)
 
     def reset(self, count: int) -> None:
+        super().reset(count)
         self.nback_choice.Enable()
         for radio in self._group_radio_trial_kinds:
             radio.Enable()

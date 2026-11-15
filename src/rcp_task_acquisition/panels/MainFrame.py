@@ -308,6 +308,14 @@ class MainFrame(wx.Frame):
     def put_to_stimulus(self, data, *, timeout=3) -> None:
         self.msgq.put(data, timeout=timeout)
 
+    def flush_stimulus_input(self):
+        while True:
+            try:
+                lost = self.get_from_stimulus(timeout=0)
+            except queue.Empty:
+                break
+            logger.debug("missed stimulus result: %r", lost)
+
     def get_from_stimulus(self, *, timeout=3):
         return self.resultsq.get(timeout=timeout)
 
@@ -366,15 +374,15 @@ class MainFrame(wx.Frame):
         self._timer_task_start_end.StartOnce(1500)
         #
         if controls_panel.session_button.GetValue():
-            self.msgq.put(StimulusMessage.INITIALIZE)
+            self.finish.value = 0
+            self._start_new_task_trial_panel(self.task)
+            trial_panel = self.trial_panel
+            self.put_to_stimulus(StimulusMessage.INITIALIZE)
             # this recreates a new stimulus instance in the stimulus process.
             self.start_time = str(f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}Z")
             self.start_time_utc = str(f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}Z")
             self.task_active = True
             self.count = 0
-            self.finish.value = 0
-            self._start_new_task_trial_panel(self.task)
-            trial_panel = self.trial_panel
             is_success = self.lj.start_labjack()
             if not is_success:
                 controls_panel.session_button.SetValue(False)
@@ -421,9 +429,8 @@ class MainFrame(wx.Frame):
             if self.recording:
                 self.cams.stop_recording()
             trial_panel.end_task()
-            self.put_to_stimulus(StimulusMessage.END_TASK)
+            self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
             self.labjack_scan_rate = self.lj.stop_labjack()
-            self.finish.value = 0
             graph_panel.labjack_stream_button.Enable(True)
             if graph_panel.labjack_stream_button.GetValue():
                 graph_panel.labjack_stream_button.SetValue(False)
@@ -493,11 +500,12 @@ class MainFrame(wx.Frame):
             trial_panel.continue_button.SetLabel("Stop Trial")
             self.cams.start_recording(self.base_dir, self.sess_dir, self.path_base, self.count)
             self.liveTimer.Start(self.cameras_live_timer_refresh_delay_ms)
-            self.put_to_stimulus(StimulusMessage.RUN_TASK)
+            self.put_to_stimulus(StimulusMessage.RUN_TASK_TRIAL)
         else:
             logger.debug("stopping episode")
             self.controls_panel.hardware_button.Enable()
             self.finish.value = 2
+            self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
             self.rest_timer.Stop()
             if isinstance(trial_panel, SaraPanel):
                 trial_panel.show_scoring()
@@ -526,6 +534,7 @@ class MainFrame(wx.Frame):
     def next_trial(self, event: wx.Event) -> None:
         assert isinstance(self.trial_panel, VowelSpacePanel)
         self._update_data(False)
+        self.flush_stimulus_input()
         self.put_to_stimulus(StimulusMessage.VOWEL_SPACE)
         trial_info = self.get_from_stimulus()
         trial, syllable, finish = trial_info
@@ -540,25 +549,33 @@ class MainFrame(wx.Frame):
         self.trial_panel.repeat_event()
         self.trial_event()
 
+    _prev_finish_value = None
+    _prev_vid_status = None
+
     def update_intertrial(self, event: wx.Event) -> None:
         """Called by rest_timer recurrent timer (800ms)"""
-        logger.debug(
-            "update_intertrial: finish=%s, video=%s", self.finish.value, self.video_status.value
-        )
-        if self.video_status.value == VideoStatus.FINISHED:
-            logger.debug("in finish")
+        new_finish = self.finish.value
+        new_vid_stat = self.video_status.value
+        if (new_finish, new_vid_stat) != (self._prev_finish_value, self._prev_vid_status):
+            logger.verbose(
+                "update_intertrial: finish=%s, video=%s", self.finish.value, self.video_status.value
+            )
+            self._prev_finish_value = new_finish
+            self._prev_vid_status = new_vid_stat
+        if new_vid_stat == VideoStatus.FINISHED:
+            logger.debug("update_intertrial: video finished")
             self.trial_panel.stop_video()
             self.video_status.value = VideoStatus.NOT_PLAYING
-            logger.debug("called stop_video")
             self.rest_timer.Stop()
-        elif self.video_status.value == VideoStatus.ERROR:
+        elif new_vid_stat == VideoStatus.ERROR:
+            logger.verbose("update_intertrial: video error")
             self.trial_panel.stop_video()
             self.video_status.value = VideoStatus.NOT_PLAYING
             self.warning.update_error(WarnCat.VIDEO).display()
-        elif self.finish.value == 1 and not isinstance(
+        elif new_finish == 1 and not isinstance(
             self.controls_panel.task_panel, (NaturalisticSpeechPanel, VowelSpacePanel)
         ):
-            # logger.debug("in intertrial")
+            logger.verbose("update_intertrial: finish==1")
             self.participant_monitor.update_screen()
             self.cams.stop_recording()
             self.trial_panel.reset(self.count)
@@ -592,9 +609,9 @@ class MainFrame(wx.Frame):
             logger.debug("done stopping: %s", self.video_status.value)
 
     def pause_instructions(self, event: wx.Event) -> None:
-        geo = event.GetEventObject()
-        assert isinstance(geo, wx.ToggleButton)
-        if geo.GetValue():
+        toggle = event.GetEventObject()
+        assert isinstance(toggle, wx.ToggleButton)
+        if toggle.GetValue():
             self.video_status.value = VideoStatus.PAUSED
             self.trial_panel.pause_video()
         else:
@@ -646,7 +663,7 @@ class MainFrame(wx.Frame):
     def _stop_hardware_test(self) -> None:
         self.finish.value = 2
         self._show_patient_cams(False)
-        self.put_to_stimulus(StimulusMessage.END_TASK)
+        self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
         self.cam_test.value = False
         self.hardware_test = False
         graph_panel = self.graph_panel
@@ -678,7 +695,11 @@ class MainFrame(wx.Frame):
                 cam_panel.play.SetValue(False)
             self.shared.value = -1
         elif cam_panel.play.GetValue() or button_label == "Hardware Test":
-            logger.debug("liveFeed->Hardware test: %r", button_label)
+            logger.debug(
+                "liveFeed->Hardware test: play=%s button=%r",
+                cam_panel.play.GetValue(),
+                button_label,
+            )
             if button_label == "Hardware Test":
                 self.Enable()
                 self.hardware_test = True
@@ -745,8 +766,8 @@ class MainFrame(wx.Frame):
             if isinstance(self.trial_panel, CalibrationPanel):
                 controls_panel.session_button.Disable()
         else:
-            controls_panel.session_button.Enable()
             self.trial_panel.set_begin_trial_enabled(True)
+            controls_panel.session_button.Enable()
             self.shared.value = -1
             if self.liveTimer.IsRunning():
                 self.liveTimer.Stop()

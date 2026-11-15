@@ -114,6 +114,14 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disabled = not running
+        self.phonemic_choice.Enable(disabled)
+        self.semantic_choice.Enable(disabled)
+        self.semantic_task.Enable(disabled)
+        self.phonemic_task.Enable(disabled)
+
     def switch_panel(self) -> None:
         self.phonemic_choice.Enable(False)
         self.semantic_choice.Enable(False)
@@ -173,10 +181,6 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def get_instruction(self, count: int) -> str:
         return self.value
 
-    def reset(self, count: int) -> None:
-        super().reset(count)
-        self.continue_button.Enable(True)
-
     def add_metadata(self) -> dict[str, Any]:
         return {"phonemic_category": self.phonemic_list, "semantic_category": self.semantic}
 
@@ -185,8 +189,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self.seconds_text.SetLabel(f"Time: {TRIAL_TIME - self.timer.value} secs")
 
     def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.seconds = 60
-        self.start_trial()
 
     def get_trials(self) -> tuple[str, str, str]:
         logger.debug(
