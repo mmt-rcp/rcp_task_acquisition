@@ -344,15 +344,17 @@ class MainFrame(wx.Frame):
         if cams.camaq.value == 2:
             return
         self.cams.vidPlayer(event)  # should it be better after the following code block ?
+        show_cams_patient = self.controls_panel.show_patient_cams_button.GetValue()
         for cam in cams.cam_dict.values():
             if cam.frmGrab.value == 1:
                 cam.frameBuff[0:] = np.frombuffer(cam.array4feed.get_obj(), self.dtype, cam.size)
                 cam.apply_new_dims(cam.frame_size)
                 self.cams.on_cam_update(cam, cam.frame)
-                if cam.idx == cams.cam_pointer:
-                    self.trial_panel.on_camera_frame_update(0, cam.frame)
-                elif cam.idx == cams.cam_pointer + 1:
-                    self.trial_panel.on_camera_frame_update(1, cam.frame)
+                if show_cams_patient:
+                    if cam.idx == cams.cam_pointer:
+                        self.trial_panel.on_camera_frame_update(0, cam.frame)
+                    elif cam.idx == cams.cam_pointer + 1:
+                        self.trial_panel.on_camera_frame_update(1, cam.frame)
 
                 cam.frmGrab.value = 0  # only after, when fully consumed,
                 # to get eventually a more recent one on next turn.
