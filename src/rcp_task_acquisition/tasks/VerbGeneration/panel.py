@@ -34,7 +34,8 @@ class VerbGenerationPanel(TrialPanel):
                 self.verb_lists.append(list_str)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._set_up_photo(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._set_up_photo()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
     def _set_up_photo(self) -> wx.GridBagSizer:
@@ -78,6 +79,7 @@ class VerbGenerationPanel(TrialPanel):
         return grid_sizer
 
     def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.seconds = 0
         self.trial_number = count
         self.trial_is_active = True
@@ -89,6 +91,7 @@ class VerbGenerationPanel(TrialPanel):
         return list_choice
 
     def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds = 0
         self.trial_number = count
         self.trial_is_active = False

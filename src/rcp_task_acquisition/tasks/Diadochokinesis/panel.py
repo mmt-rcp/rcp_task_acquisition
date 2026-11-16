@@ -33,8 +33,9 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         super().__init__(parent, *args, **kwargs)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_ddk(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
-        video_panel = self.add_video_panel()
+        main_grid = self._main_grid = self._setup_ddk()
+        vertical_sizer.Add(main_grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        video_panel = self._video_panel = self.add_video_panel()
         static_box_sizer = self.setup_instruction_playback()
         static_box_sizer.Add(video_panel, 1, wx.EXPAND | wx.ALL, self.border)
         vertical_sizer.Add(static_box_sizer, 0, wx.ALIGN_LEFT | wx.ALL, self.border)

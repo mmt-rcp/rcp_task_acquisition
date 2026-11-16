@@ -24,7 +24,8 @@ class SaraPanel(TrialPanel):
         self.actual_assessments: dict[str, dict[str, Any]] = {}
         self.recent_trials: dict[str, int] = {}
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_panel(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_panel()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         # vertical_sizer.Add(self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
         self.edit_num: str | None = None
@@ -83,6 +84,9 @@ class SaraPanel(TrialPanel):
         )
         self.edit_button.Bind(wx.EVT_BUTTON, self.edit_score)
         return grid_sizer
+
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
 
     def Hide(self) -> bool:
         self.close_scoring()

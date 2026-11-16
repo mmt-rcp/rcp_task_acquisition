@@ -22,6 +22,8 @@ class TrialPanel(wx.Panel):
     button_width = 150
     _continue_button_width: int | None = None
 
+    _main_grid: wx.GridBagSizer | None = None
+
     @property
     def continue_button_width(self) -> int:
         return self.button_width
@@ -95,6 +97,13 @@ class TrialPanel(wx.Panel):
         logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
         self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroyed, self)
 
+    @staticmethod
+    def set_grid_group_enable(grid: wx.GridBagSizer, enabled: bool) -> None:
+        for child in grid.Children:
+            sub = child.GetWindow()
+            if sub is not None:
+                sub.Enable(enabled)
+
     @property
     def patient_frame(self) -> wx.Frame:
         return self._frame_patient
@@ -141,7 +150,7 @@ class TrialPanel(wx.Panel):
         self._close_patient_win()
         return super().Close(force=force)
 
-    def _setup_buttons(self):
+    def _setup_buttons(self) -> wx.GridBagSizer:
         self.continue_button = wx.ToggleButton(
             self, label="Begin Trial", size=(self.continue_button_width, -1)
         )
@@ -188,6 +197,10 @@ class TrialPanel(wx.Panel):
     def set_trial_running(self, running: bool) -> None:
         """must be extended by subclasses"""
         enabled = not running
+        grid = self._main_grid
+        if grid is not None:
+            self.set_grid_group_enable(grid, enabled)
+        self.continue_button.Enable()  # always enabled
         for but in (
             self.repeat_trial_button,
             self.start_video_button,
@@ -235,14 +248,16 @@ class TrialPanel(wx.Panel):
 
     def set_begin_trial_enabled(self, enabled: bool = True):
         """can be extended by subclasses"""
-        # self.Enable(enabled)
-        self.continue_button.Enable(enabled)
-        self.repeat_trial_button.Enable(enabled)
-        with wx.EventBlocker(self.repeat_trial_button):
-            self.repeat_trial_button.SetValue(False)
-        next_button: wx.ToggleButton | None = getattr(self, "next_button", None)
-        if next_button is not None:
-            next_button.Enable(enabled)
+        # self.continue_button.Enable(enabled)
+        # self.repeat_trial_button.Enable(enabled)
+        # with wx.EventBlocker(self.repeat_trial_button):
+        #     self.repeat_trial_button.SetValue(False)
+        # next_button: wx.ToggleButton | None = getattr(self, "next_button", None)
+        # if next_button is not None:
+        #     next_button.Enable(enabled)
+        grid = self._main_grid
+        if grid is not None:
+            self.set_grid_group_enable(grid, enabled)
 
     def start_new_task(self) -> None:
         """must be extended by subclasses"""

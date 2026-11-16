@@ -22,14 +22,15 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
         self.tap_hand = "Left"
         self.instruction_paths = IVRY_TAPS_VIDEO_PATHS
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_fingertap()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
         self.start_video_button.Enable(True)
         self.SetSizer(vertical_sizer)
 
-    def _setup_fingertap(self):
+    def _setup_fingertap(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
 
         self.hand_text = wx.StaticText(self, label="Choose which hand trial will use:")

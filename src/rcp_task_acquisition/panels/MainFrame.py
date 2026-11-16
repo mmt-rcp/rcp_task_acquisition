@@ -673,6 +673,7 @@ class MainFrame(wx.Frame):
         self.set_contrast()
         graph_panel.hardware_panel.Hide()
         self.controls_panel.show_patient_cams_button.Hide()
+        self.controls_panel.hardware_button.SetLabel("Hardware Test")
         self.hardware_test = False
 
     def liveFeed(self) -> None:

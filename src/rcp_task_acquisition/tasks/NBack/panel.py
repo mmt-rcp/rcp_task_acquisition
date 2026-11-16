@@ -18,7 +18,8 @@ class NbackPanel(TrialPanel):
         super().__init__(parent, *args, **kwargs)
         self.trial_type = "real"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_nback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_nback()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
     def _setup_nback(self) -> wx.GridBagSizer:

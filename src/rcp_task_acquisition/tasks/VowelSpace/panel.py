@@ -24,7 +24,8 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.seconds = 0
         self.trial_number = 0
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_vs(), 0, wx.ALIGN_LEFT | wx.ALL, 10)
+        grid = self._main_grid = self._setup_vs()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, 10)
         grid_box_video_panel = self.add_video_panel()
         static_box_sizer = self.setup_instruction_playback()
         static_box_sizer.Add(grid_box_video_panel, 1, wx.EXPAND | wx.ALL, self.border)
@@ -116,10 +117,6 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
 
     def get_result(self) -> bool:
         return True  # self.repeat
-
-    def reset(self, count: int) -> None:
-        pass
-        # self.timestamps = {}  unused
 
     def run_trial(self, count: int) -> None:
         super().run_trial(count)

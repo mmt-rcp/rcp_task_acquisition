@@ -37,7 +37,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.trial_is_active = False
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_panel(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_panel()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )

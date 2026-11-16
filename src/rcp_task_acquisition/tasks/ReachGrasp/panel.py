@@ -17,7 +17,8 @@ class ReachGraspPanel(TrialPanel):
         self.grasp_object = "Large"
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_fingertap()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
     def _setup_fingertap(self) -> wx.GridBagSizer:
