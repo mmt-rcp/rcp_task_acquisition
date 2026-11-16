@@ -178,7 +178,8 @@ class TrialPanel(wx.Panel):
         """must be extended by subclasses"""
         self.trial_is_active = False
         self.seconds = 0
-        self.continue_button.Enable(True)
+        self.continue_button.Enable()
+        self.continue_button.SetLabel("Begin Trial")
         with wx.EventBlocker(self.continue_button):
             self.continue_button.SetValue(False)
 
@@ -260,8 +261,13 @@ class TrialPanel(wx.Panel):
             self.set_grid_group_enable(grid, enabled)
 
     def start_new_task(self) -> None:
-        """must be extended by subclasses"""
+        """Start a new task, i.e not trial execution. must be extended by subclasses"""
         self.trial_number = 0
+        self.continue_button.SetLabel("Begin Trial")
+        grid = self._main_grid
+        if grid is not None:
+            self.set_grid_group_enable(grid, False)
+            self.continue_button.Enable()
 
     def update_values(self) -> None:
         pass
