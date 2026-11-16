@@ -235,8 +235,8 @@ class StimulusThread(ProcessWithLogging):
             try:
                 self.check_command(0.1)
             except Exception as err:
-                logger.exception("Error during main loop: %s", err)
-                self._handle_close_window()
+                logger.exception("Error during main loop: %s ; but continuing", err)
+                self.end_stimulus()
                 break
         logger.verbose("exiting")
 
@@ -259,10 +259,12 @@ class StimulusThread(ProcessWithLogging):
         try:
             handler()
         except SystemExit:
-            logger.debug("interrupted stimulus")
-            self.end_stimulus()
             # don't see which part of the code is supposed to raise SystemExit to reach here
             # also SystemExit is meant to exit the process. but this is continuing the main loop...
+            logger.debug("interrupted stimulus")
+            self.end_stimulus()
+        except Exception as err:
+            logger.exception("%s failed: %s", handler.__name__, err)
         finally:
             self._reentrant_check_commands -= 1
 
