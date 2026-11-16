@@ -1,5 +1,4 @@
 import warnings
-from logging import warning
 from multiprocessing import sharedctypes
 from typing import Any
 
@@ -212,14 +211,17 @@ class TrialPanel(wx.Panel):
     def start_video(self):
         self.set_begin_trial_enabled(False)
 
-    def stop_video(self):
+    def stop_video(self) -> None:
+        """must be extended by subclasses"""
         self.set_begin_trial_enabled(True)
 
-    def pause_video(self):
-        self.set_begin_trial_enabled(True)
+    def pause_video(self) -> None:
+        """must be extended by subclasses"""
+        pass
 
-    def resume_video(self):
-        self.set_begin_trial_enabled(False)
+    def resume_video(self) -> None:
+        """must be extended by subclasses"""
+        pass
 
     def run_trial(self, count) -> None:
         self.start_trial()
@@ -236,11 +238,14 @@ class TrialPanel(wx.Panel):
         # self.Enable(enabled)
         self.continue_button.Enable(enabled)
         self.repeat_trial_button.Enable(enabled)
+        with wx.EventBlocker(self.repeat_trial_button):
+            self.repeat_trial_button.SetValue(False)
         next_button: wx.ToggleButton | None = getattr(self, "next_button", None)
         if next_button is not None:
             next_button.Enable(enabled)
 
     def start_new_task(self) -> None:
+        """must be extended by subclasses"""
         self.trial_number = 0
 
     def update_values(self) -> None:
@@ -265,13 +270,13 @@ class TrialPanelWithInstructPlayback(TrialPanel):
     video_buttons: list[wx.ToggleButton]
     other_buttons: list[wx.ToggleButton]
 
-    syllable_start_video_button: wx.ToggleButton
-    syllable_pause_video_button: wx.ToggleButton
+    syllable_start_video_button: wx.ToggleButton | None = None
+    syllable_pause_video_button: wx.ToggleButton | None = None
 
     def setup_instruction_playback(self) -> wx.StaticBoxSizer:
         vid_title = self.video_title = wx.StaticText(self, label="")
         start_but = self.start_video_button = wx.ToggleButton(
-            self, label="Play Video", size=(150, -1)
+            self, label="Start Video", size=(150, -1)
         )
         start_but.Enable(False)
         pause_but = self.pause_video_button = wx.ToggleButton(
@@ -307,71 +312,90 @@ class TrialPanelWithInstructPlayback(TrialPanel):
 
         return static_box_sizer
 
+    def set_begin_trial_enabled(self, enabled: bool = True):
+        super().set_begin_trial_enabled(enabled)
+        self.get_buttons()
+        for group in self.video_buttons, self.other_buttons:
+            if len(group) > 1:
+                group[0].Enable(enabled)
+                group[1].Enable(False)
+
     def set_trial_running(self, running: bool) -> None:
         super().set_trial_running(running)
+        self.get_buttons()
         enabled = not running
-        for elem in (
-            self.start_video_button,
-            self.pause_video_button,
-            self.syllable_start_video_button,
-            self.syllable_pause_video_button,
-        ):
-            elem.Enable(enabled)
-
-    def end_trial(self) -> None:
-        super().end_trial()
-        self.start_video_button.Enable(True)
+        for group in self.video_buttons, self.other_buttons:
+            if len(group) > 0:
+                group[0].Enable(enabled)
 
     def start_video(self) -> None:
         super().start_video()
-        self.start_video_button.SetLabel("Stop Video")
-        self.pause_video_button.Enable(True)
+        start, pause = self.get_buttons()
+        start.Enable()
+        start.SetLabel("Stop Video")
+        pause.Enable()
 
     def stop_video(self) -> None:
         super().stop_video()
-        self.start_video_button.SetLabel("Start Video")
-        self.start_video_button.SetValue(False)
-        self.pause_video_button.SetValue(False)
-        self.pause_video_button.Enable(False)
-        self.pause_video_button.SetLabel("Pause Video")
+
+        def reset_start_pause(start, pause):
+            start.SetLabel("Start Video")
+            pause.SetLabel("Pause Video")
+            for but in start, pause:
+                with wx.EventBlocker(but):
+                    but.SetValue(False)
+            start.Enable()
+            pause.Disable()
+
+        reset_start_pause(*self.get_buttons())
+        if len(self.other_buttons) > 1:
+            reset_start_pause(self.other_buttons[0], self.other_buttons[1])
 
     def set_stopped_status(self):
-        self.video_buttons[0].SetLabel("Start Video")
-        self.video_buttons[0].SetValue(False)
-        if self.video_buttons[1].GetValue():
-            self.video_buttons[1].SetValue(False)
-            self.video_buttons[1].SetLabel("Pause Video")
-        self.video_buttons[1].Enable(False)
-        self.other_buttons[0].Enable(True)
+        start, pause = self.get_buttons()
+        start.SetLabel("Start Video")
+        start.SetValue(False)
+        if pause.GetValue():
+            pause.SetValue(False)
+            pause.SetLabel("Pause Video")
+        pause.Enable(False)
+        if len(self.other_buttons) > 0:
+            self.other_buttons[0].Enable(True)
         self.continue_button.Enable(True)
         # self.next_button.Enable(True)
 
-    def pause_video(self):
+    def pause_video(self) -> None:
         super().pause_video()
-        self.pause_video_button.SetLabel("Resume Video")
+        self.video_buttons[1].SetLabel("Resume Video")
 
-    def resume_video(self):
-        self.pause_video_button.SetLabel("Pause Video")
+    def resume_video(self) -> None:
         super().resume_video()
+        self.video_buttons[1].SetLabel("Pause Video")
 
-    def get_buttons(self) -> None:
-        if self.syllable_start_video_button.GetValue():
-            self.video_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
+    def get_buttons(self) -> tuple[wx.ToggleButton, wx.ToggleButton]:
+        syllab_start = self.syllable_start_video_button
+        syllab_pause = self.syllable_pause_video_button
+        if syllab_start is not None and syllab_start.GetValue():
+            assert syllab_pause is not None
+            self.video_buttons = [syllab_start, syllab_pause]
             self.other_buttons = [self.start_video_button, self.pause_video_button]
-        elif self.start_video_button.GetValue():
+        else:
             self.video_buttons = [self.start_video_button, self.pause_video_button]
-            self.other_buttons = [
-                self.syllable_start_video_button,
-                self.syllable_pause_video_button,
-            ]
+            self.other_buttons = (
+                [
+                    syllab_start,
+                    syllab_pause,
+                ]
+                if syllab_start is not None and syllab_pause is not None
+                else []
+            )
+        return self.video_buttons[0], self.video_buttons[1]
 
     def set_live_status(self):
+        start, pause = self.get_buttons()
         self.continue_button.Enable(False)
-        self.video_buttons[0].SetLabel("Stop Video")
-        self.video_buttons[0].Enable(True)
-        self.video_buttons[1].Enable(True)
-        self.other_buttons[0].Enable(False)
-        self.other_buttons[1].Enable(False)
+        start.SetLabel("Stop Video")
+        start.Enable(True)
+        pause.Enable(True)
+        for but in self.other_buttons:
+            but.Enable(False)

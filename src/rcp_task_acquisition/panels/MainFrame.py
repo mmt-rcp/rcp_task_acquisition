@@ -513,13 +513,11 @@ class MainFrame(wx.Frame):
                 trial_panel.update_values()
                 logger.debug("ending verbal fluency")
             elif isinstance(trial_panel, VowelSpacePanel):
-                trial_panel.repeat_trial_button.Enable(True)
+                trial_panel.set_begin_trial_enabled(True)
                 trial_panel.continue_button.SetLabel("Repeat Trial")
-                trial_panel.repeat_trial_button.SetValue(False)
                 self.cams.stop_recording()
                 self.liveTimer.Stop()
                 # self.rest_timer.Stop()
-                trial_panel.next_button.Enable(True)
                 self.update_task_metadata()
                 return
             self.participant_monitor.update_screen()
@@ -1183,7 +1181,7 @@ class MainFrame(wx.Frame):
         self.video_start, self.video_pause = trial_panel.get_video_buttons()
         if self.video_start is not None:
             self.video_start.Bind(wx.EVT_TOGGLEBUTTON, self.play_instructions)
-            # if self.video_pause is not None:
+            assert self.video_pause is not None
             self.video_pause.Bind(wx.EVT_TOGGLEBUTTON, self.pause_instructions)
             if isinstance(trial_panel, (DdkPanel, VowelSpacePanel)):
                 trial_panel.syllable_start_video_button.Bind(

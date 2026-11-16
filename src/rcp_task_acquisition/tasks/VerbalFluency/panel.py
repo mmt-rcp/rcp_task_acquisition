@@ -173,7 +173,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.actual_list.append(self.value)
         self.video_title.SetLabel(f"Trial: {self.value}")
         self.start_video_button.SetValue(False)
-        self.start_video_button.SetLabel("Play Video")
+        self.start_video_button.SetLabel("Start Video")
 
     def get_result(self) -> str:
         return self.value
@@ -213,7 +213,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.continue_button.SetLabel("Begin Trial")
         self.video_title.SetLabel("")
         self.start_video_button.SetValue(False)
-        self.start_video_button.SetLabel("Play Video")
+        self.start_video_button.SetLabel("Start Video")
         self.start_video_button.Enable(False)
         self.Layout()
         self.Update()

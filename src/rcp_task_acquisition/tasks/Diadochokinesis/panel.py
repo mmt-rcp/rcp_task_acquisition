@@ -96,7 +96,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self, label=f"Syllable ({self.syllable}) Instructions:"
         )
         self.syllable_start_video_button = wx.ToggleButton(
-            self, label="Play Video", size=(self.button_width, -1)
+            self, label="Start Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button = wx.ToggleButton(
             self, label="Pause Video", size=(self.button_width, -1)
@@ -193,7 +193,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.next_button.Enable(False)
         self.set_live_status()
 
-    def stop_video(self):
+    def stop_video(self) -> None:
         super().stop_video()
         self.set_stopped_status()
         self.next_button.Enable(True)
@@ -201,7 +201,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
     def pause_video(self):
         self.video_buttons[1].SetLabel("Resume Video")
 
-    def resume_video(self):
+    def resume_video(self) -> None:
         self.video_buttons[1].SetLabel("Pause Video")
 
     def start_new_task(self) -> None:
