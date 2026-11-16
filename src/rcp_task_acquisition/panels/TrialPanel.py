@@ -187,13 +187,15 @@ class TrialPanel(wx.Panel):
         self.Hide()
 
     def set_trial_running(self, running: bool) -> None:
+        """must be extended by subclasses"""
+        enabled = not running
         for but in (
             self.repeat_trial_button,
             self.start_video_button,
             self.pause_video_button,
         ):
             if but is not None:
-                but.Enable(not running)
+                but.Enable(enabled)
 
     def start_trial(self) -> None:
         self.trial_is_active = True
@@ -305,10 +307,16 @@ class TrialPanelWithInstructPlayback(TrialPanel):
 
         return static_box_sizer
 
-    def start_trial(self) -> None:
-        super().start_trial()
-        self.pause_video_button.Enable(False)
-        self.start_video_button.Enable(False)
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        enabled = not running
+        for elem in (
+            self.start_video_button,
+            self.pause_video_button,
+            self.syllable_start_video_button,
+            self.syllable_pause_video_button,
+        ):
+            elem.Enable(enabled)
 
     def end_trial(self) -> None:
         super().end_trial()
