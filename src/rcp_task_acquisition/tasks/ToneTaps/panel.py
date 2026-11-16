@@ -107,15 +107,10 @@ class ToneTapsClosedPanel(TrialPanelWithInstructPlayback):
     def reset(self, count: int) -> None:
         super().reset(count)
         self.seconds = 11
-        self.trial_is_active = False
         self.left_radio.Enable(True)
         self.right_radio.Enable(True)
         self.hand_text.Enable(True)
-        # self.rest_timer.Start(1000)
         self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
-        # self.continue_button.Enable(False)
-        self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Begin Trial")
         self.trial_text.SetLabel(f"Trial # {count}")
 
     def on_timer(self, event: wx.Event) -> None:

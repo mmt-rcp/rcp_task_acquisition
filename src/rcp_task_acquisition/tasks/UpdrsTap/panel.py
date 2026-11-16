@@ -123,7 +123,6 @@ class FingerTapPanel(TrialPanelWithInstructPlayback):
         super().reset(count)
         self.seconds = 11
         self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
-        self.continue_button.SetLabel("Begin Trial")
         self.trial_text.SetLabel(f"Trial # {count + 1}")
 
     def start_new_task(self) -> None:

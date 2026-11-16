@@ -143,8 +143,6 @@ class ReachGraspPanel(TrialPanel):
         super().reset(count)
         self.seconds = 5
         self.seconds_text.SetLabel("Time: 0 secs")
-        self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Begin Trial")
         self.trial_text.SetLabel(f"Trial # {count + 1}")
 
     def on_timer(self, event: wx.Event) -> None:

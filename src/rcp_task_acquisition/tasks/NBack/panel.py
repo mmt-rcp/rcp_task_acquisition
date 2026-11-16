@@ -82,6 +82,3 @@ class NbackPanel(TrialPanel):
         self.nback_choice.Enable()
         for radio in self._group_radio_trial_kinds:
             radio.Enable()
-        self.continue_button.Enable()
-        self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Begin Trial")
