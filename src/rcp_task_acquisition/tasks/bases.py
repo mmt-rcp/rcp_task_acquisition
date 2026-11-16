@@ -105,7 +105,14 @@ class StimulusBase:
     def play_instructional_video(self, trial_name: str):
         user_cfg = self._rcp_context.user_config
         logger.debug("play_instructional_video: trial name: %r", trial_name)
-        file = self.instructions_dict[trial_name]
+        try:
+            file = self.instructions_dict[trial_name]
+        except KeyError:
+            logger.error(
+                "%s not in instructions_dict (keys=%s)", trial_name, self.instructions_dict.keys()
+            )
+            self.video_status.value = VideoStatus.ERROR
+            return
         path = Path(user_cfg.VideoDir, file)
         if not path.exists():
             logger.error("video at %s does not exist", path)
