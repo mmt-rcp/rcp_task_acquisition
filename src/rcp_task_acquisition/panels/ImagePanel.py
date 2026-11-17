@@ -90,7 +90,7 @@ class ImagePanel(wx.Panel):
         self.Update()
 
     def draw(self):
-        self.figure.canvas.draw()
+        self.figure.canvas.draw_idle()
 
     def reset_sizing(self):
         self.canvas.ClearBackground()
