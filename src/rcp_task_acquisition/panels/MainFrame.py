@@ -73,7 +73,7 @@ class MainFrame(wx.Frame):
     trial_panel: TrialPanel
 
     cameras_live_timer_refresh_delay_ms = 150
-    patient_monitor_view_refresh_delay_ms = 50
+    patient_monitor_view_refresh_delay_ms = 150
 
     def __init__(self, parent: wx.Window | None = None, *, rcp_context: RcpRunContext) -> None:
         self._rcp_context = rcp_context
@@ -250,11 +250,16 @@ class MainFrame(wx.Frame):
         # check the correct monitors are displayed
         # if wx.Display.GetCount() < 2:
 
-        self.video_timer = wx.Timer(self, wx.ID_ANY)
-        self.Bind(
-            wx.EVT_TIMER, lambda _: self.participant_monitor.update_screen(), self.video_timer
-        )
-        self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
+        self.video_timer = wx.Timer(
+            self, wx.ID_ANY
+        )  # dedicated timer to refresh patient screen view in main task
+
+        def video_timer_handle(event: wx.Event):
+            if self.liveTimer.IsRunning():
+                return
+            self.participant_monitor.update_screen()
+
+        self.Bind(wx.EVT_TIMER, video_timer_handle, self.video_timer)
 
         def on_update_cameras_viewed(evt: wx.Event) -> None:
             self.cams.update_cameras_viewed(evt)
@@ -356,6 +361,8 @@ class MainFrame(wx.Frame):
                         self.trial_panel.on_camera_frame_update(0, cam.frame)
                     elif cam.idx == cams.cam_pointer + 1:
                         self.trial_panel.on_camera_frame_update(1, cam.frame)
+        #
+        self.participant_monitor.update_screen()  # after, to have latest refresh state/view
 
     def on_resize(self, event: wx.Event) -> None:
         wx.CallAfter(self.image_panel.reset_sizing)
@@ -1275,12 +1282,8 @@ class MainFrame(wx.Frame):
         self.Disable()
 
         self.initCams(callback=cb)
+        self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
         self.Show()
-
-    def Show(self, show: bool = True) -> bool:
-        if show:
-            self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
-        return super().Show(show)
 
     def disable_gui(self, event: wx.Event) -> None:
         handle = event.GetEventObject()

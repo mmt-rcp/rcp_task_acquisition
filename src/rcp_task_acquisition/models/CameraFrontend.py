@@ -292,7 +292,6 @@ class CamerasFrontend:
         # logger.debug("vidPlayer: %s", event)
         if self.camaq.value == 2:
             return
-        # self.participant_monitor.update_screen()
         # already done in separate timer
         if self.hardware_test:
             if self.ctrl_panel.focus_test.GetValue():
