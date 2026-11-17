@@ -194,16 +194,16 @@ class MainFrame(wx.Frame):
         cam_panel.exposure_button.Bind(wx.EVT_BUTTON, lambda _: self.cams.get_exposure())
 
         def handle_hardware_test(event: wx.Event):
-            self.disable_gui(event)
             toggled = controls_panel.hardware_button.GetValue()
             if isinstance(self.trial_panel, CalibrationPanel):
-                self._show_patient_cams(toggled)
+                if toggled:
+                    self._show_patient_cams(True)
             else:
+                self._show_patient_cams(toggled)
                 controls_panel.show_patient_cams_button.Show(toggled)
                 controls_panel.Fit()  # need it otherwise the button appears on top before drawn at correct place
                 controls_panel.Update()
-                if not toggled:
-                    self._show_patient_cams(False)
+            self.disable_gui(event)
 
         controls_panel.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, handle_hardware_test)
         controls_panel.session_button.Bind(wx.EVT_TOGGLEBUTTON, self.disable_gui)
@@ -662,12 +662,12 @@ class MainFrame(wx.Frame):
             self.cams.live_start()
             self.liveTimer.Start(self.cameras_live_timer_refresh_delay_ms)
             self.controls_panel.cam_panel.play.SetLabel("Stop")
-            self.controls_panel.hardware_button.SetLabel("End Test")
         self._set_cam_panel_enable(False)
 
     def _stop_hardware_test(self) -> None:
         self.finish.value = 2
-        self._show_patient_cams(False)
+        if not isinstance(self.trial_panel, CalibrationPanel):
+            self._show_patient_cams(False)
         self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
         self.cam_test.value = False
         self.hardware_test = False
@@ -755,6 +755,7 @@ class MainFrame(wx.Frame):
         graph_panel = self.graph_panel
         self.Enable()
         if controls_panel.hardware_button.GetValue():
+            self.controls_panel.hardware_button.SetLabel("End Test")
             self.hardware_test = True
             self.graph_panel.hardware_panel.Show()
             self.put_to_stimulus(StimulusMessage.HARDWARE_TEST)
@@ -1035,6 +1036,7 @@ class MainFrame(wx.Frame):
 
     def Hide(self) -> bool:
         logger.debug("MainFrame.Hide()")
+        self._show_patient_cams(False)  # always
         self.lj.stop_labjack()
         self.video_timer.Stop()
         self.rest_timer.Stop()
@@ -1182,6 +1184,7 @@ class MainFrame(wx.Frame):
             self.calibrate = True
             start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
             start_task_but.SetLabel("Record Cameras")
+            self._show_patient_cams(True)
         else:
             self.calibrate = False
             start_task_but.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.run_task())

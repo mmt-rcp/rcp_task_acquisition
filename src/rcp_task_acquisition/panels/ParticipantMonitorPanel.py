@@ -47,6 +47,7 @@ class MonitorPanel(wx.Panel):
         return image_sizer
 
     def update_screen(self) -> None:
+        # logger.debug("update_screen()")
         with mss.MSS() as sct:
             monitor = sct.monitors[self.psychopy_monitor]
             shot = sct.grab(monitor)
