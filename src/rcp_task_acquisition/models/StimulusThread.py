@@ -292,8 +292,8 @@ class StimulusThread(ProcessWithLogging):
             verb_generation=VerbGeneration,
             all_hardware=StimulusBase,
         ).get(self.task, None)
-        if base_cls is None:
-            if "calibrate" in self.task:
+        if base_cls is None or base_cls is StimulusBase:
+            if base_cls is None and "calibrate" in self.task:
                 base_cls = CalibrationTask
             else:
                 logger.debug("Using StimulusBase for %s", self.task)
