@@ -254,7 +254,7 @@ class MainFrame(wx.Frame):
         self.Bind(
             wx.EVT_TIMER, lambda _: self.participant_monitor.update_screen(), self.video_timer
         )
-        self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
+        # self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
 
         def on_update_cameras_viewed(evt: wx.Event) -> None:
             self.cams.update_cameras_viewed(evt)
@@ -1278,8 +1278,8 @@ class MainFrame(wx.Frame):
         self.Show()
 
     def Show(self, show: bool = True) -> bool:
-        if show:
-            self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
+        # if show:
+        #     self.video_timer.Start(self.patient_monitor_view_refresh_delay_ms)
         return super().Show(show)
 
     def disable_gui(self, event: wx.Event) -> None:

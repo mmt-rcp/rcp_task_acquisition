@@ -62,4 +62,4 @@ class MonitorPanel(wx.Panel):
             bitmap = wx_image.ConvertToBitmap()
             self.prev_arr = img
             self.monitor_bitmap.SetBitmap(bitmap)
-        self.parent.Layout()
+        # self.parent.Layout()
