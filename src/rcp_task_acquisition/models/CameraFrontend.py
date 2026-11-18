@@ -27,7 +27,7 @@ from rcp_task_acquisition.utils.camera_settings import FrameDims, CamSettings
 from rcp_task_acquisition.utils.constants import CAM_MAX_HEIGHT, CAM_MAX_WIDTH, DOWNSAMPLE_VAL
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.run_context import RcpRunContext
-from rcp_task_acquisition.utils.typing import MaybeOkCallback
+from rcp_task_acquisition.utils.typing import MaybeOkCallback, OkCallback, void_ok_callback
 
 logger = get_logger(__name__)
 
@@ -170,7 +170,7 @@ class CamerasFrontend:
         self.image_panel.draw()
 
     @put_to_algo
-    def initialize(self, *, callback: MaybeOkCallback = None) -> bool:
+    def initialize(self, *, callback: OkCallback = void_ok_callback) -> bool:
         try:
             return self._initialize(callback=callback)
         except BaseException as err:
@@ -179,7 +179,7 @@ class CamerasFrontend:
                 callback(err)
             return False
 
-    def _initialize(self, *, callback: MaybeOkCallback = None) -> bool:
+    def _initialize(self, *, callback: OkCallback = void_ok_callback) -> bool:
         self.serial.init_serial()
         self.initThreads()
         try:
@@ -196,8 +196,7 @@ class CamerasFrontend:
             # except Exception as err:
             #     logger.exception("Error reupdating settings: %s", err)
             #     return False
-            if callback is not None:
-                callback(err)
+            callback(err)
             return False
         self.get_exposure()
         self.updateSettings()  # reapplied ??
@@ -224,8 +223,7 @@ class CamerasFrontend:
 
             cam.apply_new_dims(new_dims)
         self._apply_cam_data()
-        if callback is not None:
-            callback(None)
+        callback(None)
         return True
 
     @call_in_gui

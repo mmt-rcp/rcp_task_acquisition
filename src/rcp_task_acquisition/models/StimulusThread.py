@@ -228,7 +228,6 @@ class StimulusThread(ProcessWithLogging):
         win_handle: "pyglet.window.xlib.XlibWindow" = self.window.winHandle  # type: ignore
         logger.info("entering main loop")
         while self.alive:
-            # wx.Yield()
             # self.window.flip()
             win_handle.flip()
             # not sure which to use but the inner win_handle seems more appropriate.
@@ -249,6 +248,7 @@ class StimulusThread(ProcessWithLogging):
             logger.debug("msg: %s", msg)
         except Empty:
             self._reentrant_check_commands -= 1
+            wx.Yield()
             return
 
         handler = self._msg_handlers.get(msg, None)
@@ -266,6 +266,7 @@ class StimulusThread(ProcessWithLogging):
         except Exception as err:
             logger.exception("%s failed: %s", handler.__name__, err)
         finally:
+            wx.Yield()
             self._reentrant_check_commands -= 1
 
     def init_stimuli(self) -> None:

@@ -36,4 +36,8 @@ class OkCallback(typing.Protocol):
         """Callback"""
 
 
+def void_ok_callback(error: BaseException | None) -> None:
+    """default"""
+
+
 MaybeOkCallback: typing.TypeAlias = OkCallback | None

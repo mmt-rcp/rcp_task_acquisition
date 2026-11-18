@@ -1,4 +1,5 @@
 import mss
+import numpy
 import numpy as np
 import wx
 import wx.lib.dialogs
@@ -46,10 +47,10 @@ class MonitorPanel(wx.Panel):
         self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase)
         self.Bind(wx.EVT_SIZE, self.on_size)
 
-        self.image = None
-        self.prev_image = None
+        self.image: numpy.ndarray | None = None
+        self.prev_image: numpy.ndarray | None = None
         self.update_screen()
-        self.on_paint(None)
+        self.on_paint()
         self.monitor_bitmap.Fit()
         self.Layout()
 
@@ -67,7 +68,7 @@ class MonitorPanel(wx.Panel):
         self.image = img
         self.Refresh()
 
-    def on_paint(self, event):
+    def on_paint(self, event: wx.Event | None = None) -> None:
         img = self.image
         if img is None:
             return  # No image
@@ -83,9 +84,9 @@ class MonitorPanel(wx.Panel):
         self.monitor_bitmap.SetBitmap(bitmap)
         self.monitor_bitmap.Refresh()
 
-    def on_size(self, event):
+    def on_size(self, event: wx.Event) -> None:
         self.Refresh()
         event.Skip()
 
-    def on_erase(self, event):
-        pass
+    def on_erase(self, event: wx.Event) -> None:
+        pass  # keep me, prevent flickering
