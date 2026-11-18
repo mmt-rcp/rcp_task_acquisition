@@ -121,7 +121,7 @@ class TrialPanel(wx.Panel):
         """Allow a panel to intercept camera frame read from shared array, for display purpose"""
         self.im[index].set_data(frame)
         # self._image_panel.figure.canvas.draw_idle()
-        # self._image_panel.Refresh()
+        self._image_panel.draw()
 
     def update_cams_viewed(self, cams: list[CamSettings]):
         for im, cam in zip(self.im, cams):
