@@ -48,9 +48,9 @@ class ControlsPanel(wx.Panel):
             border=5,
         )
         vertical_position += 1
-        self.monitor = MonitorPanel(self, psychopy_monitor, monitor_size)
+        self.monitor_panel = MonitorPanel(self, psychopy_monitor, monitor_size)
         vertical_spacer.Add(
-            self.monitor.create_panel(),
+            self.monitor_panel,
             pos=(vertical_position, 0),
             span=(0, 5),
             flag=wx.ALIGN_LEFT | wx.ALL,
@@ -77,7 +77,7 @@ class ControlsPanel(wx.Panel):
         return self.cam_panel.Show()
 
     def get_monitor(self) -> MonitorPanel:
-        return self.monitor
+        return self.monitor_panel
 
     def hide_cams(self) -> bool:
         return self.cam_panel.Hide()

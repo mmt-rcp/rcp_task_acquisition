@@ -66,7 +66,7 @@ class TrialPanel(wx.Panel):
             "display: %s -> %s // %s", disp.GetName(), disp.GetGeometry(), disp.GetClientArea()
         )
         frame = self._frame_patient = wx.Frame(
-            parent,
+            None,
             title="Cameras",
             style=0,
             # style=wx.CLOSE_BOX
@@ -83,15 +83,15 @@ class TrialPanel(wx.Panel):
                 disp_pos.y + int(frame_size.height * 0.5),
             )
         )
-        box_sizer = wx.BoxSizer(wx.VERTICAL)
-        panel = self._patient_panel = wx.Panel(frame)
-        # panel.SetSize(frame_size)
-        box_sizer.Add(panel)
-        frame.SetSizer(box_sizer)
-        img_panel = self._image_panel = ImagePanel(panel)
+        # box_sizer = wx.BoxSizer(wx.VERTICAL)
+        # panel = self._patient_panel = wx.Panel(frame)
+        # # panel.SetSize(frame_size)
+        # box_sizer.Add(panel)
+        # frame.SetSizer(box_sizer)
+        img_panel = self._image_panel = ImagePanel(frame)
         img_panel.SetSize(frame_size)
         img_panel.updateImage()
-        panel.Fit()
+        # panel.Fit()
         frame.Fit()
         frame.Hide()
         logger.debug("frame: pos=%s ; size=%s", frame.GetPosition(), frame.GetSize())
@@ -120,7 +120,8 @@ class TrialPanel(wx.Panel):
     def on_camera_frame_update(self, index: int, frame: np.ndarray):
         """Allow a panel to intercept camera frame read from shared array, for display purpose"""
         self.im[index].set_data(frame)
-        self._image_panel.figure.canvas.draw_idle()
+        # self._image_panel.figure.canvas.draw_idle()
+        # self._image_panel.Refresh()
 
     def update_cams_viewed(self, cams: list[CamSettings]):
         for im, cam in zip(self.im, cams):

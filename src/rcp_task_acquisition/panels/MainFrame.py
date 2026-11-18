@@ -1137,7 +1137,7 @@ class MainFrame(wx.Frame):
                 event, self.image_panel.axes, [cam_item.value for cam_item in cameras], cameras
             )
             self.cam_crop.drawROI(self.image_panel.axes)
-            self.image_panel.figure.canvas.draw()
+            self.image_panel.draw()
 
     def OnKeyPressed(self, event: wx.KeyEvent) -> None:
         keyCode = event.GetKeyCode()
@@ -1164,7 +1164,7 @@ class MainFrame(wx.Frame):
         ):
             self.cam_crop.set_key_crop(self.image_panel.axes, keyCode)
             self.cam_crop.drawROI(self.image_panel.axes)
-            self.image_panel.figure.canvas.draw()
+            self.image_panel.draw()
         # Any other case
         else:
             event.Skip()

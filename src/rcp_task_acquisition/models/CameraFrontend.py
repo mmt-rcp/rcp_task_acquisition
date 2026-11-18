@@ -286,7 +286,7 @@ class CamerasFrontend:
             cam.contrast_tests = np.roll(cam.contrast_tests, 1)
             cam.contrast_tests[0] = rms
         if redraw:
-            self.image_panel.figure.canvas.draw_idle()
+            self.image_panel.draw()
 
     def vidPlayer(self, event: wx.Event) -> None:
         # logger.debug("vidPlayer: %s", event)

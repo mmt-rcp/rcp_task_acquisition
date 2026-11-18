@@ -21,6 +21,10 @@ class ImagePanel(wx.Panel):
         self.sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
         self.SetSizer(self.sizer)
         self.Fit()
+        # self.Bind(wx.EVT_PAINT, self.on_paint)
+
+    def on_paint(self, event):
+        self.draw()
 
     def updateImage(self) -> None:
         """
@@ -29,7 +33,7 @@ class ImagePanel(wx.Panel):
         column_count = 2
         row_pos = 0.005
         row_inc = 0.5
-        self.figure.clf()
+        self.figure.clear()
         self.axes = []
         self.figure.patch.set_facecolor("none")
         props = {
@@ -90,7 +94,7 @@ class ImagePanel(wx.Panel):
         self.Update()
 
     def draw(self):
-        self.figure.canvas.draw_idle()
+        self.figure.canvas.draw()
 
     def reset_sizing(self):
         self.canvas.ClearBackground()
