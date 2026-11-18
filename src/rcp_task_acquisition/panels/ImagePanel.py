@@ -21,10 +21,21 @@ class ImagePanel(wx.Panel):
         self.sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
         self.SetSizer(self.sizer)
         self.Fit()
-        # self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda _: None)  # keep me, prevent flicker
+        self.Bind(wx.EVT_SIZE, self.on_size)
 
-    def on_paint(self, event):
-        self.draw()
+    def on_paint(self, event: wx.Event) -> None:
+        if len(self.axes) < 2:
+            return
+        try:
+            self.figure.canvas.draw()
+        except AttributeError as err:
+            logger.debug("on_paint: skipping %s", err)
+
+    def on_size(self, event: wx.Event) -> None:
+        self.Refresh()
+        event.Skip()
 
     def updateImage(self) -> None:
         """
@@ -94,7 +105,7 @@ class ImagePanel(wx.Panel):
         self.Update()
 
     def draw(self):
-        self.figure.canvas.draw()
+        self.Refresh()
 
     def reset_sizing(self):
         self.canvas.ClearBackground()
