@@ -10,7 +10,6 @@ class ReachGraspPanel(TrialPanel):
         self.pace = "Self-Paced"
         self.grasp_object = "Large"
         self.grasp_type = "Grasp"
-        
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
@@ -27,11 +26,9 @@ class ReachGraspPanel(TrialPanel):
         self.object_text = wx.StaticText(self, label="Choose grasp apparatus:")
         self.large_object_radio = wx.RadioButton(self, label="Large", style=wx.RB_GROUP)
         self.small_object_radio = wx.RadioButton(self, label="Small")
-        
         self.grasp_text = wx.StaticText(self, label="Choose grasp type:")
         self.grasp_object_radio = wx.RadioButton(self, label="Grasp", style=wx.RB_GROUP)
         self.poke_object_radio = wx.RadioButton(self, label="Poke")
-        
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
 
         self.continue_button = wx.ToggleButton(
@@ -85,9 +82,6 @@ class ReachGraspPanel(TrialPanel):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
-        
-        
-        
         # h_sizer.Add(
         #     self.poke_object_radio,
         #     pos=(0, 2),
@@ -96,7 +90,6 @@ class ReachGraspPanel(TrialPanel):
         #     border=self.border,
         # )
         # grid_sizer.Add(h_sizer, (4, 0), (0, 4), flag=wx.EXPAND, border=self.border)
-        
         grid_sizer.Add(
             self.grasp_text,
             pos=(5, 0),

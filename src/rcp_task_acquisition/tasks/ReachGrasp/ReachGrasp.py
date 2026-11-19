@@ -71,7 +71,6 @@ class ReachGrasp(bases.StimulusBase):
                     self._end_task()
                     return
 
-
             # tone to start the reach
             self.play_reach_tone()
             while self.grasp_ready.value:
@@ -80,8 +79,6 @@ class ReachGrasp(bases.StimulusBase):
                 if self.finish.value == 2:
                     self._end_task()
                     return
-            
-
         # final wait for participant to touch pad before ending the trial
         while not self.grasp_ready.value:
             self.timer.value = int(gui_clock.getTime())
