@@ -174,9 +174,8 @@ class CamerasFrontend:
         try:
             return self._initialize(callback=callback)
         except BaseException as err:
-            logger.exception("Error intialize: %s", err)
-            if callback:
-                callback(err)
+            logger.exception("Error initialize: %s", err)
+            callback(err)
             return False
 
     def _initialize(self, *, callback: OkCallback = void_ok_callback) -> bool:

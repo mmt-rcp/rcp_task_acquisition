@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 
 class ImagePanel(wx.Panel):
-    def __init__(self, parent: wx.Window, **kwargs):
+    def __init__(self, parent: wx.Window):
         self.axes: list[matplotlib.axes.Axes] = []
         self.texts: list[matplotlib.text.Text] = []
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
@@ -27,7 +27,9 @@ class ImagePanel(wx.Panel):
 
     def on_paint(self, event: wx.Event) -> None:
         if len(self.axes) < 2:
+            logger.debug("axes<2: %s", self.axes)
             return
+        # logger.debug("on_paint: %s", self)
         try:
             self.figure.canvas.draw()
         except AttributeError as err:
@@ -54,7 +56,7 @@ class ImagePanel(wx.Panel):
             "alpha": 0.75,
         }
         self.texts = []
-        for idx in range(int(column_count)):
+        for idx in range(column_count):
             axis = self.figure.add_subplot(1, column_count, idx + 1, frameon=True)
             self.axes.append(axis)
             axis.set_position((row_pos, 0.005, 0.49, 0.99))
@@ -76,14 +78,9 @@ class ImagePanel(wx.Panel):
         self.Refresh()
         self.Update()
 
-    def getfigure(self) -> tuple[Figure, list[matplotlib.axes.Axes], FigureCanvas]:
-        """
-        Returns the figure, axes and canvas
-        """
-        return self.figure, self.axes, self.canvas
-
     def update_names(self, cam_name_list: list[str]) -> None:
         for index, axis in enumerate(self.axes):
+            cam_name = cam_name_list[index] if index < len(cam_name_list) else f"cam{index}"
             self.texts[index].remove()
             props = {
                 "boxstyle": "square",
@@ -94,7 +91,7 @@ class ImagePanel(wx.Panel):
             self.texts[index] = axis.text(
                 5,
                 5,
-                cam_name_list[index],
+                cam_name,
                 fontsize=8,
                 color=(0.9, 0.9, 0.9),
                 verticalalignment="top",
