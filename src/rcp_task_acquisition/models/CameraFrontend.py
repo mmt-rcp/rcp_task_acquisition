@@ -388,15 +388,15 @@ class Camera:
                     error_message.append(f"{update}% of camera frames dropped for {cam}")
                 self.cam_dict[cam].camq_p2read.get()
         logger.warning(error_message)
-        error = ""
-        if video_errors:
-            error = "\n" + "\n".join(video_errors)
-        if error_message:
-            if error == "":
-                error += "\n"
-            error += "\n" + "\n".join(error_message)
-        if error != "":
-            self.warning.update_error(WarnCat.FRAMES, info=error).display()
+        # error = ""
+        # if video_errors:
+        #     error = "\n" + "\n".join(video_errors)
+        # if error_message:
+        #     if error == "":
+        #         error += "\n"
+        #     error += "\n" + "\n".join(error_message)
+        # if error != "":
+        #     self.warning.update_error(WarnCat.FRAMES, info=error).display()
 
     def updateSettings(self, event):
         self.user_cfg = file_utils.read_config("userdata.yaml")
