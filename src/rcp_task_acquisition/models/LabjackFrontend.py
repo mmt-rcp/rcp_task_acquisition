@@ -179,11 +179,6 @@ class LabjackFrontend:
             self.grasp_ready,
             self.is_grasp,
         )
-        if not proc.is_successful():
-            # Warning("labjack").display()
-            labjack_button = self.graph_panel.labjack_stream_button
-            labjack_button.SetValue(False)
-            return False
         proc.start()
         self.labjack_timer.Start(200)
         return True
@@ -282,8 +277,7 @@ class LabjackFrontend:
             self.graph_panel.draw()
 
     def add_csv(self, labjack_file: str, serial: SerialDevice, msg: str) -> None:
-        self.labjack_csv = labjack_file
-        self.labjack_queue.put(labjack_file)
+        self.labjack_queue.put(labjack_file, timeout=1)
         self.labjack_is_csv.value = True
 
         self.serial_state = 0

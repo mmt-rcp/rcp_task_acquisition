@@ -94,6 +94,11 @@ class ImagePanel(wx.Panel):
 
     def reset_sizing(self):
         self.canvas.ClearBackground()
-        self.canvas.draw()
+        try:
+            self.canvas.draw()
+        except AttributeError as err:
+            # most likely:
+            # "AttributeError: ‘NoneType’ object has no attribute ‘dpi’"
+            logger.debug("silencing attribute error from canvas.draw(): %s", err)
         self.Refresh()
         self.Update()

@@ -29,11 +29,13 @@ class NbackPanel(TrialPanel):
         self._group_radio_trial_kinds = (self.practice, self.real)
 
         trial = wx.StaticText(self, label="Select N-back")
-        self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES, size=(200, -1))
-        self.nback_choice.SetSelection(0)
+        ch = self.nback_choice = wx.Choice(self, id=wx.ID_ANY, choices=NBACK_TYPES)
+        ch.Update()
+        sz = ch.GetSize()
+        ch.SetMinSize(wx.Size(2 * sz.Width, sz.Height))  # make it twice large the min size
+        ch.SetSelection(0)
 
         text = wx.StaticText(self, label="Select trial type")
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial")
 
         grid_sizer = wx.GridBagSizer(5, 4)
 
@@ -57,6 +59,7 @@ class NbackPanel(TrialPanel):
         grid_sizer.Add(
             self.real, pos=(2, 2), span=(0, 2), flag=wx.ALIGN_LEFT | wx.TOP | wx.BOTTOM, border=10
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button, pos=(4, 0), span=(0, 2), flag=wx.ALIGN_LEFT | wx.TOP, border=10
         )

@@ -2,6 +2,7 @@ import matplotlib.axes
 import numpy as np
 import wx
 from matplotlib import patches
+from matplotlib.backend_bases import LocationEvent, Event
 
 from rcp_task_acquisition.utils import config
 from rcp_task_acquisition.utils.logger import get_logger
@@ -70,13 +71,25 @@ class Crop:
         #     self.croprec[ndx].set_alpha(0.6)
         # self.figure.canvas.draw()
 
-    def adjust_crop(self, event, axes, cam_list, cam_config: config.CamerasDictConfig) -> None:
+    def adjust_crop(
+        self,
+        event: LocationEvent,
+        axes: list[matplotlib.axes.Axes],
+        cam_list: list[str],
+        cam_config: config.CamerasDictConfig,
+    ) -> None:
+        if event.inaxes is None:
+            logger.warning("create_crop: no inaxes")
+            return
+        roi_x = event.xdata
+        roi_y = event.ydata
+        if roi_x is None or roi_y is None:
+            logger.warning("create_crop: roi_x or roi_y None")
+            return
         self.cropAxes = event.inaxes
         ndx = axes.index(event.inaxes)
         s = cam_list[ndx]
         croproi = self.croproi[ndx] = cam_config[s].crop
-        roi_x = event.xdata
-        roi_y = event.ydata
         x_center = croproi[1] / 2
         y_center = croproi[3] / 2
         logger.info("x: %s, y: %s", roi_x, roi_y)

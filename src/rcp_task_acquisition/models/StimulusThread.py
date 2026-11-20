@@ -108,6 +108,12 @@ class StimulusThread(ProcessWithLogging):
         }
         self._reentrant_check_commands = 0
 
+    def _send_to_main_proc(self, data, *, timeout=3):
+        self.resultsq.put(data, timeout=timeout)
+
+    def _get_from_command_queue(self, *, timeout: float = 3):
+        return self.msgq.get(timeout=timeout)
+
     def _handle_show_window(self):
         self.window.winHandle.set_visible(True)
         self.window.flip()
@@ -123,13 +129,13 @@ class StimulusThread(ProcessWithLogging):
         self.send_metadata()
 
     def _handle_update_task(self) -> None:
-        msg = self.msgq.get()
+        msg = self._get_from_command_queue()
         self.task = msg
         if "calibrate" in self.task:
             self._handle_initialize()
 
     def _handle_update_data(self) -> None:
-        trial_data = self.msgq.get(timeout=5)
+        trial_data = self._get_from_command_queue()
         logger.debug("stim: update_data: %s", trial_data)
         if self.stimulus is not None:
             self.stimulus.update_data(trial_data)
@@ -178,15 +184,15 @@ class StimulusThread(ProcessWithLogging):
             return
         results = stimulus.get_trial()
         logger.debug("vowel_space result: %s", results)
-        self.resultsq.put(results)
+        self._send_to_main_proc(results)
 
     def _handle_play_instructions(self) -> None:
-        msg = self.msgq.get()
+        msg = self._get_from_command_queue()
         logger.debug("play instructions: %r", msg)
         self.play_video(msg)
 
     def _handle_add_instructions(self) -> None:
-        msg = self.msgq.get()
+        msg = self._get_from_command_queue()
         self.setup_videos(msg)
         # self.setup_videos(video_filename_dict)
 
@@ -225,7 +231,7 @@ class StimulusThread(ProcessWithLogging):
         if self._reentrant_check_commands > 2:
             raise RuntimeError("refusing too many reentrant check_commands")
         try:
-            msg = self.msgq.get(timeout=timeout)
+            msg = self._get_from_command_queue(timeout=timeout)
             logger.debug("msg: %s", msg)
         except Empty:
             self._reentrant_check_commands -= 1
@@ -304,9 +310,7 @@ class StimulusThread(ProcessWithLogging):
         # ctx = self._rcp_context
         # task_cfg = ctx.tasks_config[self.task]
         results = stimuli.saveMetadata()  # TODO: not sure what's going on
-        json_str = json.dumps(results)
-        logger.debug("jsonstr: %s", json_str)
-        self.resultsq.put(json_str)
+        self._send_to_main_proc(results)
 
     def close_window(self) -> None:
         self.alive = False

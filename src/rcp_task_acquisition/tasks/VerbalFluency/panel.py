@@ -58,8 +58,6 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self, id=wx.ID_ANY, choices=self.semantic_list, size=(200, -1)
         )
 
-        self.continue_button = wx.ToggleButton(self, label="Begin Trial", size=(150, -1))
-
         self.prompt_text = wx.StaticText(self, label="", size=(300, 50))
         self.seconds_text = wx.StaticText(self, label="", size=(300, -1))
 
@@ -106,6 +104,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN | wx.ALIGN_CENTER_VERTICAL | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(6, 0),
@@ -194,8 +193,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         )
         return ".".join(self.phonemic_list), self.semantic, self.value
 
-    def start_new_trial(self) -> None:
-        super().start_new_trial()
+    def start_new_task(self) -> None:
+        super().start_new_task()
         self.trial_num = 0
         self.phonemic_choice.Enable(True)
         self.semantic_choice.Enable(True)
