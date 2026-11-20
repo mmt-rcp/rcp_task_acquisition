@@ -29,7 +29,7 @@ class BasicTaps(bases.StimulusBase):
         self.play_tone()
 
         clock = core.Clock()
-        while clock.getTime() < BASIC_TAPS_TIME:
+        while clock.getTime() < BASIC_TAPS_TIME and not self._task_end_requested:
             self.display.draw_patch()
             self.display.flip()
             if self.finish.value == 2:

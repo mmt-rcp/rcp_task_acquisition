@@ -131,6 +131,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         Updating with the current syllable
         Trials are 0-indexed so we add 1 here to be in a better format for showing
         """
+        logger.debug("update_trial: trial=%r syllable=%s", trial, syllable)
         self.current_text.SetLabel(f"Say {syllable} again")
         self.trial_text.SetLabel(f"Trial # {trial + 1}")
         self.current_syllable = syllable
@@ -147,7 +148,7 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
     def start_new_task(self) -> None:
         self.repeat = True
         # self.repeat_trial.Enable(False)
-        self.continue_button.Enable(True)
+        # self.continue_button.Enable(True)  done at higher level
         self.finish_text.SetLabel("")
 
     def start_video(self) -> None:
@@ -156,9 +157,11 @@ class VowelSpacePanel(TrialPanelWithInstructPlayback):
         self.set_live_status()
 
     def stop_video(self) -> None:
+        super().stop_video()
         self.set_stopped_status()
 
     def pause_video(self) -> None:
+        super().pause_video()
         self.video_buttons[1].SetLabel("Resume Video")
 
     def resume_video(self) -> None:

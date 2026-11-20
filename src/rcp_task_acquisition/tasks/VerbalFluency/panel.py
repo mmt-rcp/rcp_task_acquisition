@@ -114,6 +114,14 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disabled = not running
+        self.phonemic_choice.Enable(disabled)
+        self.semantic_choice.Enable(disabled)
+        self.semantic_task.Enable(disabled)
+        self.phonemic_task.Enable(disabled)
+
     def switch_panel(self) -> None:
         self.phonemic_choice.Enable(False)
         self.semantic_choice.Enable(False)
@@ -140,7 +148,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
 
     def update_values(self) -> None:
         logger.debug("printing update_values")
-        self.continue_button.SetValue(False)
+        with wx.EventBlocker(self.continue_button):
+            self.continue_button.SetValue(False)
         self.start_video_button.Enable(True)
         self.seconds_text.SetLabel("Time: 60 secs")
         if self.trial_num < len(self.phonemic_list):
@@ -172,10 +181,6 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def get_instruction(self, count: int) -> str:
         return self.value
 
-    def reset(self, count: int) -> None:
-        super().reset(count)
-        self.continue_button.Enable(True)
-
     def add_metadata(self) -> dict[str, Any]:
         return {"phonemic_category": self.phonemic_list, "semantic_category": self.semantic}
 
@@ -184,8 +189,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self.seconds_text.SetLabel(f"Time: {TRIAL_TIME - self.timer.value} secs")
 
     def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.seconds = 60
-        self.start_trial()
 
     def get_trials(self) -> tuple[str, str, str]:
         logger.debug(
@@ -204,7 +209,7 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.first = True
         self.prompt_text.SetLabel("")
         self.seconds_text.SetLabel("")
-        self.continue_button.Enable(True)
+        # self.continue_button.Enable(True)  done higher level
         self.continue_button.SetLabel("Begin Trial")
         self.video_title.SetLabel("")
         self.start_video_button.SetValue(False)

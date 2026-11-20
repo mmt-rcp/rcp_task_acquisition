@@ -29,3 +29,11 @@ HardwareListsType: typing.TypeAlias = tuple[
 
 
 TaskMetaData: typing.TypeAlias = dict[str, typing.Any]
+
+
+class OkCallback(typing.Protocol):
+    def __call__(self, error: BaseException | None):
+        """Callback"""
+
+
+MaybeOkCallback: typing.TypeAlias = OkCallback | None

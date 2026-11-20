@@ -13,11 +13,13 @@ from typing import Any
 import numpy as np
 import wx
 
+from rcp_task_acquisition.algo import put_to_algo
 from rcp_task_acquisition.models.SerialDevice import SerialDevice
 from rcp_task_acquisition.models.LabjackProcess import LabJackDataStream
 from rcp_task_acquisition.panels.GraphPanel import GraphPanel
 from rcp_task_acquisition.utils.constants import PLOT_CONSTANTS
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithCommands
 from rcp_task_acquisition.utils.typing import (
     SharedBool,
     SharedInt,
@@ -80,7 +82,7 @@ class LabjackFrontend:
         logger.debug("button %s", self.button_list)
         self.graph_panel.set_constants(self.constants)
         for choice in self.labjack_choices:
-            choice.Bind(wx.EVT_CHOICE, self._update_graph_list)
+            choice.Bind(wx.EVT_CHOICE, lambda _: self._update_graph_list())
         self.handshake = Value(ctypes.c_int, False)
         self.serial_state = 0
         self.labjack_process: LabJackDataStream | None = None
@@ -147,7 +149,7 @@ class LabjackFrontend:
         )
         self.inputs_list = (self.analog_list, self.digital_list, self.extended_list)
         logger.debug(self.button_list)
-        self._update_graph_list("")
+        self._update_graph_list()
 
     def start_labjack(self) -> bool:
         proc = self.labjack_process
@@ -202,12 +204,16 @@ class LabjackFrontend:
         logger.info("labjack stopped")
         return self.scan_rate.value
 
-    def _close_labjack(self):
+    def _close_labjack(self) -> None:
         proc = self.labjack_process
         if proc is not None:
-            proc.request_stop()
-            proc.wait_stopped()
-            self.labjack_process = None
+            self.__close_labjack(proc)
+
+    @put_to_algo
+    def __close_labjack(self, proc: ProcessWithCommands) -> None:
+        self.labjack_process = None
+        proc.request_stop()
+        proc.wait_stopped()
         self.stream_started.clear()
 
     def labjack_event(self, event: wx.Event) -> None:
@@ -282,7 +288,7 @@ class LabjackFrontend:
         proc = self.labjack_process
         return proc is not None and proc.is_alive()
 
-    def _update_graph_list(self, event: wx.Event) -> None:
+    def _update_graph_list(self) -> None:
         selected_list = []
 
         for choice in self.labjack_choices:

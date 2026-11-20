@@ -75,6 +75,8 @@ class ToneTapsClosed(bases.StimulusBase):
         playTime: float = self.params["tone_delay"]
         clock = core.Clock()
         while self.press_count.value <= self.params["tone_number_per_trial"] - 1:
+            if self._task_end_requested:
+                break
             if GLOBAL_CLOCK.getTime() - gToneTime > playTime:
                 # self.play_tone()
                 self.play_tap()
@@ -87,7 +89,7 @@ class ToneTapsClosed(bases.StimulusBase):
                 break
         if self.press_count.value <= self.params["tone_number_per_trial"]:
             while True:
-                if self.finish.value == 2:
+                if self.finish.value == 2 or self._task_end_requested:
                     break
                 if GLOBAL_CLOCK.getTime() - gToneTime > playTime:
                     self.play_tap()
@@ -104,7 +106,7 @@ class ToneTapsClosed(bases.StimulusBase):
 
         # continuation phase
         while (GLOBAL_CLOCK.getTime() - gToneTime) < (self.params["total_time_before_cutoff"]):
-            if self.finish.value == 2:
+            if self.finish.value == 2 or self._task_end_requested:
                 break
             self.timer.value = int(clock.getTime())
             time.sleep(0.005)

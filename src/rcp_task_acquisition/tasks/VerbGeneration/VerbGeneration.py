@@ -52,7 +52,7 @@ class VerbGeneration(bases.StimulusBase):
                 self.display.draw_patch()
                 self.display.flip()
                 self.timer.value = int(timer_clock.getTime())
-                if self.finish.value == 2:
+                if self.finish.value == 2 or self._task_end_requested:
                     self.display.switch_patch()
                     self.display.draw_patch()
                     self.display.flip()

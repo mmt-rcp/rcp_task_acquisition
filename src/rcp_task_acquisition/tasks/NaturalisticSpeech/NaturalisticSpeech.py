@@ -64,7 +64,7 @@ class NaturalisticSpeech(bases.StimulusBase):
         self.display.flip()
 
         clock = core.Clock()
-        while self.finish.value == 0:
+        while self.finish.value == 0 and not self._task_end_requested:
             if self.show_image:
                 stim.draw()
             self.display.draw_patch()

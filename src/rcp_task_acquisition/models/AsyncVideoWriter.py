@@ -4,12 +4,9 @@ import subprocess
 import threading
 from pathlib import Path
 from queue import Empty, Full, Queue
-from threading import Event, Thread
 from typing import Any
 
-import cv2
-import numpy as np
-
+import rcp_task_acquisition
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -28,8 +25,8 @@ class AsyncFFmpegGPUWriter:
         max_queue: int = 512,
         qp: int = 23,
     ):
-        self.video_file = video_file
-        self.timestamp_file = timestamp_file
+        self.video_file_path = Path(video_file)
+        self.timestamp_file_path = Path(timestamp_file)
         self.fps = fps
         self.width = width
         self.height = height
@@ -57,14 +54,13 @@ class AsyncFFmpegGPUWriter:
             return False
 
     def _worker(self) -> None:
-        f = None
-        ffmpeg_dir: str = (
-            f"{(Path(__file__).parent.parent.parent.parent / 'library' / 'ffmpeg' / 'bin')};"
-        )
+        rcp_to_dir = Path(rcp_task_acquisition.__file__).parent.parent.parent
+        ffmpeg_dir = rcp_to_dir.joinpath("library", "ffmpeg", "bin")
         custom_env = os.environ.copy()
-        custom_env["PATH"] = str(ffmpeg_dir) + custom_env.get("PATH", "")
+        # custom_env["PATH"] = str(ffmpeg_dir) + custom_env.get("PATH", "")
         cmd = [
-            "ffmpeg",
+            # "ffmpeg.exe",
+            ffmpeg_dir.joinpath("ffmpeg.exe").as_posix(),
             "-y",
             "-f",
             "rawvideo",
@@ -93,11 +89,15 @@ class AsyncFFmpegGPUWriter:
             "0",
             "-movflags",
             "+faststart",
-            self.video_file,
+            self.video_file_path.as_posix(),
         ]
-
+        logger.debug("cmd_args: %s", cmd)
+        fh_csv = None
         proc: subprocess.Popen | None = None
         try:
+            self.video_file_path.parent.mkdir(exist_ok=True, parents=True)
+            self.timestamp_file_path.parent.mkdir(exist_ok=True, parents=True)
+
             proc = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
@@ -105,12 +105,12 @@ class AsyncFFmpegGPUWriter:
                 stderr=subprocess.PIPE,
                 bufsize=0,
                 env=custom_env,
-                shell=True,
+                # shell=True,  cmd is list of cmd+args
             )
             assert proc is not None
 
-            f = open(self.timestamp_file, "w")
-            f.write("frame_id,timestamp\n")
+            fh_csv = self.timestamp_file_path.open("w")
+            fh_csv.write("frame_id,timestamp\n")
 
             self.ready.set()
 
@@ -128,7 +128,7 @@ class AsyncFFmpegGPUWriter:
                     # proc.stdin.write(frame_bgr.tobytes())
                     # proc.stdin.write(memoryview(frame_bgr))
                     proc.stdin.write(frame_bgr)  # type: ignore
-                    f.write(f"{frame_id},{round(timestamp_delta)}\n")
+                    fh_csv.write(f"{frame_id},{round(timestamp_delta)}\n")
                 finally:
                     self.q.task_done()
         except Exception as err:
@@ -147,10 +147,10 @@ class AsyncFFmpegGPUWriter:
                 if ret != 0:
                     logger.error("ffmpeg exited with code %s ; stderr=%s", ret, stderr[-4000:])
 
-            if f is not None:
-                f.flush()
-                os.fsync(f.fileno())
-                f.close()
+            if fh_csv is not None:
+                fh_csv.flush()
+                os.fsync(fh_csv.fileno())
+                fh_csv.close()
 
     def close(self):
         logger.verbose("closing video writer")

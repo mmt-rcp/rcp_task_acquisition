@@ -120,7 +120,7 @@ class TrialPanel(wx.Panel):
         self._image_panel.update_names(list(cam.name for cam in cams))
 
     def prepare_cams(self, cams: list[CamSettings]):
-        # logger.debug("received prepare cams: %s", cams)
+        logger.debug("received prepare cams: %s", [cam.name for cam in cams])
         # self._frame_patient.Show()
         imp = self._image_panel
         imp.updateImage()
@@ -166,7 +166,12 @@ class TrialPanel(wx.Panel):
         return grid_sizer
 
     def reset(self, count: int) -> None:
+        """must be extended by subclasses"""
+        self.trial_is_active = False
         self.seconds = 0
+        self.continue_button.Enable(True)
+        with wx.EventBlocker(self.continue_button):
+            self.continue_button.SetValue(False)
 
     def show(self) -> None:
         logger.verbose("show()")
@@ -180,30 +185,38 @@ class TrialPanel(wx.Panel):
         self.rest_timer.Stop()
         self.Hide()
 
+    def set_trial_running(self, running: bool) -> None:
+        for but in (
+            self.repeat_trial_button,
+            self.start_video_button,
+            self.pause_video_button,
+        ):
+            if but is not None:
+                but.Enable(not running)
+
     def start_trial(self) -> None:
         self.trial_is_active = True
+        self.seconds = 0
+        self.set_trial_running(True)
 
     def end_trial(self) -> None:
         self.trial_is_active = False
+        self.set_trial_running(False)
 
     def get_video_buttons(self):
         return self.start_video_button, self.pause_video_button
 
     def start_video(self):
-        self.continue_button.Enable(False)
-        self.repeat_trial_button.Enable(False)
+        self.set_begin_trial_enabled(False)
 
     def stop_video(self):
-        self.continue_button.Enable(True)
-        self.repeat_trial_button.Enable(True)
+        self.set_begin_trial_enabled(True)
 
     def pause_video(self):
-        self.continue_button.Enable(True)
-        self.repeat_trial_button.Enable(True)
+        self.set_begin_trial_enabled(True)
 
     def resume_video(self):
-        self.continue_button.Enable(False)
-        self.repeat_trial_button.Enable(False)
+        self.set_begin_trial_enabled(False)
 
     def run_trial(self, count) -> None:
         self.start_trial()
@@ -214,6 +227,15 @@ class TrialPanel(wx.Panel):
 
     def on_timer(self, event: wx.Event) -> None:
         pass
+
+    def set_begin_trial_enabled(self, enabled: bool = True):
+        """can be extended by subclasses"""
+        # self.Enable(enabled)
+        self.continue_button.Enable(enabled)
+        self.repeat_trial_button.Enable(enabled)
+        next_button: wx.ToggleButton | None = getattr(self, "next_button", None)
+        if next_button is not None:
+            next_button.Enable(enabled)
 
     def start_new_task(self) -> None:
         self.trial_number = 0
@@ -292,16 +314,16 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         self.start_video_button.Enable(True)
 
     def start_video(self) -> None:
+        super().start_video()
         self.start_video_button.SetLabel("Stop Video")
         self.pause_video_button.Enable(True)
-        super().start_video()
 
     def stop_video(self) -> None:
+        super().stop_video()
         self.start_video_button.SetLabel("Start Video")
         self.start_video_button.SetValue(False)
         self.pause_video_button.SetValue(False)
         self.pause_video_button.Enable(False)
-        super().stop_video()
         self.pause_video_button.SetLabel("Pause Video")
 
     def set_stopped_status(self):
@@ -316,8 +338,8 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         # self.next_button.Enable(True)
 
     def pause_video(self):
-        self.pause_video_button.SetLabel("Resume Video")
         super().pause_video()
+        self.pause_video_button.SetLabel("Resume Video")
 
     def resume_video(self):
         self.pause_video_button.SetLabel("Pause Video")

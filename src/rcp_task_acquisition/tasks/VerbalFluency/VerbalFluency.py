@@ -30,7 +30,7 @@ class VerbalFluency(bases.StimulusBase):
         self.display.flip()
 
         clock = core.Clock()
-        while clock.getTime() < TRIAL_TIME:
+        while clock.getTime() < TRIAL_TIME and not self._task_end_requested:
             self.timer.value = int(clock.getTime())
             self.display.draw_patch()
             self.display.flip()

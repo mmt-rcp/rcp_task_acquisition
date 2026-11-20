@@ -62,7 +62,7 @@ class ReachGrasp(bases.StimulusBase):
                 self._end_task()
                 return
 
-            while not self.grasp_ready.value:
+            while not self.grasp_ready.value and not self._task_end_requested:
                 self.timer.value = int(gui_clock.getTime())
                 if self.finish.value == 2:
                     break
@@ -78,7 +78,7 @@ class ReachGrasp(bases.StimulusBase):
             logger.debug(f"rest_time = {self.rest_time.value}")
             while clock.getTime() < timing_list[rest_value] - self.rest_time.value:
                 self.timer.value = int(gui_clock.getTime())
-                if self.finish.value == 2:
+                if self.finish.value == 2 or self._task_end_requested:
                     self._end_task()
                     return
 
@@ -88,7 +88,7 @@ class ReachGrasp(bases.StimulusBase):
             self.play_reach_tone()
 
         # final wait for participant to touch pad before ending the trial
-        while not self.grasp_ready.value:
+        while not self.grasp_ready.value and not self._task_end_requested:
             self.timer.value = int(gui_clock.getTime())
             if self.finish.value == 2:
                 break
