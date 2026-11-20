@@ -37,7 +37,8 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         self.trial_is_active = False
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_panel(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_panel()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
@@ -46,11 +47,19 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
     def populate_metadata(self, metadata: dict):
         metadata["trial_data"]["categories"] = self.add_metadata()
 
+    def _set_phonemic_task(self) -> None:
+        self.phonemic_list = json.loads(self.initial_list[self.phonemic_choice.GetSelection()])
+        self.semantic = self.semantic_list[self.semantic_choice.GetSelection()]
+        self.value = self.phonemic_list[self.trial_num]
+        self.prompt_text.SetLabel(PHONEMIC_PHRASE.replace("*", self.value))
+        self.video_title.SetLabel(f"Trial: {self.value}")
+
     def _setup_panel(self) -> wx.GridBagSizer:
         self.phonemic_task = wx.StaticText(self, label="Choose Phonemic Category:")
-        self.phonemic_choice = wx.Choice(
+        choice = self.phonemic_choice = wx.Choice(
             self, id=wx.ID_ANY, choices=self.initial_list, size=(200, -1)
         )
+        choice.Bind(wx.EVT_CHOICE, lambda _: self._set_phonemic_task())
 
         self.semantic_task = wx.StaticText(self, label="Choose Semantic Category:")
         self.semantic_list = SEMANTIC_LIST
@@ -114,43 +123,49 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         )
         return grid_sizer
 
+    def _set_sub_grid_enabled(self, enabled: bool) -> None:
+        for elem in (
+            self.phonemic_choice,
+            self.semantic_choice,
+            self.phonemic_task,
+            self.semantic_task,
+        ):
+            elem.Enable(enabled)
+
+    def end_trial(self) -> None:
+        super().end_trial()
+        self._set_sub_grid_enabled(False)
+
+    def set_begin_trial_enabled(self, enabled: bool = True):
+        super().set_begin_trial_enabled(enabled)
+        self.start_video_button.Enable(not enabled)
+
     def set_trial_running(self, running: bool) -> None:
         super().set_trial_running(running)
-        disabled = not running
-        self.phonemic_choice.Enable(disabled)
-        self.semantic_choice.Enable(disabled)
-        self.semantic_task.Enable(disabled)
-        self.phonemic_task.Enable(disabled)
+        self._set_sub_grid_enabled(True)
+        self.start_video_button.Disable()  # enabled after select categories
 
     def switch_panel(self) -> None:
-        self.phonemic_choice.Enable(False)
-        self.semantic_choice.Enable(False)
-        self.semantic_task.Enable(False)
-        self.phonemic_task.Enable(False)
+        self._set_sub_grid_enabled(False)
         self.seconds = 0
         self.seconds_text.SetLabel("Time: 60 secs")
-        self.phonemic_list = json.loads(self.initial_list[self.phonemic_choice.GetSelection()])
-        self.semantic = self.semantic_list[self.semantic_choice.GetSelection()]
+        self._set_phonemic_task()
         logger.debug("Trial Continued; %s, %s selected", self.phonemic_list, self.semantic)
-        self.value = self.phonemic_list[self.trial_num]
-        self.prompt_text.SetLabel(PHONEMIC_PHRASE.replace("*", self.value))
-        self.video_title.SetLabel(f"Trial: {self.value}")
+        logger.debug("value: %s", self.value)
         self.prompt_text.Wrap(299)
         self.continue_button.SetValue(False)
         self.first = False
-        self.Layout()
-        self.Update()
-
-        logger.debug("value: %s", self.value)
         self.trial_num += 1
         self.actual_list.append(self.value)
-        self.start_video_button.Enable(True)
+        self.start_video_button.Enable()
+        self.Layout()
+        self.Update()
 
     def update_values(self) -> None:
         logger.debug("printing update_values")
         with wx.EventBlocker(self.continue_button):
             self.continue_button.SetValue(False)
-        self.start_video_button.Enable(True)
+        self.start_video_button.Enable()
         self.seconds_text.SetLabel("Time: 60 secs")
         if self.trial_num < len(self.phonemic_list):
             self.value = self.phonemic_list[self.trial_num]
@@ -165,15 +180,15 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
             self.prompt_text.SetLabel("Task Finished!\n Press 'End Task' button to save data.")
             self.first = True
             self.seconds_text.SetLabel(" ")
-            self.continue_button.Enable(False)
-            self.start_video_button.Enable(False)
+            self.continue_button.Disable()
+            self.start_video_button.Disable()
             self.continue_button.Hide()
             return
         self.trial_num += 1
         self.actual_list.append(self.value)
         self.video_title.SetLabel(f"Trial: {self.value}")
         self.start_video_button.SetValue(False)
-        self.start_video_button.SetLabel("Play Video")
+        self.start_video_button.SetLabel("Start Video")
 
     def get_result(self) -> str:
         return self.value
@@ -188,32 +203,28 @@ class VerbalFluencyPanel(TrialPanelWithInstructPlayback):
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {TRIAL_TIME - self.timer.value} secs")
 
-    def run_trial(self, count: int) -> None:
-        super().run_trial(count)
-        self.seconds = 60
-
     def get_trials(self) -> tuple[str, str, str]:
         logger.debug(
             "get_trials: %s, %s, %s", ".".join(self.phonemic_list), self.semantic, self.value
         )
         return ".".join(self.phonemic_list), self.semantic, self.value
 
+    def run_trial(self, count: int) -> None:
+        super().run_trial(count)
+        self._set_sub_grid_enabled(False)
+        self.seconds = 60
+
     def start_new_task(self) -> None:
         super().start_new_task()
+        self._set_sub_grid_enabled(True)
         self.trial_num = 0
-        self.phonemic_choice.Enable(True)
-        self.semantic_choice.Enable(True)
-        self.semantic_task.Enable(True)
-        self.phonemic_task.Enable(True)
         self.seconds = 0
         self.first = True
         self.prompt_text.SetLabel("")
         self.seconds_text.SetLabel("")
-        # self.continue_button.Enable(True)  done higher level
-        self.continue_button.SetLabel("Begin Trial")
         self.video_title.SetLabel("")
         self.start_video_button.SetValue(False)
-        self.start_video_button.SetLabel("Play Video")
+        self.start_video_button.SetLabel("Start Video")
         self.start_video_button.Enable(False)
         self.Layout()
         self.Update()

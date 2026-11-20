@@ -20,6 +20,9 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         "diadochokinesis", "Diadochokinesis", "ddk", Diadochokinesis
     )
 
+    syllable_start_video_button: wx.ToggleButton
+    syllable_pause_video_button: wx.ToggleButton
+
     def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
         self.param_list = np.repeat(np.array(DDK_TRIALS), DDK_TRIALS_PER_SYLLABLE).tolist()
         self.trial_number_ = 1
@@ -33,8 +36,9 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         super().__init__(parent, *args, **kwargs)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_ddk(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
-        video_panel = self.add_video_panel()
+        main_grid = self._main_grid = self._setup_ddk()
+        vertical_sizer.Add(main_grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        video_panel = self._video_panel = self.add_video_panel()
         static_box_sizer = self.setup_instruction_playback()
         static_box_sizer.Add(video_panel, 1, wx.EXPAND | wx.ALL, self.border)
         vertical_sizer.Add(static_box_sizer, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
@@ -96,7 +100,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
             self, label=f"Syllable ({self.syllable}) Instructions:"
         )
         self.syllable_start_video_button = wx.ToggleButton(
-            self, label="Play Video", size=(self.button_width, -1)
+            self, label="Start Video", size=(self.button_width, -1)
         )
         self.syllable_pause_video_button = wx.ToggleButton(
             self, label="Pause Video", size=(self.button_width, -1)
@@ -193,7 +197,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
         self.next_button.Enable(False)
         self.set_live_status()
 
-    def stop_video(self):
+    def stop_video(self) -> None:
         super().stop_video()
         self.set_stopped_status()
         self.next_button.Enable(True)
@@ -201,7 +205,7 @@ class DdkPanel(TrialPanelWithInstructPlayback):
     def pause_video(self):
         self.video_buttons[1].SetLabel("Resume Video")
 
-    def resume_video(self):
+    def resume_video(self) -> None:
         self.video_buttons[1].SetLabel("Pause Video")
 
     def start_new_task(self) -> None:

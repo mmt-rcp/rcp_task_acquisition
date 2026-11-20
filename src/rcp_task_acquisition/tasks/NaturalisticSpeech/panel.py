@@ -30,7 +30,8 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.selection = 0
         # self.image_list = []  unused
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._set_up_photo(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        main_grid = self._main_grid = self._set_up_photo()
+        vertical_sizer.Add(main_grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
     def _set_up_photo(self) -> wx.GridBagSizer:
@@ -102,6 +103,7 @@ class NaturalisticSpeechPanel(TrialPanel):
         return grid_sizer
 
     def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.seconds = 0
         self.trial_number = count
         self.trial_is_active = True

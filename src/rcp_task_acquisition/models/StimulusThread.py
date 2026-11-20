@@ -228,15 +228,14 @@ class StimulusThread(ProcessWithLogging):
         win_handle: "pyglet.window.xlib.XlibWindow" = self.window.winHandle  # type: ignore
         logger.info("entering main loop")
         while self.alive:
-            # wx.Yield()
             # self.window.flip()
             win_handle.flip()
             # not sure which to use but the inner win_handle seems more appropriate.
             try:
                 self.check_command(0.1)
             except Exception as err:
-                logger.exception("Error during main loop: %s", err)
-                self._handle_close_window()
+                logger.exception("Error during main loop: %s ; but continuing", err)
+                self.end_stimulus()
                 break
         logger.verbose("exiting")
 
@@ -249,6 +248,7 @@ class StimulusThread(ProcessWithLogging):
             logger.debug("msg: %s", msg)
         except Empty:
             self._reentrant_check_commands -= 1
+            wx.Yield()
             return
 
         handler = self._msg_handlers.get(msg, None)
@@ -259,11 +259,14 @@ class StimulusThread(ProcessWithLogging):
         try:
             handler()
         except SystemExit:
-            logger.debug("interrupted stimulus")
-            self.end_stimulus()
             # don't see which part of the code is supposed to raise SystemExit to reach here
             # also SystemExit is meant to exit the process. but this is continuing the main loop...
+            logger.debug("interrupted stimulus")
+            self.end_stimulus()
+        except Exception as err:
+            logger.exception("%s failed: %s", handler.__name__, err)
         finally:
+            wx.Yield()
             self._reentrant_check_commands -= 1
 
     def init_stimuli(self) -> None:
@@ -290,8 +293,8 @@ class StimulusThread(ProcessWithLogging):
             verb_generation=VerbGeneration,
             all_hardware=StimulusBase,
         ).get(self.task, None)
-        if base_cls is None:
-            if "calibrate" in self.task:
+        if base_cls is None or base_cls is StimulusBase:
+            if base_cls is None and "calibrate" in self.task:
                 base_cls = CalibrationTask
             else:
                 logger.debug("Using StimulusBase for %s", self.task)

@@ -17,7 +17,8 @@ class ReachGraspPanel(TrialPanel):
         self.grasp_object = "Large"
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_fingertap()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
     def _setup_fingertap(self) -> wx.GridBagSizer:
@@ -142,8 +143,6 @@ class ReachGraspPanel(TrialPanel):
         super().reset(count)
         self.seconds = 5
         self.seconds_text.SetLabel("Time: 0 secs")
-        self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Begin Trial")
         self.trial_text.SetLabel(f"Trial # {count + 1}")
 
     def on_timer(self, event: wx.Event) -> None:

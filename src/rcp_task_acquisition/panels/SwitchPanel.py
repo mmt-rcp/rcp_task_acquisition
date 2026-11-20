@@ -38,13 +38,13 @@ class SwitchPanel:
 
         self.task_frame.controls_panel.quit_button.Bind(wx.EVT_BUTTON, self._on_disable_panel)
         self.task_frame.Bind(wx.EVT_CLOSE, self._on_disable_panel)
+        self.task_frame.Bind(wx.EVT_TIMER, self._on_switch_panel, self.disable_timer)
 
         self.launch_panel.Show()
         self.launch_panel.protocol_button.Bind(wx.EVT_BUTTON, self._on_protocol_launched)
         self.launch_panel.exit_button.Bind(wx.EVT_BUTTON, self._on_exit)
         self.launch_panel.dialog.Bind(wx.EVT_CLOSE, self._on_exit)
         self.launch_panel.panel.Bind(wx.EVT_TIMER, self._on_switch_panel, self.disable_timer)
-        self.task_frame.Bind(wx.EVT_TIMER, self._on_switch_panel, self.disable_timer)
         self.launch_panel.panel.SetFocus()
 
     def _on_protocol_launched(self, event: wx.Event):
