@@ -52,6 +52,9 @@ class NaturalisticSpeech(bases.StimulusBase):
                 size=[new_width, new_height],
                 units="pix",
             )
+        else:
+            stim = None
+
         self.trial += 1
         self.photo_dict[f"trial_{self.trial}"] = self.photo
 
@@ -59,13 +62,13 @@ class NaturalisticSpeech(bases.StimulusBase):
         # switch the photodiode patch to be "On" while the photo is being shown
         self.display.switch_patch()
         self.display.draw_patch()
-        if self.show_image:
+        if stim is not None:
             stim.draw()
         self.display.flip()
 
         clock = core.Clock()
         while self.finish.value == 0 and not self._task_end_requested:
-            if self.show_image:
+            if stim is not None:
                 stim.draw()
             self.display.draw_patch()
             self.display.flip()
