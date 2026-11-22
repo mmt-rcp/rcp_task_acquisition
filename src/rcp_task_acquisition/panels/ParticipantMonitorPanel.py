@@ -36,10 +36,10 @@ class MonitorPanel(wx.Panel):
 
         image_sizer = wx.GridBagSizer(3, 4)
         image_sizer.Add(
-            title, pos=(0, 0), span=(0, 4), flag=wx.ALIGN_CENTER_HORIZONTAL | wx.LEFT, border=5
+            title, pos=(0, 0), span=(0, 4), flag=wx.ALIGN_CENTER_HORIZONTAL | wx.LEFT, border=0
         )
         image_sizer.Add(
-            self.monitor_bitmap, pos=(1, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.LEFT, border=5
+            self.monitor_bitmap, pos=(1, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.LEFT, border=0
         )
         self.SetSizer(image_sizer)
 
