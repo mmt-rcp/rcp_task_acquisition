@@ -16,6 +16,25 @@ from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 logger = get_logger(__name__)
 
 
+_input_widget_classes = (
+    # this is used to know which wx widget, in a trial panel, has to be enabled/disabled as necessarily,
+    # when the trial main actions/controls has to.
+    # see https://docs.wxpython.org/gallery.html
+    wx.Button,
+    wx.Choice,
+    wx.ComboBox,
+    wx.CheckBox,
+    wx.CheckListBox,
+    wx.RadioBox,
+    wx.RadioButton,
+    wx.SpinCtrl,
+    wx.SpinCtrlDouble,
+    wx.TextCtrl,
+    wx.ToggleButton,
+    # might need more later.
+)
+
+
 class TrialPanel(wx.Panel):
     task_trial_item_config: "TaskTrialClassConfig | None" = None
 
@@ -55,11 +74,14 @@ class TrialPanel(wx.Panel):
 
         self.Bind(wx.EVT_WINDOW_DESTROY, self._on_destroyed, self)
 
-    @staticmethod
-    def set_grid_group_enable(grid: wx.GridBagSizer, enabled: bool) -> None:
+    @classmethod
+    def set_grid_group_enable(cls, grid: wx.GridBagSizer, enabled: bool) -> None:
         for child in grid.Children:
             sub = child.GetWindow()
-            if sub is not None:
+            if sub is None:
+                if child.Sizer is not None:
+                    cls.set_grid_group_enable(child.Sizer, enabled)
+            elif isinstance(sub, _input_widget_classes):
                 sub.Enable(enabled)
 
     def _on_destroyed(self, evt: wx.Event):
