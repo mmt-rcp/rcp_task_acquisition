@@ -22,8 +22,8 @@ def get_new_log_file(
     if unit_serial is None:
         unit_serial = platform.node()
     date_string = dt_now.strftime("%Y%m%d")
-    right_path = Path(date_string, unit_serial)
-    log_dir = Path(base_dir, right_path)
+    part = f"{date_string}_{unit_serial}"
+    log_dir = Path(base_dir, "logs", part)
     # Ensure the log directory exists
     log_dir.mkdir(parents=True, exist_ok=True)
     search_pat = _make_log_file_name(_make_front_part(date_string, unit_serial, "*"))

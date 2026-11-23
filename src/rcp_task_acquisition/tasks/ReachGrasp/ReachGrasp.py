@@ -3,7 +3,7 @@ from typing import Any
 import numpy as np
 from psychopy import core
 import pyaudio
-
+import time
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
 from rcp_task_acquisition.utils.typing import TaskMetaData, SharedBool, SharedFloat, SharedInt
@@ -30,6 +30,7 @@ class ReachGrasp(bases.StimulusBase):
         self.grasp_object: str = ""
         self.hand_dict: dict[str, str] = {}
         self.grasp_dict: dict[str, str] = {}
+        self.grasp_type = "Grasp"
         self.grasp_ready = grasp[0]
         self.rest_time = grasp[1]
         self.grasp_count = grasp_count
@@ -41,19 +42,17 @@ class ReachGrasp(bases.StimulusBase):
 
         self.grasp_count.value = 0
         self.grasp_ready.value = False
-        # timing_list = np.linspace(MIN_REST_VAL, MAX_REST_VAL, TRIALS_PER_BLOCK)
-        # np.random.shuffle(timing_list)
         timing_list = self._shuffle_list()
         self.metadata[f"trial_{self.trial_count}"] = {
             "hand": self.hand,
             "grasp_object": self.grasp_object,
+            "grasp_type": self.grasp_type,
             "rest_times": [],
         }
 
         self.display.switch_patch()
         self.display.draw_patch()
         self.display.flip()
-        # self.play_reach_tone()
 
         gui_clock = core.Clock()
         for rest_value in range(0, TRIALS_PER_BLOCK):
@@ -65,15 +64,14 @@ class ReachGrasp(bases.StimulusBase):
             while not self.grasp_ready.value and not self._task_end_requested:
                 self.timer.value = int(gui_clock.getTime())
                 if self.finish.value == 2:
-                    break
+                    self._end_task()
+                    return
             self.metadata[f"trial_{self.trial_count}"]["rest_times"].append(timing_list[rest_value])
             self.grasp_count.value = rest_value  # +1
 
             self.timer.value = int(gui_clock.getTime())
 
             # start countdown once hand is resting
-
-            self.grasp_ready.value = False
             clock = core.Clock()
             logger.debug(f"rest_time = {self.rest_time.value}")
             while clock.getTime() < timing_list[rest_value] - self.rest_time.value:
@@ -82,11 +80,14 @@ class ReachGrasp(bases.StimulusBase):
                     self._end_task()
                     return
 
-            # self.display.draw_patch()
-            # self.display.flip()
             # tone to start the reach
             self.play_reach_tone()
-
+            while self.grasp_ready.value:
+                time.sleep(0.001)
+                self.timer.value = int(gui_clock.getTime())
+                if self.finish.value == 2:
+                    self._end_task()
+                    return
         # final wait for participant to touch pad before ending the trial
         while not self.grasp_ready.value and not self._task_end_requested:
             self.timer.value = int(gui_clock.getTime())
@@ -110,9 +111,10 @@ class ReachGrasp(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def update_data(self, data: tuple[str, str]) -> None:
+    def update_data(self, data: tuple[str, str, str]) -> None:
         self.hand = data[0]
         self.grasp_object = data[1]
+        self.grasp_type = data[2]
 
     def saveMetadata(self) -> TaskMetaData:
         return self.metadata

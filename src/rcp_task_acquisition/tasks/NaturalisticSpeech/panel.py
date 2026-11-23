@@ -1,14 +1,22 @@
 import os
+from pathlib import Path
 
 import wx
 
-import rcp_task_acquisition.tasks.NaturalisticSpeech.constants as c
+from rcp_task_acquisition.tasks.NaturalisticSpeech import constants
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
 from rcp_task_acquisition.tasks.NaturalisticSpeech.NaturalisticSpeech import NaturalisticSpeech
 from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+_accepted_images_ext = (
+    ".jpg",
+    ".jpeg",
+    ".png",
+)
 
 
 class NaturalisticSpeechPanel(TrialPanel):
@@ -22,13 +30,12 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.display_secs = 0
         self.display_mins = 0
         self.trial_number = 1
-        # self.timestamps = {} unused
         self.countdown_start = 0
-        self.image_path: list[str] = []
+        self._image_paths: list[str] = []
+        self._image_names: list[str] = []
         self.border = 5
         self.photo = None
         self.selection = 0
-        # self.image_list = []  unused
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
         main_grid = self._main_grid = self._set_up_photo()
         vertical_sizer.Add(main_grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
@@ -40,23 +47,20 @@ class NaturalisticSpeechPanel(TrialPanel):
         Returns:
             message (wx dialog panel)
         """
-        self.image_names: list[str] = os.listdir(c.IMG_DIR)
-
-        for image in self.image_names:
-            try:
-                image_path = os.path.join(c.IMG_DIR, image)
-                self.image_path.append(image_path)
-            except Exception as err:
-                logger.error("Unable to load %s: %s", image, err)
-
-        self.image_names += c.NON_IMAGE_TASKS
-        self.image_choice = wx.Choice(self, id=wx.ID_ANY, choices=self.image_names, size=(310, -1))
-
+        images = list(
+            imp for imp in constants.IMG_DIR.glob("*") if imp.name.endswith(_accepted_images_ext)
+        )
+        image_paths = self._image_paths = []
+        image_names = self._image_names = []
+        for imp in images:
+            image_paths.append(imp.as_posix())
+            image_names.append(imp.name)
+        image_names.extend(constants.NON_IMAGE_TASKS)
+        self.image_choice = wx.Choice(self, id=wx.ID_ANY, choices=image_names, size=(310, -1))
         self.image_choice.SetSelection(self.selection)
 
-        wx_image = wx.Image(self.image_path[self.selection], wx.BITMAP_TYPE_ANY)
+        wx_image = wx.Image(self._image_paths[self.selection], wx.BITMAP_TYPE_ANY)
         wx_image = wx_image.Scale(250, 150)
-        # self.image_list.append( wx_image.ConvertToBitmap())
         self.shown_image = wx.StaticBitmap(self, wx.ID_ANY, wx_image)
 
         self.image_choice.Bind(wx.EVT_CHOICE, self.update_image)
@@ -112,7 +116,7 @@ class NaturalisticSpeechPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
 
     def get_result(self) -> tuple[str, int]:
-        image_path = self.image_names[self.selection]
+        image_path = self._image_names[self.selection]
         return image_path, self.trial_number
 
     def reset(self, count: int) -> None:
@@ -133,10 +137,10 @@ class NaturalisticSpeechPanel(TrialPanel):
 
     def update_image(self, event: wx.Event) -> None:
         self.selection = self.image_choice.GetSelection()
-        if self.selection >= len(self.image_path):
+        if self.selection >= len(self._image_paths):
             wx_image = wx.Image(250, 250, clear=True)
         else:
-            wx_image = wx.Image(self.image_path[self.selection], wx.BITMAP_TYPE_ANY)
+            wx_image = wx.Image(self._image_paths[self.selection], wx.BITMAP_TYPE_ANY)
         wx_image = wx_image.Scale(250, 150)
         wx_image.ConvertToBitmap()
 

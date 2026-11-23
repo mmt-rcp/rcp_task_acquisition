@@ -465,7 +465,7 @@ class CamerasFrontend:
         if self.serial.serSuccess:
             msg = "Xx"
             self.serial.write(msg)
-        error_message: list[str] = []
+        cameras_frames_drop: list[str] = []
         self.camaq.value = 0
         threshold = 1
 
@@ -485,7 +485,9 @@ class CamerasFrontend:
             if ret != "done":
                 if isinstance(ret, int):
                     if ret > threshold:
-                        error_message.append(f"{ret}% of camera frames dropped for {cam_d.name}")
+                        cameras_frames_drop.append(
+                            f"{ret}% of camera frames dropped for {cam_d.name}"
+                        )
                     ret = cam_d.get_from(timeout=1)
                     if ret != "done":
                         logger.warning("%s: unexpected response to cam stop: %s", cam_d.name, ret)
@@ -512,13 +514,10 @@ class CamerasFrontend:
             except Exception as err:
                 cam_errors[camID] = err
 
-        error = ""
-        if error_message:
-            if error == "":
-                error += "\n"
-            error += "\n" + "\n".join(error_message)
-        if error != "":
-            self.warning.update_error(WarnCat.FRAMES, info=error).display()
+        if len(cam_errors) > 0:
+            logger.warning("cameras stop error(s): %s", cam_errors)
+        if len(cameras_frames_drop) > 0:
+            logger.warning("cameras frame drop: %s", cameras_frames_drop)
         # NB:
         # don't raise errors. callers expect action to succeed always. unless interrupted or such.
 

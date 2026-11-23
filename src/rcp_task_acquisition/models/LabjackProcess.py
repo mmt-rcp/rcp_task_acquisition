@@ -285,11 +285,14 @@ class LabJackDataStream(ProcessWithCommands):
             if self.grasp_task:
                 if self.grasp_index is None:
                     self.grasp_index = self.analog_inputs.index("AIN7")
-                if not np.all(new_list[1]):
-                    if new_list[1][0] != 0:
-                        idx = len(new_list[1]) - int(np.argmax(new_list[1] == 1))
-                        self.rest_time.value = (1 / self.actualscanRate.value) * idx
+                # if not np.all(new_list[1]) and not np.all(new_list[1] == 0):
+                #     if new_list[1][0] != 0:
+                #         idx = len(new_list[1]) - int(np.argmax(new_list[1] == 1))
+                #         self.rest_time.value = (1 / self.actualscanRate.value) * idx
+                if np.any(new_list[1] == 0) and not self.grasp_ready.value:
                     self.grasp_ready.value = True
+                elif np.any(new_list[1] == 1):
+                    self.grasp_ready.value = False
 
             self.graph(results, new_list)  # digital_reshape, extended_reshape)
 
