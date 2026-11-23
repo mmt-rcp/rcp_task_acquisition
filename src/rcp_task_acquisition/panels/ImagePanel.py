@@ -22,7 +22,6 @@ class ImagePanel(wx.Panel):
         self.SetSizer(self.sizer)
         self.Fit()
         self.Bind(wx.EVT_PAINT, self.on_paint)
-        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda _: None)  # keep me, prevent flicker
         self.Bind(wx.EVT_SIZE, self.on_size)
 
     def on_paint(self, event: wx.Event) -> None:
