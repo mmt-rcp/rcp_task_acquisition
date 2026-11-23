@@ -1282,6 +1282,7 @@ class MainFrame(wx.Frame):
             controls_panel.hardware_button.Enable()
             controls_panel.session_button.Enable()
             controls_panel.Enable()
+            self.graph_panel.Enable()
             self.Enable()
 
         # will be enabled when cameras are initialized:
@@ -1289,6 +1290,7 @@ class MainFrame(wx.Frame):
         controls_panel.hardware_button.Disable()
         controls_panel.session_button.Disable()
         controls_panel.Disable()
+        self.graph_panel.Disable()
         self.Disable()
 
         self.initCams(callback=cb)
