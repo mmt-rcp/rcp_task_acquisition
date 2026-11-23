@@ -30,50 +30,42 @@ class VerbGeneration(bases.StimulusBase):
                 self.lists.append(line[1:])
         logger.debug("read %s: %s", c.CSV_PATH, self.lists)
 
-    def present(self, test=True) -> None:
+    def present(self) -> None:
         self.timer.value = 0
         self.trial += 1
         self.words_shown = []
         self.play_tone()
         timer_clock = core.Clock()
+        cur_list = self.lists[self.list_num]
         for index, stim in enumerate(self.stim_list):
             self.timer.value = int(timer_clock.getTime())
-            self.words_shown.append(self.lists[self.list_num][index])
+            self.words_shown.append(cur_list[index])
             stim.draw()
-
             self.display.switch_patch()
             self.display.draw_patch()
             self.display.flip()
             self.timer.value = int(timer_clock.getTime())
             clock = core.Clock()
             self.timer.value = int(timer_clock.getTime())
-            while clock.getTime() < c.SHOW_TIME:
+            while clock.getTime() < c.SHOW_TIME and not self.is_task_end_requested():
                 stim.draw()
                 self.display.draw_patch()
                 self.display.flip()
                 self.timer.value = int(timer_clock.getTime())
-                if self.finish.value == 2 or self._task_end_requested:
-                    self.display.switch_patch()
-                    self.display.draw_patch()
-                    self.display.flip()
-                    self.trial_list[f"trial_{self.trial}"] = self.words_shown
-                    return
-                self.timer.value = int(timer_clock.getTime())
+            if self.is_task_end_requested():
+                break
             self.timer.value = int(timer_clock.getTime())
             # turn the patch to off and flip the display to black
             self.display.switch_patch()
             self.display.draw_patch()
             clock = core.Clock()
             self.timer.value = int(timer_clock.getTime())
-            while clock.getTime() < c.GENERATION_TIME:
+            while clock.getTime() < c.GENERATION_TIME and not self.is_task_end_requested():
                 self.fixation.draw()
                 self.display.flip()
                 self.timer.value = int(timer_clock.getTime())
-                if self.finish.value == 2:
-                    self.display.flip()
-                    self.trial_list[f"trial_{self.trial}"] = self.words_shown
-                    return
-                self.timer.value = int(timer_clock.getTime())
+            if self.is_task_end_requested():
+                break
         self.trial_list[f"trial_{self.trial}"] = self.words_shown
         self.display.flip()
         self.play_tone()
