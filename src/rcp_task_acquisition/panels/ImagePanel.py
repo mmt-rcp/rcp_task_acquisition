@@ -1,16 +1,19 @@
+import matplotlib.axes, matplotlib.text
 import wx
 import wx.lib.dialogs
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+from pyarrow.lib import Sequence
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panels/ImagePanel")
+logger = get_logger(__name__)
 
 
 class ImagePanel(wx.Panel):
-    def __init__(self, parent, **kwargs):
-
+    def __init__(self, parent: wx.Window):
+        self.axes: list[matplotlib.axes.Axes] = []
+        self.texts: list[matplotlib.text.Text] = []
         super().__init__(parent, -1, style=wx.SUNKEN_BORDER)
         self.figure = Figure()
         self.canvas = FigureCanvas(self, -1, self.figure)
@@ -18,15 +21,31 @@ class ImagePanel(wx.Panel):
         self.sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
         self.SetSizer(self.sizer)
         self.Fit()
+        self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.Bind(wx.EVT_SIZE, self.on_size)
 
-    def updateImage(self, gui_size, **kwargs):
+    def on_paint(self, event: wx.Event) -> None:
+        if len(self.axes) < 2:
+            logger.debug("axes<2: %s", self.axes)
+            return
+        # logger.debug("on_paint: %s", self)
+        try:
+            self.figure.canvas.draw()
+        except AttributeError as err:
+            logger.debug("on_paint: skipping %s", err)
+
+    def on_size(self, event: wx.Event) -> None:
+        self.Refresh()
+        event.Skip()
+
+    def updateImage(self) -> None:
         """
         Switching to a toggle method so there will always be only 2 cameras at a time
         """
         column_count = 2
         row_pos = 0.005
         row_inc = 0.5
-        self.figure.clf()
+        self.figure.clear()
         self.axes = []
         self.figure.patch.set_facecolor("none")
         props = {
@@ -35,21 +54,19 @@ class ImagePanel(wx.Panel):
             "edgecolor": (0.1, 0.1, 0.1),
             "alpha": 0.75,
         }
-        for c in range(int(column_count)):
-            self.axes.append(self.figure.add_subplot(1, column_count, c + 1, frameon=True))
-
-            self.axes[c].set_position([row_pos, 0.005, 0.49, 0.99])
-
-            row_pos += row_inc
-            self.axes[c].xaxis.set_visible(False)
-            self.axes[c].yaxis.set_visible(False)
         self.texts = []
-        for index, axis in enumerate(self.axes):
+        for idx in range(column_count):
+            axis = self.figure.add_subplot(1, column_count, idx + 1, frameon=True)
+            self.axes.append(axis)
+            axis.set_position((row_pos, 0.005, 0.49, 0.99))
+            row_pos += row_inc
+            axis.xaxis.set_visible(False)
+            axis.yaxis.set_visible(False)
             self.texts.append(
                 axis.text(
                     5,
                     5,
-                    str(index),
+                    str(idx),
                     fontsize=8,
                     color=(0.9, 0.9, 0.9),
                     verticalalignment="top",
@@ -60,14 +77,9 @@ class ImagePanel(wx.Panel):
         self.Refresh()
         self.Update()
 
-    def getfigure(self):
-        """
-        Returns the figure, axes and canvas
-        """
-        return (self.figure, self.axes, self.canvas)
-
-    def update_names(self, cam_name_list):
+    def update_names(self, cam_name_list: list[str]) -> None:
         for index, axis in enumerate(self.axes):
+            cam_name = cam_name_list[index] if index < len(cam_name_list) else f"cam{index}"
             self.texts[index].remove()
             props = {
                 "boxstyle": "square",
@@ -78,7 +90,7 @@ class ImagePanel(wx.Panel):
             self.texts[index] = axis.text(
                 5,
                 5,
-                cam_name_list[index],
+                cam_name,
                 fontsize=8,
                 color=(0.9, 0.9, 0.9),
                 verticalalignment="top",
@@ -89,10 +101,15 @@ class ImagePanel(wx.Panel):
         self.Update()
 
     def draw(self):
-        self.figure.canvas.draw()
+        self.Refresh()
 
     def reset_sizing(self):
         self.canvas.ClearBackground()
-        self.canvas.draw()
+        try:
+            self.canvas.draw()
+        except AttributeError as err:
+            # most likely:
+            # "AttributeError: ‘NoneType’ object has no attribute ‘dpi’"
+            logger.debug("silencing attribute error from canvas.draw(): %s", err)
         self.Refresh()
         self.Update()

@@ -1,18 +1,19 @@
 from psychopy import core
+from typing_extensions import Any
 
 from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./tasks/Sara")
+logger = get_logger(__name__)
 
 
 # Sets up display window, fixation cross, text pages and image stimuli
 class Sara(bases.StimulusBase):
-    def __init__(self, base_vars):
+    def __init__(self, base_vars: dict[str, Any]) -> None:
         super().__init__(**base_vars)
         self.trial = 0
 
-    def present(self, test=True):
+    def present(self, test=True) -> None:
         self.timer.value = 0
         self.play_tone()
         # switch the photodiode patch to be "On" while the photo is being shown
@@ -20,7 +21,7 @@ class Sara(bases.StimulusBase):
         self.display.draw_patch()
         self.display.flip()
         clock = core.Clock()
-        while self.finish.value == 0:
+        while self.finish.value == 0 and not self._task_end_requested:
             self.display.draw_patch()
             self.display.flip()
             self.timer.value = int(clock.getTime())
@@ -28,7 +29,3 @@ class Sara(bases.StimulusBase):
         self.display.switch_patch()
         self.display.draw_patch()
         self.play_tone()
-
-    def saveMetadata(self, name, sessionFolder):
-        data = None
-        return data

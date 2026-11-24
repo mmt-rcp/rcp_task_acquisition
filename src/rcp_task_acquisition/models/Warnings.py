@@ -1,11 +1,11 @@
 import enum
-from typing_extensions import Self
 
 import wx
+from typing_extensions import Self
 
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./models/LabjackFrontend")
+logger = get_logger(__name__)
 
 
 class WarnCat(str, enum.Enum):
@@ -49,10 +49,13 @@ class WarningHandler:
     def display(self):
         logger.debug(self.msg)
         warning_box = wx.MessageDialog(
-            parent=None, message=self.msg, caption="Warning!", style=wx.OK | wx.ICON_EXCLAMATION
+            parent=None,
+            message=self.msg,
+            caption="Warning!",
+            style=wx.OK | wx.ICON_EXCLAMATION | wx.STAY_ON_TOP,
         )
         warning_box.ShowModal()
-        warning_box.Destroy()
+        warning_box.Close()
 
     def update_error(self, error: WarnCat, info: str | None = None) -> Self:
         self.msg = self._get_error(error, info)

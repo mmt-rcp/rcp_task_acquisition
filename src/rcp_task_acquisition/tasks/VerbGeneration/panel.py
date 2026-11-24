@@ -4,21 +4,26 @@ import wx
 
 import rcp_task_acquisition.tasks.VerbGeneration.constants as c
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.VerbGeneration.VerbGeneration import VerbGeneration
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./VerbGeneration/panel")
+logger = get_logger(__name__)
 
 
 class VerbGenerationPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig(
+        "verb_generation", "Verb Generation", "verbgeneration", VerbGeneration
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.seconds = 0
         self.display_secs = 0
         self.display_mins = 0
         self.trial_number = 1
-        self.timestamps = {}
+        # self.timestamps = {}  unused
         self.countdown_start = 0
-        self.button_width = 76
         self.border = 5
         self.selection = 0
         self.verb_lists = []
@@ -29,12 +34,11 @@ class VerbGenerationPanel(TrialPanel):
                 self.verb_lists.append(list_str)
 
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._set_up_photo(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._set_up_photo()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
-        self.rest_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_timer, self.rest_timer)
 
-    def _set_up_photo(self):
+    def _set_up_photo(self) -> wx.GridBagSizer:
         """
         Set up the naturalistic speech panel
         Returns:
@@ -46,9 +50,6 @@ class VerbGenerationPanel(TrialPanel):
         self.noun_choice.SetSelection(self.selection)
         self.trial_text = wx.StaticText(self, label="Trial # 1")
         self.seconds_text = wx.StaticText(self, label="Time: 0 mins, 0 secs")
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
 
         grid_sizer = wx.GridBagSizer(5, 4)
         grid_sizer.Add(
@@ -71,29 +72,28 @@ class VerbGenerationPanel(TrialPanel):
         grid_sizer.Add(
             self.seconds_text, pos=(4, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.ALL, border=10
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button, pos=(5, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.ALL, border=10
         )
         return grid_sizer
 
-    def run_trial(self, number):
+    def run_trial(self, count: int) -> None:
+        super().run_trial(count)
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
         self.trial_is_active = True
         self.noun_choice.Enable(False)
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
 
-    def update_trial(self, number):
-        self.trial_number = number
-        self.trial_text.SetLabel(f"Trial # {self.trial_number}")
-
-    def get_result(self):
+    def get_result(self) -> int:
         list_choice = self.noun_choice.GetSelection()
         return list_choice
 
-    def reset(self, number):
+    def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds = 0
-        self.trial_number = number
+        self.trial_number = count
         self.trial_is_active = False
         self.seconds_text.SetLabel("Time: 0 mins, 0 secs")
         self.noun_choice.Enable(True)
@@ -101,9 +101,10 @@ class VerbGenerationPanel(TrialPanel):
         self.trial_text.SetLabel(f"Trial # {self.trial_number}")
         self.continue_button.SetValue(False)
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         self.seconds += 1
-        self.display_mins = int(self.timer.value / 60)
-        self.display_secs = self.timer.value % 60
+        timer_val = self.timer.value
+        self.display_mins = int(timer_val / 60)
+        self.display_secs = timer_val % 60
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {self.display_mins} mins, {self.display_secs} secs")

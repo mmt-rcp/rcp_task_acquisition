@@ -1,9 +1,18 @@
 **/__pycache__/
+
 config_files/
+# should not ignore entire directory where some files are committed.
+
+/D:\\RawDataLocal/
+# default output dir
+
 database/
 
 # IDEs:
 /.idea/
+
+#
+**/*.py.orig
 
 # Distribution / packaging
 .Python

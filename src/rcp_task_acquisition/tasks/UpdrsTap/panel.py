@@ -1,30 +1,37 @@
 import wx
 
-from rcp_task_acquisition.panels.TrialPanel import TrialPanel
-from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATH, BASIC_TAPS_TIME
+from rcp_task_acquisition.panels.TrialPanel import TrialPanelWithInstructPlayback
+from rcp_task_acquisition.tasks.ToneTaps.ToneTaps import ToneTapsClosed
+from rcp_task_acquisition.tasks.UpdrsTap.BasicTaps import BasicTaps
+from rcp_task_acquisition.tasks.UpdrsTap.constants import BASIC_TAPS_PATHS, BASIC_TAPS_TIME
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./panel/UpdrsTap")
+logger = get_logger(__name__)
 
 
-class FingerTapPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+class FingerTapPanel(TrialPanelWithInstructPlayback):
+    task_trial_item_config = TaskTrialClassConfig(
+        "motor_task_finger_taps", "Finger Tap: Motor Variant", "fingertapmotor", BasicTaps
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.tap_hand = "left"
         self.type = None
         self.trial_is_active = False
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_fingertap()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         vertical_sizer.Add(
             self.setup_instruction_playback(), 0, wx.ALIGN_LEFT | wx.ALL, self.border
         )
-        self.instruction_paths = BASIC_TAPS_PATH
+        self.instruction_paths = BASIC_TAPS_PATHS
         self.start_video_button.Enable(True)
         self.SetSizer(vertical_sizer)
 
-    def _setup_fingertap(self):
+    def _setup_fingertap(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
-
         self.type_text = wx.StaticText(self, label="Select Speed:")
         self.task_type_list = ["Slow and methodical", "Faster", "Fast as possible"]
         self.task_type = wx.Choice(self, id=wx.ID_ANY, choices=self.task_type_list)
@@ -36,10 +43,6 @@ class FingerTapPanel(TrialPanel):
         self.right_radio.Bind(wx.EVT_RADIOBUTTON, self.on_select)
         self.right_radio.SetValue(True)
         self.seconds_text = wx.StaticText(self, label="Time: 10 secs")
-
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
 
         grid_sizer = wx.GridBagSizer(5, 4)
 
@@ -85,6 +88,7 @@ class FingerTapPanel(TrialPanel):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(5, 0),
@@ -94,48 +98,51 @@ class FingerTapPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
-        # self.seconds = 10
-        self.trial_is_active = True
-        self.left_radio.Enable(False)
-        self.right_radio.Enable(False)
-        self.hand_text.Enable(False)
-        self.start_video_button.Enable(False)
-        # self.trial_text.SetLabel(f"Trial # {number}")
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disable = not running
+        self.left_radio.Enable(disable)
+        self.right_radio.Enable(disable)
+        self.hand_text.Enable(disable)
+        self.task_type.Enable(disable)
 
-    def get_result(self):
+    def get_result(self) -> tuple[str, str]:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
         type_index = self.task_type.GetSelection()
-        task_type = None
-        if type_index != -1:
+        if type_index == -1:
+            task_type = ""
+        else:
             task_type = self.task_type_list[type_index]
 
         return self.tap_hand, task_type
 
-    def on_select(self, event):
+    def on_select(self, event: wx.Event) -> None:
         self.tap_hand = "left" if self.left_radio.GetValue() else "right"
 
-    def reset(self, trial):
-        self.trial_is_active = False
+    def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds = 11
-        self.left_radio.Enable(True)
-        self.right_radio.Enable(True)
-        self.hand_text.Enable(True)
         self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
-        # self.continue_button.Enable(False)
-        self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Begin Trial")
-        self.trial_text.SetLabel(f"Trial # {trial + 1}")
-        self.start_video_button.Enable(True)
+        self.trial_text.SetLabel(f"Trial # {count + 1}")
 
-    def start_new_trial(self):
-        self.trial_number = 0
+    def start_new_task(self) -> None:
+        super().start_new_task()
         self.trial_text.SetLabel("Trial # 1")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds_text.SetLabel(f"Time: {BASIC_TAPS_TIME - self.timer.value} secs")
         else:
             self.seconds -= 1
             if self.seconds >= 0:
                 self.seconds_text.SetLabel(f"Time: {self.seconds} secs")
+
+
+class ToneTapsPanel(FingerTapPanel):
+    # seems unused
+
+    task_trial_item_config = TaskTrialClassConfig("tone_taps", "...", "fingertapmotor", BasicTaps)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.seconds_text.Hide()

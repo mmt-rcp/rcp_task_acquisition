@@ -1,0 +1,43 @@
+import typing
+from multiprocessing import sharedctypes
+from multiprocessing.synchronize import Event
+
+SharedEvent: typing.TypeAlias = Event
+
+SharedInt: typing.TypeAlias = sharedctypes.Synchronized  # [int]
+SharedFloat: typing.TypeAlias = sharedctypes.Synchronized  # [float]
+SharedBool: typing.TypeAlias = sharedctypes.Synchronized  # [bool]
+SharedArray = sharedctypes.SynchronizedArray
+
+# getting:
+# >   SharedInt = sharedctypes.Synchronized[int]
+# E   TypeError: 'type' object is not subscriptable
+#
+
+
+CropTupleT: typing.TypeAlias = tuple[int, int, int, int]
+
+FrameDimsTupleT: typing.TypeAlias = tuple[int, int, int, int]
+
+
+HardwareListsType: typing.TypeAlias = tuple[
+    tuple[str, ...],  # hardware list
+    tuple[str, ...],  # labjack list
+    tuple[str, ...],  # min max
+    tuple[tuple[float, float], ...],  # voltage range
+]
+
+
+TaskMetaData: typing.TypeAlias = dict[str, typing.Any]
+
+
+class OkCallback(typing.Protocol):
+    def __call__(self, error: BaseException | None):
+        """Callback"""
+
+
+def void_ok_callback(error: BaseException | None) -> None:
+    """default"""
+
+
+MaybeOkCallback: typing.TypeAlias = OkCallback | None

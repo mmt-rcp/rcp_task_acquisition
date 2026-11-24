@@ -1,118 +1,58 @@
 import os
-import shutil
+from io import StringIO
+from pathlib import Path
+from typing import Any
 
-import ruamel.yaml
+import numpy
+import ruamel.yaml.nodes
 
-from rcp_task_acquisition.utils.constants import (
-    CONFIG_FILE_PATH,
-    SCREEN_CONFIG_FILE_NAME,
-    STIM_CONFIG_FILE_PATH,
-)
 from rcp_task_acquisition.utils.logger import get_logger
 
-logger = get_logger("./utils/file_utils")
+logger = get_logger(__name__)
 
 
-def get_screen_config():
-    userDataDir = os.path.realpath(CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, SCREEN_CONFIG_FILE_NAME)
-    ruamelFile = ruamel.yaml.YAML()
-
-    screen_config = None
-    if os.path.exists(configPath):
-        with open(configPath, "r") as f:
-            screen_config = ruamelFile.load(f)
-    if screen_config is None:
-        return
-    return screen_config
+def represent_numpy_float64(self, value):
+    return self.represent_float(value)  # alternatively dump as a tagged float
 
 
-def get_stimulus_config(filename):
-    userDataDir = os.path.realpath(STIM_CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, filename)
-    ruamelFile = ruamel.yaml.YAML()
-
-    stimulusConfig = None
-    if os.path.exists(configPath):
-        with open(configPath, "r") as f:
-            stimulusConfig = ruamelFile.load(f)
-    if stimulusConfig is None:
-        return
-    return stimulusConfig
+def represent_numpy_int64(self, value):
+    return self.represent_int(value)  # alternatively dump as a tagged int
 
 
-def copy_file(sessionFolder, filename):
-    # Copy visual stimulus config file to session directory
-    userDataDir = os.path.realpath(STIM_CONFIG_FILE_PATH)
-    configPath = os.path.join(userDataDir, filename)
-    shutil.copy2(configPath, os.path.join(sessionFolder, filename))
+def represent_numpy_array(self, array, flow_style=None):
+    tag = "!numpy.ndarray"
+    value = []
+    node = ruamel.yaml.nodes.SequenceNode(tag, value, flow_style=flow_style)
+    for elem in array:
+        node_elem = self.represent_data(elem)
+        value.append(node_elem)
+    if flow_style is None:
+        node.flow_style = True
+    return node
 
 
-def get_stimulus_path():
-    return STIM_CONFIG_FILE_PATH
+yaml = ruamel.yaml.YAML()
+# yaml.Representer.add_representer(numpy.ndarray, represent_numpy_array)
+# we'll see if we want/need represent numpy array or not.
+yaml.Representer.add_representer(numpy.float64, represent_numpy_float64)
+yaml.Representer.add_representer(numpy.int64, represent_numpy_int64)
 
 
-def get_config_path():
-    return CONFIG_FILE_PATH
+def write_metadata(data: dict[str, Any], file_path: str | Path) -> None:
+    file_path = Path(file_path)
+    logger.info("writing metadata to %s", file_path)
+    dumped = StringIO()
+    try:
+        yaml.dump(data, dumped)
+    except Exception as err:
+        logger.error("error serializing data: %s ; data=%s", err, data)
+        raise
+    raw = dumped.getvalue()
+    with file_path.open("w") as fh:
+        fh.write(raw)
 
 
-def write_config(config_name, data):
-    config_path = os.path.join(CONFIG_FILE_PATH, config_name)
-    with open(config_path, "w") as config_file:
-        ruamelFile = ruamel.yaml.YAML()
-        ruamelFile.dump(data, config_file)
-
-
-def read_config(config_name):
-    config_path = os.path.join(CONFIG_FILE_PATH, config_name)
-    ruamelFile = ruamel.yaml.YAML()
-    if not (os.path.exists(config_path)):
-        return None
-
-    with open(config_path, "r") as config_file:
-        config = ruamelFile.load(config_file)
-    return config
-
-
-def write_metadata(data, file_path):
-    with open(file_path, "w") as metadata_file:
-        ruamelFile = ruamel.yaml.YAML()
-        ruamelFile.dump(data, metadata_file)
-
-
-def cam_config_template():
-    """
-    Creates a template for config.yaml file. This specific order is preserved while saving as yaml file.
-    """
-    yaml_str = """\
-# Camera reference (enter serial numbers for each)
-    frontCam:
-    sideCam:
-    topCam:
-    masterCam:
-    \n
-# Camera settings
-    frontCrop:
-    sideCrop:
-    topCrop:
-    exposure:
-    framerate:
-    bin:
-    \n
-# User information
-    unitRef:
-    raw_data_dir:
-    COM:
-    default_video_dir:
-    \n
-    
-    """
-    ruamelFile = ruamel.yaml.YAML()
-    cfg_file = ruamelFile.load(yaml_str)
-    return cfg_file, ruamelFile
-
-
-def metadata_template():
+def metadata_template() -> ruamel.yaml.CommentedMap:
     """
     Creates a template for config.yaml file. This specific order is preserved while saving as yaml file.
     """
@@ -121,10 +61,6 @@ def metadata_template():
     version:
     \n
     
-# Cameras
-    cameras:
-    \n
-
 # Experiment
     Designer:
     administrator_id:
@@ -142,14 +78,9 @@ def metadata_template():
     participant_id:
     participant_details:
     \n
-    
+
 # Screen Config
     screen_settings:
-    \n
-
-# Labjack Settings
-    actual_scan_rate:
-    hardware:
     \n
 
 # Task
@@ -157,16 +88,28 @@ def metadata_template():
     task_settings:
     trial_data:
     task_notes:
-    """
+    \n
+
+# Cameras
+    framerate:
+    framerate_decrease_factor:
+    cameras:
+    \n
+
+# Labjack Settings
+    actual_scan_rate:
+    hardware:
+    \n
+"""
 
     ruamelFile = ruamel.yaml.YAML()
-    cfg_file = ruamelFile.load(yaml_str)
-    return cfg_file, ruamelFile
+    meta_cfg = ruamelFile.load(yaml_str)
+    return meta_cfg
 
 
-def read_metadata(path):
-    ruamelFile = ruamel.yaml.YAML()
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            cfg = ruamelFile.load(f)
+def read_metadata(path: Path) -> ruamel.yaml.CommentedMap:
+    logger.debug("reading metadata from %s", path)
+    loader = ruamel.yaml.YAML()
+    with path.open("r") as f:
+        cfg = loader.load(f)
     return cfg

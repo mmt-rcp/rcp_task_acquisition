@@ -5,6 +5,7 @@ import os
 import random
 import time
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from psychopy import core, event, visual
@@ -14,8 +15,9 @@ from rcp_task_acquisition.tasks import bases
 from rcp_task_acquisition.utils.constants import CODE_DIR
 from rcp_task_acquisition.utils.enums import Answer
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.typing import SharedBool, TaskMetaData, SharedInt
 
-logger = get_logger("./tasks/NBack")
+logger = get_logger(__name__)
 
 LETTERS = ["D", "F", "H", "J", "K", "L", "M", "S", "T", "V"]
 
@@ -46,7 +48,7 @@ PARAMS = {
     "stimTime": 0.5,  # time stimulus is on in seconds,
 }
 # basedir = "/home/rcp/task-acquisition/tasks"
-imdir = os.path.join(CODE_DIR, "tasks", "NBack", "stimuli")
+IMAGES_DIR = os.path.join(CODE_DIR, "tasks", "NBack", "stimuli")
 # nReps = 3 # Number of reps to do of all stimuli
 # randomSeed = 0 # Random seed
 # nBackDegree = 1 # What is the N in N-Back?
@@ -77,7 +79,7 @@ def _is_practice_block(trial_num: int) -> bool:
     return trial_num == 10
 
 
-def _all_stimuli_paths() -> list[Path]:
+def _all_stimuli_paths() -> list[str]:
     # """Return the list of all available stimuli paths (length = STIMULI_COUNT)."""
     # base = cfg.RESOURCES_DIR / "stimuli"
     # paths = [base / f"attneave_{i}.png" for i in range(1, cfg.STIMULI_COUNT + 1)]
@@ -88,9 +90,38 @@ def _all_stimuli_paths() -> list[Path]:
     return LETTERS  # paths
 
 
+def _exec_step1_2(total_trials, n_back_level) -> tuple[list[int], list[int]]:
+    # Step 1: Generate random sequence using available stimuli (1-10)
+    sequence_numbers = [random.randint(1, cfg.STIMULI_COUNT) for _ in range(total_trials)]
+
+    # Step 2: Identify targets automatically based on n-back rule
+    target_positions: list[int] = []
+    for pos in range(n_back_level, len(sequence_numbers)):
+        if sequence_numbers[pos] == sequence_numbers[pos - n_back_level]:
+            target_positions.append(pos)
+
+    return sequence_numbers, target_positions
+
+
+def _exec_step4(cfg, sequence_numbers) -> bool:
+    """Return True if too many repeats"""
+    has_too_many_repeats = False
+    for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
+        # Check if stimulus repeats more than allowed consecutive times
+        consecutive_same = True
+        for j in range(1, cfg.MAX_CONSECUTIVE_REPEATS + 1):
+            if sequence_numbers[i] != sequence_numbers[i + j]:
+                consecutive_same = False
+                break
+        if consecutive_same:
+            has_too_many_repeats = True
+            break
+    return has_too_many_repeats
+
+
 def _create_deterministic_sequence(
     n_back_level: int, total_trials: int
-) -> tuple[list[Path], list[Answer]]:
+) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence with exact target count and repetition constraints.
 
@@ -105,44 +136,25 @@ def _create_deterministic_sequence(
         Tuple containing stimulus paths and corresponding answer sequence
     """
     all_paths = _all_stimuli_paths()
+    stimulus_paths: list[str] = []
+    answers: list[Answer] = []
 
     while True:  # Keep generating until valid sequence found
-        # Step 1: Generate random sequence using available stimuli (1-10)
-        sequence_numbers = [random.randint(1, cfg.STIMULI_COUNT) for _ in range(total_trials)]
+        # step 1 + 2 :
+        sequence_numbers, target_positions = _exec_step1_2(total_trials, n_back_level)
 
-        # Step 2: Identify targets automatically based on n-back rule
-        target_count = 0
-        target_positions = []
-
-        for pos in range(n_back_level, len(sequence_numbers)):
-            if sequence_numbers[pos] == sequence_numbers[pos - n_back_level]:
-                target_count += 1
-                target_positions.append(pos)
         # Step 3: Validate exact target count requirement
-        if target_count != cfg.TARGETS_PER_BLOCK:
+        if len(target_positions) != cfg.TARGETS_PER_BLOCK:
             continue  # Regenerate if wrong number of targets
 
         # Step 4: Validate consecutive repetition constraint
-        has_too_many_repeats = False
-        for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
-            # Check if stimulus repeats more than allowed consecutive times
-            consecutive_same = True
-            for j in range(1, cfg.MAX_CONSECUTIVE_REPEATS + 1):
-                if sequence_numbers[i] != sequence_numbers[i + j]:
-                    consecutive_same = False
-                    break
-            if consecutive_same:
-                has_too_many_repeats = True
-                break
-        if has_too_many_repeats:
-            continue  # Regenerate if too many consecutive repeats
+        if _exec_step4(cfg, sequence_numbers):
+            continue
 
         # Step 5: Valid sequence found - convert to paths and generate answers
-        stimulus_paths = [
+        stimulus_paths.extend(
             all_paths[num - 1] for num in sequence_numbers
-        ]  # Convert 1-based to 0-based indexing
-
-        answers = []
+        )  # Convert 1-based to 0-based indexing
 
         for pos in range(len(sequence_numbers)):
             if pos < n_back_level:
@@ -152,14 +164,18 @@ def _create_deterministic_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
         logger.info(
-            f"Generated deterministic {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
+            "Generated deterministic %s-back sequence: %s targets in %s trials",
+            n_back_level,
+            len(target_positions),
+            total_trials,
         )
-        return stimulus_paths, answers
+        break
+    return stimulus_paths, answers
 
 
 def _create_practice_sequence(
     n_back_level: int, total_trials: int
-) -> tuple[list[Path], list[Answer]]:
+) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for practice blocks with 3 targets.
 
@@ -175,38 +191,20 @@ def _create_practice_sequence(
     """
     all_paths = _all_stimuli_paths()
 
+    stimulus_paths: list[str] = []
+    answers: list[Answer] = []
+
     while True:  # Keep generating until valid sequence found
         # Step 1: Generate random sequence using available stimuli (1-10)
-        sequence_numbers = [random.randint(1, cfg.STIMULI_COUNT) for _ in range(total_trials)]
-
-        # Step 2: Identify targets automatically based on n-back rule
-        target_count = 0
-        target_positions = []
-
-        for pos in range(n_back_level, len(sequence_numbers)):
-            if sequence_numbers[pos] == sequence_numbers[pos - n_back_level]:
-                target_count += 1
-                target_positions.append(pos)
+        sequence_numbers, target_positions = _exec_step1_2(total_trials, n_back_level)
 
         # Step 3: Validate exact target count requirement (3 for practice)
-        if target_count != 3:
+        if len(target_positions) != 3:
             continue  # Regenerate if wrong number of targets
 
         # Step 4: Validate consecutive repetition constraint
-        has_too_many_repeats = False
-        for i in range(len(sequence_numbers) - cfg.MAX_CONSECUTIVE_REPEATS):
-            # Check if stimulus repeats more than allowed consecutive times
-            consecutive_same = True
-            for j in range(1, cfg.MAX_CONSECUTIVE_REPEATS + 1):
-                if sequence_numbers[i] != sequence_numbers[i + j]:
-                    consecutive_same = False
-                    break
-            if consecutive_same:
-                has_too_many_repeats = True
-                break
-
-        if has_too_many_repeats:
-            continue  # Regenerate if too many consecutive repeats
+        if _exec_step4(cfg, sequence_numbers):
+            continue
 
         # Step 5: Valid sequence found - convert to paths and generate answers
         stimulus_paths = [
@@ -222,13 +220,17 @@ def _create_practice_sequence(
             else:
                 answers.append(Answer.DIFFERENT)  # This is a non-target
 
-        logger.info(
-            f"Generated practice {n_back_level}-back sequence: {target_count} targets in {total_trials} trials"
-        )
-        return stimulus_paths, answers
+        break
+    logger.info(
+        "Generated practice %s-back sequence: %s targets in %s trials",
+        n_back_level,
+        len(target_positions),
+        total_trials,
+    )
+    return stimulus_paths, answers
 
 
-def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
+def pull_stimuli_1back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for 1-back tasks.
 
@@ -244,7 +246,7 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 1-back practice block with {trial_num} trials")
+        logger.info("Detected 1-back practice block with %s trials", trial_num)
         return _create_practice_sequence(1, trial_num)
 
     # Regular experimental block
@@ -252,13 +254,15 @@ def pull_stimuli_1back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"1-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "1-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(1, trial_num)
 
 
-def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
+def pull_stimuli_2back(trial_num: int) -> tuple[list[str], list[Answer]]:
     """
     Generate deterministic stimulus sequence for 2-back tasks.
 
@@ -274,7 +278,7 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
     """
     # Check if this is a practice block
     if _is_practice_block(trial_num):
-        logger.info(f"Detected 2-back practice block with {trial_num} trials")
+        logger.info("Detected 2-back practice block with %s trials", trial_num)
         return _create_practice_sequence(2, trial_num)
 
     # Regular experimental block
@@ -282,21 +286,23 @@ def pull_stimuli_2back(trial_num: int) -> tuple[list[Path], list[Answer]]:
 
     if trial_num != expected_trials:
         logger.warning(
-            f"2-back expects {expected_trials} trials, got {trial_num}. Using deterministic generation anyway."
+            "2-back expects %s trials, got %s. Using deterministic generation anyway.",
+            expected_trials,
+            trial_num,
         )
 
     return _create_deterministic_sequence(2, trial_num)
 
 
 class N_back(bases.StimulusBase):
-    def __init__(self, base_vars, button):
+    def __init__(self, base_vars: dict[str, Any], button: SharedBool):
         super().__init__(**base_vars)
         self.button = button
         self.trial = 0
-        self.is_real = None
-        self.type = None
+        self.is_real: bool = False
+        self.type: int = -1
         self.button_press = False
-        self.instructions = None
+        self.instructions: dict[str, str] = {}
         self.letters = {
             "D": visual.TextStim(self.display, text="D", name="trial", pos=(-100, 0), height=1000),
             "F": visual.TextStim(self.display, text="F", name="trial", pos=(-50, 0), height=1000),
@@ -309,15 +315,15 @@ class N_back(bases.StimulusBase):
             "T": visual.TextStim(self.display, text="T", name="trial", pos=(-100, 0), height=1000),
             "V": visual.TextStim(self.display, text="V", name="trial", pos=(-100, 0), height=1000),
         }
-        self.params = copy.deepcopy(PARAMS)
+        self._params: dict[str, Any] = copy.deepcopy(PARAMS)
 
     # Sets up display window, fixation cross, text pages and image stimuli
-    def setupWinStims(self, imdir):
+    def setupWinStims(
+        self, imdir: str
+    ) -> tuple[visual.TextStim, visual.ImageStim, visual.ImageStim]:
         fixation = visual.TextStim(self.display, text="+", name="FixationCross", height=50)
-        texts = []
 
         # Initialize the image stimuli
-        picture_list = []
         correct_img = visual.ImageStim(
             self.display,
             image=os.path.join(imdir, cfg.CORRECT_IMG),
@@ -330,13 +336,12 @@ class N_back(bases.StimulusBase):
             name=cfg.INCORRECT_IMG,
             size=[300, 300],
         )
-        logger.debug(f"ims: {correct_img}, {incorrect_img}")
+        logger.debug("ims: %s, %s", correct_img, incorrect_img)
         # for fi in os.listdir(imdir) :
         #     ims.append(visual.ImageStim(self.display, image=os.path.join(imdir, fi), name=fi, size=[300, 300]))
         #     picture_list.append(fi)
 
-        self.metadata = picture_list
-        return (fixation, texts, correct_img, incorrect_img)
+        return fixation, correct_img, incorrect_img
 
     # Sets up trial data structure and stimuli presentation order
     def setupTrialData(self, nReps, ims, randomSeed, ISITime, stimTime, nBackDegree):
@@ -371,12 +376,13 @@ class N_back(bases.StimulusBase):
 
     # Show and log a stimulus
     def showAndLog(self, win, timeData, triali, stim, dur, name, draw_patch=False):
+        logger.debug("showAndLog %s %s %s %s", name, dur, triali, draw_patch)
         # stim.draw()
         # patch = draw_patch
         self.display.switch_patch()
         thisFlipTime, _flip_diff = win.flip()
         timeData.loc[len(timeData)] = [name, triali, thisFlipTime]
-        while gClock.getTime() - thisFlipTime < dur:
+        while gClock.getTime() - thisFlipTime < dur and not self._task_end_requested:
             stim.draw()
             if draw_patch:
                 # self.display.switch_patch()
@@ -388,7 +394,7 @@ class N_back(bases.StimulusBase):
         self.display.switch_patch()
         return [timeData, thisFlipTime]
 
-    def present(self, test=True, getTime=False):
+    def present(self, test=True, getTime=False) -> None:
         # clear global event keys
         self.trial += 1
 
@@ -400,7 +406,7 @@ class N_back(bases.StimulusBase):
         logger.debug(self.type)
         logger.debug(self.is_real)
         # Initialize the display window
-        fixation, _texts, correct_ims, incorrect_ims = self.setupWinStims(imdir)
+        fixation, correct_ims, incorrect_ims = self.setupWinStims(IMAGES_DIR)
         # Set up a dataframe to hold time data
         timeDataColumns = ["Event_Name", "Trial_Num", "Time_Since_Start"]
         timeData = pd.DataFrame(columns=timeDataColumns)
@@ -430,39 +436,39 @@ class N_back(bases.StimulusBase):
                 trial_list.append(trials)
                 answer_list.append(answers)
 
-        self.params[f"trial_{self.trial}"] = {
+        self._params[f"trial_{self.trial}"] = {
             "trials": list(trial_list),
             "reps_per_trial": len(list(trial_list)),
             "n_back_type": self.type,
             "real": self.is_real,
         }
-        self.trial_list = trial_list
         for index, _ in enumerate(text):
-            while not self.button.value:
+            while not self.button.value and not self._task_end_requested:
                 if self.finish.value == 2:
                     break
                 text[index].draw()
                 self.display.flip()
                 # time.sleep(5)
                 time.sleep(0.05)
-            while self.button.value:
+            while self.button.value and self.finish.value == 0 and not self._task_end_requested:
                 time.sleep(0.05)
             if self.finish.value == 2:
                 self.display.flip()
-                self.is_real = None
+                self.is_real = False
                 self.button_press = False
                 return
         self.play_tone()
         core.wait(0.05)
         timeData, fixFlipTime = self.showAndLog(
-            self.display, timeData, 0, fixation, self.params["ISITime"], "Initial_Fixation_Shown"
+            self.display, timeData, 0, fixation, self._params["ISITime"], "Initial_Fixation_Shown"
         )
 
         for index, trial_set in enumerate(trial_list):
+            logger.debug("%s: %s", index, trial_set)
             for t_index, trial in enumerate(trial_set):
                 if self.finish.value == 2:
                     self.display.flip()
-                    self.is_real = None
+                    self.is_real = False
                     self.button_press = False
                     return
                 trial_vis = self.letters[trial]
@@ -472,7 +478,7 @@ class N_back(bases.StimulusBase):
                     timeData,
                     0,
                     trial_vis,
-                    self.params["stimTime"],
+                    self._params["stimTime"],
                     "Trial_Shown",
                     True,
                 )
@@ -481,14 +487,13 @@ class N_back(bases.StimulusBase):
                     timeData,
                     0,
                     fixation,
-                    self.params["ISITime"],
+                    self._params["ISITime"],
                     "Initial_Fixation_Shown",
                 )
                 if not self.is_real:
-                    if self.button.value:
-                        self.button_press
+                    cur_ans = answer_list[index][t_index]
                     if self.button_press:
-                        if answer_list[index][t_index] == Answer.DIFFERENT:
+                        if cur_ans == Answer.DIFFERENT:
                             timeData, fixFlipTime = self.showAndLog(
                                 self.display,
                                 timeData,
@@ -497,21 +502,15 @@ class N_back(bases.StimulusBase):
                                 2,
                                 "Initial_Fixation_Shown",
                             )
-                        elif (
-                            answer_list[index][t_index] == Answer.SAME
-                            or answer_list[index][t_index] == Answer.NOGO
-                        ):
+                        elif cur_ans in {Answer.SAME, Answer.NOGO}:
                             timeData, fixFlipTime = self.showAndLog(
                                 self.display, timeData, 0, correct_ims, 2, "Initial_Fixation_Shown"
                             )
-                    elif (
-                        answer_list[index][t_index] == Answer.DIFFERENT
-                        or answer_list[index][t_index] == Answer.NOGO
-                    ):
+                    elif cur_ans in {Answer.DIFFERENT, Answer.NOGO}:
                         timeData, fixFlipTime = self.showAndLog(
                             self.display, timeData, 0, correct_ims, 2, "Initial_Fixation_Shown"
                         )
-                    elif answer_list[index][t_index] == Answer.SAME:
+                    elif cur_ans == Answer.SAME:
                         timeData, fixFlipTime = self.showAndLog(
                             self.display, timeData, 0, incorrect_ims, 2, "Initial_Fixation_Shown"
                         )
@@ -519,7 +518,7 @@ class N_back(bases.StimulusBase):
             if index < len(trial_list) - 1:
                 if self.finish.value == 2:
                     self.display.flip()
-                    self.is_real = None
+                    self.is_real = False
                     self.button_press = False
                     return
 
@@ -534,29 +533,28 @@ class N_back(bases.StimulusBase):
                     timeData,
                     0,
                     fixation,
-                    self.params["ISITime"],
+                    self._params["ISITime"],
                     "Initial_Fixation_Shown",
                 )
 
         timeData, _fixFlipTime = self.showAndLog(
             self.display, timeData, 0, end_text, 2, "Trial_Shown"
         )
-        self.is_real = None
+        self.is_real = False
         self.button_press = False
-        logger.debug(f"RUN PARAMS: {self.params}")
+        logger.debug("RUN PARAMS: %s", self._params)
 
-    def saveMetadata(self, name, sessionFolder):
-        logger.debug(f"PARAMS: {self.params}")
-        return self.params
+    def saveMetadata(self) -> TaskMetaData:
+        logger.debug("PARAMS: %s", self._params)
+        return self._params
 
-    def update_data(self, selections):
-        self.is_real = selections[0] == "real"
-        self.type = 1 if selections[1] == "1-back" else 2
+    def update_data(self, data: tuple[str, str]) -> None:
+        self.is_real = data[0] == "real"
+        self.type = 1 if data[1] == "1-back" else 2
+        # self._params["n_back_type"] = self.type
+        # self._params["real"] = self.is_real
 
-        # self.params["n_back_type"] = self.type
-        # self.params["real"] = self.is_real
-
-    def intertrial_instructions(self):
+    def intertrial_instructions(self) -> list[visual.TextStim]:
         texts = []
         string = (
             "You will now have a 10 second break.\n"
@@ -571,7 +569,7 @@ class N_back(bases.StimulusBase):
         )
         return texts
 
-    def practice_instructions(self):
+    def practice_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "practice_welcome"
@@ -607,7 +605,7 @@ class N_back(bases.StimulusBase):
             )
         return texts
 
-    def real_instructions(self):
+    def real_instructions(self) -> list[visual.TextStim]:
         texts = []
         str_list = []
         label = "task_instructions"
@@ -629,13 +627,3 @@ class N_back(bases.StimulusBase):
             )
 
         return texts
-
-    def finish(self):
-        label = "end_text"
-        return visual.TextStim(
-            self.display,
-            text=("Task complete\nThank you for participating!"),
-            name=label,
-            wrapWidth=1000,
-            height=50,
-        )

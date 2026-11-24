@@ -1,20 +1,27 @@
 import wx
 
 from rcp_task_acquisition.panels.TrialPanel import TrialPanel
+from rcp_task_acquisition.tasks.ReachGrasp.ReachGrasp import ReachGrasp
+from rcp_task_acquisition.tasks.definitions import TaskTrialClassConfig
 
 
 class ReachGraspPanel(TrialPanel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    task_trial_item_config = TaskTrialClassConfig(
+        "reach_grasp", "Reach Grasp", "reachgrasp", ReachGrasp
+    )
+
+    def __init__(self, parent: wx.Window, *args, **kwargs) -> None:
+        super().__init__(parent, *args, **kwargs)
         self.reach_hand = "Left"
         self.pace = "Self-Paced"
         self.grasp_object = "Large"
         self.grasp_type = "Grasp"
         vertical_sizer = wx.BoxSizer(wx.VERTICAL)
-        vertical_sizer.Add(self._setup_fingertap(), 0, wx.ALIGN_LEFT | wx.ALL, self.border)
+        grid = self._main_grid = self._setup_fingertap()
+        vertical_sizer.Add(grid, 0, wx.ALIGN_LEFT | wx.ALL, self.border)
         self.SetSizer(vertical_sizer)
 
-    def _setup_fingertap(self):
+    def _setup_fingertap(self) -> wx.GridBagSizer:
         self.trial_text = wx.StaticText(self, label="Trial # 1")
 
         self.hand_text = wx.StaticText(self, label="Choose which hand trial will use:")
@@ -30,10 +37,6 @@ class ReachGraspPanel(TrialPanel):
         self.grasp_object_radio = wx.RadioButton(self, label="Grasp", style=wx.RB_GROUP)
         self.poke_object_radio = wx.RadioButton(self, label="Poke")
         self.seconds_text = wx.StaticText(self, label="Time: 0 secs")
-
-        self.continue_button = wx.ToggleButton(
-            self, label="Begin Trial", size=(self.button_width * 2, -1)
-        )
 
         grid_sizer = wx.GridBagSizer(6, 4)
         grid_sizer.Add(
@@ -120,6 +123,7 @@ class ReachGraspPanel(TrialPanel):
             flag=wx.ALIGN_LEFT | wx.ALL,
             border=self.border,
         )
+        self._buttons_grid.Detach(self.continue_button)
         grid_sizer.Add(
             self.continue_button,
             pos=(8, 0),
@@ -129,25 +133,24 @@ class ReachGraspPanel(TrialPanel):
         )
         return grid_sizer
 
-    def run_trial(self, number):
-        self.seconds = 0
-        self.left_radio.Enable(False)
-        self.right_radio.Enable(False)
-        self.hand_text.Enable(False)
-        self.object_text.Enable(False)
-        self.large_object_radio.Enable(False)
-        self.small_object_radio.Enable(False)
-        self.grasp_text.Enable(False)
-        self.grasp_object_radio.Enable(False)
-        self.poke_object_radio.Enable(False)
-        self.trial_text.SetLabel(f"Trial # {number}")
+    def set_trial_running(self, running: bool) -> None:
+        super().set_trial_running(running)
+        disable = not running
+        self.left_radio.Enable(disable)
+        self.right_radio.Enable(disable)
+        self.hand_text.Enable(disable)
+        self.object_text.Enable(disable)
+        self.large_object_radio.Enable(disable)
+        self.small_object_radio.Enable(disable)
+        self.poke_object_radio.Enable(disable)
+        self.grasp_text.Enable(disable)
+
+    def run_trial(self, count: int) -> None:
+        super().run_trial(count)
+        self.trial_text.SetLabel(f"Trial # {count}")
         self.trial_is_active = True
 
-    def continue_event(self, event):
-        self.rest_timer.Stop()
-
-    def get_result(self):
-        # self.pace = "Self-Paced" if self.self_radio.GetValue() else "Fast As Possible"
+    def get_result(self) -> tuple[str, str, str]:
         self.grasp_object = (
             "Large"
             if self.large_object_radio.GetValue()
@@ -163,29 +166,15 @@ class ReachGraspPanel(TrialPanel):
             else "Unknown"
         )
         self.reach_hand = "Left" if self.left_radio.GetValue() else "Right"
-        return self.reach_hand, self.grasp_object, self.grasp_type  # , self.pace
+        return self.reach_hand, self.grasp_object, self.grasp_type
 
-    def cancel_event(self, event):
-        self.cancel = True
-        self.rest_timer.Stop()
-
-    def reset(self, number):
+    def reset(self, count: int) -> None:
+        super().reset(count)
         self.seconds = 5
-        self.left_radio.Enable(True)
-        self.right_radio.Enable(True)
-        self.hand_text.Enable(True)
-        self.object_text.Enable(True)
-        self.large_object_radio.Enable(True)
-        self.small_object_radio.Enable(True)
-        self.grasp_text.Enable(True)
-        self.grasp_object_radio.Enable(True)
-        self.poke_object_radio.Enable(True)
         self.seconds_text.SetLabel("Time: 0 secs")
-        self.continue_button.SetValue(False)
-        self.continue_button.SetLabel("Begin Trial")
-        self.trial_text.SetLabel(f"Trial # {number + 1}")
+        self.trial_text.SetLabel(f"Trial # {count + 1}")
 
-    def on_timer(self, event):
+    def on_timer(self, event: wx.Event) -> None:
         if self.trial_is_active:
             self.seconds += 1
             self.seconds_text.SetLabel(f"Time: {self.timer.value} secs")

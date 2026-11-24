@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 from pyshortcuts import make_shortcut
@@ -14,3 +15,12 @@ def create_shortcut():
     icon_img = os.path.join(main_dir, "library", "rcp_logo.ico")
 
     make_shortcut(main, name="RCP Task Acquisition", icon=icon_img, terminal=False)
+
+    from rcp_task_acquisition.utils import labjack_usb_reset
+
+    make_shortcut(
+        f"{sys.executable} -m {labjack_usb_reset.__name__} --reset",
+        name="LabJack USB Reset",
+        # icon=icon_img,
+        terminal=True,
+    )

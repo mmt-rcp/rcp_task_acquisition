@@ -1,12 +1,15 @@
 import ast
 import json
 import math
+import multiprocessing
 import time
 from enum import Enum
-from multiprocessing import Process
 from queue import Empty
+from typing import Callable, Any
 
-import rcp_task_acquisition.utils.file_utils as files
+import wx
+
+from rcp_task_acquisition.tasks.Calibration.task import CalibrationTask
 from rcp_task_acquisition.tasks.bases import StimulusBase
 from rcp_task_acquisition.tasks.Diadochokinesis.Diadochokinesis import Diadochokinesis
 from rcp_task_acquisition.tasks.HardwareTest import HardwareTest
@@ -21,53 +24,63 @@ from rcp_task_acquisition.tasks.VerbGeneration.VerbGeneration import VerbGenerat
 from rcp_task_acquisition.tasks.VowelSpace.VowelSpace import VowelSpace
 from rcp_task_acquisition.utils.displays import Window
 from rcp_task_acquisition.utils.logger import get_logger
+from rcp_task_acquisition.utils.multiprocess import ProcessWithLogging
+from rcp_task_acquisition.utils.run_context import RcpRunContext
+from rcp_task_acquisition.utils.typing import SharedBool, SharedEvent, SharedInt, SharedFloat
 
-logger = get_logger("./models/StimulusThread")
+logger = get_logger(__name__)
 
 
-class Msg(str, Enum):
+class StimulusMessage(str, Enum):
     INITIALIZE = "init_stimulus"
     UPDATE_TASK = "update_task"
-    RUN_TASK = "run_stimulus"
-    END_TASK = "end_stimulus"
+    RUN_TASK_TRIAL = "run_stimulus"  # begin trial
+    END_TASK_TRIAL = "end_stimulus"  # end trial
     ADD_INSTRUCTIONS = "create_instructions"  # unused
     PLAY_INSTRUCTIONS = "play_instructions"
     UPDATE_DATA = "update_data"
     RESET_TASK = "reset_task"
     HARDWARE_TEST = "hardware_test"
+    SHOW_WINDOW = "show"
+    HIDE_WINDOW = "hide"
     CLOSE_WINDOW = "close"
     VOWEL_SPACE = "vowel_space"
     SEND_METADATA = "send_metadata"
 
 
-class StimulusThread(Process):
+class StimulusThread(ProcessWithLogging):
+    window: Window  # NB: this is the patient monitor window
+
     def __init__(
         self,
-        msgq,
-        finish,
-        shared,
-        frame,
-        screen_config,
-        task,
-        button,
-        press_count,
-        video_status,
-        resultsq,
-        stimulus_timer,
-        event_lock,
-        grasp_ready,
-        grasp_count,
+        msgq: multiprocessing.Queue,
+        finish: SharedInt,
+        shared: SharedInt,
+        frame: SharedInt,
+        screen_config: int,
+        task: str,
+        button: SharedBool,
+        press_count: SharedInt,
+        video_status: SharedInt,
+        resultsq: multiprocessing.Queue,
+        stimulus_timer: SharedInt,
+        event_lock: SharedEvent,
+        grasp_ready: tuple[SharedBool, SharedFloat],
+        grasp_count: SharedInt,
+        *,
+        rcp_context: RcpRunContext,
     ):
-        super().__init__()
+        super().__init__(name="StimulusThread")
+        self._rcp_context = rcp_context
         self.msgq = msgq
         self.screenConfig = screen_config
         self.shared = shared
         self.finish = finish
         self.frame = frame
         self.button = button
-        self.stimulusConfig = files.get_stimulus_config("taskconfig.yaml")
+        # self.stimulusConfig = files.get_stimulus_config("taskconfig.yaml")
         self.totalStimFrames = 0
-        self.stimulus = None
+        self.stimulus: StimulusBase | None = None
         self.resultsq = resultsq
         self.press_count = press_count
         self.video_status = video_status
@@ -77,102 +90,123 @@ class StimulusThread(Process):
         self.video_lock = event_lock
         self.grasp_ready = grasp_ready
         self.grasp_count = grasp_count
+        self._msg_handlers: dict[StimulusMessage, Callable] = {
+            StimulusMessage.INITIALIZE: self._handle_initialize,
+            StimulusMessage.SEND_METADATA: self._handle_send_metadata,
+            StimulusMessage.UPDATE_TASK: self._handle_update_task,
+            StimulusMessage.UPDATE_DATA: self._handle_update_data,
+            StimulusMessage.RUN_TASK_TRIAL: self._handle_run_task,
+            StimulusMessage.RESET_TASK: self._handle_reset_task,
+            StimulusMessage.END_TASK_TRIAL: self._handle_end_task,
+            StimulusMessage.VOWEL_SPACE: self._handle_vowel_space,
+            StimulusMessage.CLOSE_WINDOW: self._handle_close_window,
+            StimulusMessage.PLAY_INSTRUCTIONS: self._handle_play_instructions,
+            StimulusMessage.ADD_INSTRUCTIONS: self._handle_add_instructions,  # UNUSED
+            StimulusMessage.HARDWARE_TEST: self._handle_hardware_test,
+            StimulusMessage.SHOW_WINDOW: self._handle_show_window,
+            StimulusMessage.HIDE_WINDOW: self._handle_hide_window,
+        }
+        self._reentrant_check_commands = 0
 
-    def run(self):
-        self.window = Window(screen=self.screenConfig, fullScreen=True)
+    def _send_to_main_proc(self, data, *, timeout=3):
+        self.resultsq.put(data, timeout=timeout)
 
-        while self.alive:
-            try:
-                msg = self.msgq.get(timeout=0.05)
-                logger.debug(f"msg: {msg}")
-            except Empty:
-                continue
-            try:
-                if msg == Msg.INITIALIZE:
-                    self.params = {}
-                    self.init_stimuli()
-                elif msg == Msg.SEND_METADATA:
-                    self.send_metadata()
-                elif msg == Msg.UPDATE_TASK:
-                    msg = self.msgq.get()
-                    self.task = msg
-                elif msg == Msg.RUN_TASK:
-                    self.shared.value = 0
-                    # Main loop for presenting stimuli
-                    tStart = time.time()
-                    logger.info(f"Presenting {self.task}")
-                    if self.shared.value == -1:
-                        break
-                    self.stimulus.set_first_frame(self.frame.value)
-                    self.window.reset_stimulus_frame()
-                    self.stimulus.present()
-                    self.window.idle(time_list=[])
-                    self.window.flip()
-                    self.totalStimFrames += self.window.stimulus_frame
-                    self.window.reset_stimulus_frame()
+    def _get_from_command_queue(self, *, timeout: float = 3):
+        return self.msgq.get(timeout=timeout)
 
-                    tEnd = time.time()
-                    tElapsed = tEnd - tStart
-                    minutes = math.floor(tElapsed / 60)
-                    seconds = tElapsed % 60
-                    min_string = f"{math.floor(tElapsed / 60)} minutes, " if minutes > 0 else ""
-                    logger.info(f"Stimulus protocol completed in {min_string}{seconds:.2f} seconds")
-                    if self.finish.value != 2:
-                        self.finish.value = 1
-                    else:
-                        self.finish.value = 0
-                elif msg == Msg.END_TASK:
-                    self.end_stimulus()
-                elif msg == Msg.PLAY_INSTRUCTIONS:
-                    msg = self.msgq.get()
-                    logger.debug(msg)
-                    self.play_video(msg)
-                elif msg == Msg.ADD_INSTRUCTIONS:
-                    msg = self.msgq.get()
-                    self.setup_videos(msg)
-                    # self.setup_videos(video_filename_dict)
-                elif msg == Msg.HARDWARE_TEST:
-                    base_vars = {
-                        "display": self.window,
-                        "frame": self.frame,
-                        "timer": self.timer,
-                        "video_lock": self.video_lock,
-                        "video_status": self.video_status,
-                        "finish": self.finish,
-                    }
-                    HardwareTest(base_vars).present()
-                elif msg == Msg.UPDATE_DATA:
-                    msgq_data = self.msgq.get()
-                    logger.debug(f"stim: {msgq_data}")
-                    try:
-                        logger.debug(f"stimthread datadata: {msgq_data[0]}")
-                        if msgq_data[0] == "(":
-                            trial_data = ast.literal_eval(msgq_data)
-                        else:
-                            trial_data = msgq_data
-                    except:
-                        trial_data = msgq_data
-                    # trial_data = trial_data.replace("(", "")
-                    self.stimulus.update_data(trial_data)
-                elif msg == Msg.RESET_TASK:
-                    self.stimulus.reset_task()
-                elif msg == Msg.VOWEL_SPACE:
-                    results = self.stimulus.get_trial()
-                    logger.debug(results)
-                    self.resultsq.put(results)
-                elif msg == Msg.CLOSE_WINDOW:
-                    self.close_window()
-            except SystemExit:
-                logger.debug("interrupted stimulus")
-                self.end_stimulus()
-                # don't see which part of the code is supposed to raise SystemExit to reach here
-                # also SystemExit is meant to exit the process. but this is continuing the main loop...
-            except Exception as err:
-                logger.exception("Error during main loop: %s", err)
-                self.end_stimulus()
-                break
+    def _handle_show_window(self):
+        self.window.winHandle.set_visible(True)
+        self.window.flip()
 
-    def init_stimuli(self):
+    def _handle_hide_window(self):
+        self.window.winHandle.set_visible(False)
+        self.window.flip()
+
+    def _handle_initialize(self) -> None:
+        self.init_stimuli()
+
+    def _handle_send_metadata(self) -> None:
+        stimuli = self.stimulus
+        if stimuli is None:
+            logger.warning("No stimuli received")
+            self._send_to_main_proc(None)
+            return
+        results = stimuli.saveMetadata()
+        self._send_to_main_proc(results)
+
+    def _handle_update_task(self) -> None:
+        msg = self._get_from_command_queue()
+        self.task = msg
+        if "calibrate" in self.task:
+            self._handle_initialize()
+
+    def _handle_update_data(self) -> None:
+        trial_data = self._get_from_command_queue()
+        logger.debug("stim: update_data: %s", trial_data)
+        if self.stimulus is not None:
+            self.stimulus.update_data(trial_data)
+
+    def _handle_run_task(self) -> None:
+        stimulus = self.stimulus
+        logger.info(f"Presenting {self.task} ; stimu=%s", stimulus)
+        if stimulus is None:
+            raise RuntimeError("stimulus not initialised")
+        self.shared.value = 0
+        # Main loop for presenting stimulus
+        tStart = time.perf_counter()
+        if self.shared.value == -1:
+            self.alive = False
+            return
+        stimulus.prepare_run_task_trial(first_frame=self.frame.value)
+        self.window.reset_stimulus_frame()
+        try:
+            stimulus.present()
+        except Exception as err:
+            logger.exception("stimulus present failed: %s ; but continuing", err)
+
+        self.window.idle(time_list=[])
+        self.window.flip()
+        self.totalStimFrames += self.window.stimulus_frame
+        self.window.reset_stimulus_frame()
+
+        tEnd = time.perf_counter()
+        tElapsed = tEnd - tStart
+        minutes = math.floor(tElapsed / 60)
+        seconds = tElapsed % 60
+        min_string = f"{math.floor(tElapsed / 60)} minutes, " if minutes > 0 else ""
+        logger.info("Stimulus protocol completed in %s%.2f seconds", min_string, seconds)
+        if self.finish.value != 2:
+            self.finish.value = 1
+        else:
+            self.finish.value = 0
+
+    def _handle_reset_task(self) -> None:
+        if self.stimulus is not None:
+            self.stimulus.reset_task()
+
+    def _handle_end_task(self) -> None:
+        self.end_stimulus()
+
+    def _handle_vowel_space(self) -> None:
+        stimulus = self.stimulus
+        if not isinstance(stimulus, (VowelSpace, Diadochokinesis, VerbalFluency)):
+            logger.error("unexpected stimulus instance for vowel space: %s", stimulus)
+            return
+        results = stimulus.get_trial()
+        logger.debug("vowel_space result: %s", results)
+        self._send_to_main_proc(results)
+
+    def _handle_play_instructions(self) -> None:
+        msg = self._get_from_command_queue()
+        logger.debug("play instructions: %r", msg)
+        self.play_video(msg)
+
+    def _handle_add_instructions(self) -> None:  # UNUSED
+        msg = self._get_from_command_queue()
+        self.setup_videos(msg)
+        # self.setup_videos(video_filename_dict)
+
+    def _handle_hardware_test(self) -> None:
         base_vars = {
             "display": self.window,
             "frame": self.frame,
@@ -180,8 +214,72 @@ class StimulusThread(Process):
             "video_lock": self.video_lock,
             "video_status": self.video_status,
             "finish": self.finish,
+            "rcp_context": self._rcp_context,
+            "check_commands": self.check_command,
         }
-        logger.debug(f"base vars: {base_vars}")
+        HardwareTest(base_vars).present()
+
+    def _handle_close_window(self) -> None:
+        self.close_window()
+
+    def run(self) -> None:
+        self.window = Window(screen=self.screenConfig, fullScreen=True)
+        # import pyglet.window.xlib  # delayed on purpose
+        win_handle: "pyglet.window.xlib.XlibWindow" = self.window.winHandle  # type: ignore
+        logger.info("entering main loop")
+        while self.alive:
+            # self.window.flip()
+            win_handle.flip()
+            # not sure which to use but the inner win_handle seems more appropriate.
+            try:
+                self.check_command(0.1)
+            except Exception as err:
+                logger.exception("Error during main loop: %s ; but continuing", err)
+                self.end_stimulus()
+                break
+        logger.verbose("exiting")
+
+    def check_command(self, timeout: float):
+        self._reentrant_check_commands += 1
+        if self._reentrant_check_commands > 2:
+            raise RuntimeError("refusing too many reentrant check_commands")
+        try:
+            msg = self._get_from_command_queue(timeout=timeout)
+            logger.debug("msg: %s", msg)
+        except Empty:
+            self._reentrant_check_commands -= 1
+            wx.Yield()
+            return
+
+        handler = self._msg_handlers.get(msg, None)
+        if handler is None:
+            self._reentrant_check_commands -= 1
+            logger.warning("Unhandled msg: %s", msg)
+            return
+        try:
+            handler()
+        except SystemExit:
+            # don't see which part of the code is supposed to raise SystemExit to reach here
+            # also SystemExit is meant to exit the process. but this is continuing the main loop...
+            logger.debug("interrupted stimulus")
+            self.end_stimulus()
+        except Exception as err:
+            logger.exception("%s failed: %s", handler.__name__, err)
+        finally:
+            wx.Yield()
+            self._reentrant_check_commands -= 1
+
+    def init_stimuli(self) -> None:
+        base_vars = {
+            "display": self.window,
+            "frame": self.frame,
+            "timer": self.timer,
+            "video_lock": self.video_lock,
+            "video_status": self.video_status,
+            "finish": self.finish,
+            "rcp_context": self._rcp_context,
+            "check_commands": self.check_command,
+        }
         base_cls = dict(
             n_back=N_back,
             motor_task_finger_taps=BasicTaps,
@@ -193,43 +291,41 @@ class StimulusThread(Process):
             reach_grasp=ReachGrasp,
             tone_taps_closed=ToneTapsClosed,
             verb_generation=VerbGeneration,
-        ).get(self.task, StimulusBase)
-        #
-        extra_args = []
-        if self.task == "n_back":
+            all_hardware=StimulusBase,
+        ).get(self.task, None)
+        if base_cls is None or base_cls is StimulusBase:
+            if base_cls is None and "calibrate" in self.task:
+                base_cls = CalibrationTask
+            else:
+                logger.debug("Using StimulusBase for %s", self.task)
+                self.stimulus = StimulusBase(**base_vars)  # type: ignore
+                return
+        extra_args: list[Any] = []
+        if issubclass(base_cls, N_back):
             extra_args.append(self.button)
-        elif self.task == "tone_taps_closed":
+        elif issubclass(base_cls, ToneTapsClosed):
             extra_args.append(self.press_count)
-        elif self.task == "reach_grasp":
+        elif issubclass(base_cls, ReachGrasp):
             extra_args.append(self.grasp_ready)
             extra_args.append(self.grasp_count)
-        #
         self.stimulus = base_cls(base_vars, *extra_args)
-        #
-        logger.info(f"stimuli: {self.stimulus}")
+        logger.info("stimulus: %s", self.stimulus)
 
-    def end_stimulus(self):
+    def end_stimulus(self) -> None:
+        if self.stimulus is not None:
+            self.stimulus.end_stimulus()
         self.window.idle(time_list=[])
-        # self.send_metadata()
 
-    def send_metadata(self):
-        # logger.debug(f"{self.stimulusConfig}, {self.task}, {self.stimulus}")
-        results = self.stimulus.saveMetadata(self.stimulusConfig[self.task], None)
-        json_str = json.dumps(results)
-        logger.debug(f"jsonstr: {json_str}")
-        self.resultsq.put(json_str)
-
-    def close_window(self):
+    def close_window(self) -> None:
         self.alive = False
+        stimulus = self.stimulus
+        if stimulus is not None:
+            stimulus.end_stimulus()
         self.window.close()
-        # self.p.join()
 
-    def get_params(self):
-        return self.params
-
-    def setup_videos(self, video_filename_dict):
+    def setup_videos(self, video_filename_dict) -> None:  # UNUSED
         pass
 
-    def play_video(self, trial=None):
-        if self.stimulus != None:
+    def play_video(self, trial: str) -> None:
+        if self.stimulus is not None:
             self.stimulus.play_instructional_video(trial)
