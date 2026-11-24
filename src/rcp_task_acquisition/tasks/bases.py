@@ -64,6 +64,9 @@ class StimulusBase:
         self.check_commands = check_commands
         self._task_end_requested = False
 
+    def is_task_end_requested(self) -> bool:
+        return self.finish.value == 2 or self._task_end_requested
+
     def end_stimulus(self):
         """For subclass to extend"""
         self._task_end_requested = True
