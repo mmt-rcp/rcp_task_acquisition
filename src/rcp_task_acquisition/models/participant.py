@@ -12,7 +12,7 @@ class Participant:
     last_name: str = ""
 
     def __repr__(self) -> str:
-        return f"Participant({self.id}, {self.first_name}, {self.last_name})"
+        return f"Participant(id={self.id!r})"
 
 
 no_participant = Participant(id="no_participant")
