@@ -214,8 +214,10 @@ class LaunchPanel:
     def _setup_buttons(self) -> wx.BoxSizer:
         button_width = wx.Size(200, -1)
         box = self.panel
-        self.hardware_button = wx.ToggleButton(box, size=button_width, label="Update Hardware")
-        self.hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.hardware_event)
+        self.update_hardware_button = wx.ToggleButton(
+            box, size=button_width, label="Update Hardware"
+        )
+        self.update_hardware_button.Bind(wx.EVT_TOGGLEBUTTON, self.hardware_event)
 
         self.compress_button = wx.Button(box, size=button_width, label="Compress Videos")
         self.compress_button.Enable(False)
@@ -223,7 +225,7 @@ class LaunchPanel:
         self.exit_button = wx.Button(box, size=button_width, label="Exit")
 
         row_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        row_sizer.Add(self.hardware_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        row_sizer.Add(self.update_hardware_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         row_sizer.Add(self.compress_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         row_sizer.Add(self.exit_button, 0, wx.ALIGN_CENTER_VERTICAL)
         return row_sizer
@@ -272,7 +274,7 @@ class LaunchPanel:
         self.get_participants()
 
     def enable_gui(self, is_enabled) -> None:
-        self.hardware_button.Enable(is_enabled)
+        self.update_hardware_button.Enable(is_enabled)
         # self.compress_button.Enable(is_enabled)
         self.exit_button.Enable(is_enabled)
         self.administrator_text.Enable(is_enabled)
@@ -286,8 +288,8 @@ class LaunchPanel:
         self.protocol_text.Enable(is_enabled)
         self.participant_add.Enable(is_enabled)
         self.participant_remove.Enable(is_enabled)
-        self.hardware_button.SetValue(False)
-        self.hardware_button.SetLabel("Update Hardware")
+        self.update_hardware_button.SetValue(False)
+        self.update_hardware_button.SetLabel("Update Hardware")
         self.panel.Update()
 
     def exit_event(self) -> None:
@@ -312,19 +314,17 @@ class LaunchPanel:
         self._participant_id_combo_event(event)  # but still need call it explicitly...
         # EONB.
 
-    def hardware_event(self, event):
+    def hardware_event(self, event: wx.Event) -> None:
         """
         triggers showing the hardware panel
-
         """
-        is_pressed = self.hardware_button.GetValue()
+        is_pressed = self.update_hardware_button.GetValue()
         if is_pressed:
-            self.hardware_button.SetLabel("Close Hardware Panel")
+            self.update_hardware_button.SetLabel("Close Hardware Panel")
             self.hardware_panel.Show()
             self.hardware_panel.reset_hardware()
-
         else:
-            self.hardware_button.SetLabel("Update Hardware")
+            self.update_hardware_button.SetLabel("Update Hardware")
             self.hardware_panel.Hide()
         self._resize_dialog()
 
@@ -344,7 +344,7 @@ class LaunchPanel:
         self.protocol_button.Enable(False)
         self.hardware_panel.Hide()
         logger.info("participant panel: %s", self.participants_list)
-        self.hardware_button.Enable(False)
+        self.update_hardware_button.Enable(False)
         self.panel.Refresh()
         self.metadata["task"] = self.task
         self.metadata["administrator_id"] = self.administrator_id.GetValue()

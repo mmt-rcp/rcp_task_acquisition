@@ -197,14 +197,15 @@ class MainFrame(wx.Frame):
         cam_panel.rec.Bind(wx.EVT_TOGGLEBUTTON, lambda _: self.recordCam())
         cam_panel.exposure_button.Bind(wx.EVT_BUTTON, lambda _: self.cams.get_exposure())
 
-        def handle_hardware_test(event: wx.Event):
+        def handle_hardware_test(event: wx.Event) -> None:
             toggled = controls_panel.hardware_button.GetValue()
             if isinstance(self.trial_panel, CalibrationPanel):
                 if toggled:
                     self._show_patient_cams(True)
             else:
-                self._show_patient_cams(toggled)
                 controls_panel.show_patient_cams_button.Show(toggled)
+                if not toggled:
+                    self._show_patient_cams(False)
                 controls_panel.Fit()  # need it otherwise the button appears on top before drawn at correct place
                 controls_panel.Update()
             self.disable_gui(event)
@@ -672,8 +673,8 @@ class MainFrame(wx.Frame):
 
     def _stop_hardware_test(self) -> None:
         self.finish.value = 2
-        if not isinstance(self.trial_panel, CalibrationPanel):
-            self._show_patient_cams(False)
+        # if not isinstance(self.trial_panel, CalibrationPanel):
+        self._show_patient_cams(False)
         self.put_to_stimulus(StimulusMessage.END_TASK_TRIAL)
         self.cam_test.value = False
         self.hardware_test = False
