@@ -8,7 +8,7 @@ def call_in_gui(func):
     """Ensure given function is called within GUI main thread"""
 
     @functools.wraps(func)
-    def wrapped(*args, **kwargs):
+    def wrapped(*args, **kwargs) -> None:
         if threading.current_thread() is threading.main_thread():
             func(*args, **kwargs)
         else:

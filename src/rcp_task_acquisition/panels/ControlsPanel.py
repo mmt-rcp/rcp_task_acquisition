@@ -54,7 +54,7 @@ class ControlsPanel(wx.Panel):
             pos=(vertical_position, 0),
             span=(0, 5),
             flag=wx.ALIGN_LEFT | wx.ALL,
-            border=0,
+            border=5,
         )
         vertical_position += 1
         vertical_spacer.Add(

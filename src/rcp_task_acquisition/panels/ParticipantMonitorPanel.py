@@ -36,22 +36,20 @@ class MonitorPanel(wx.Panel):
 
         image_sizer = wx.GridBagSizer(3, 4)
         image_sizer.Add(
-            title, pos=(0, 0), span=(0, 4), flag=wx.ALIGN_CENTER_HORIZONTAL | wx.LEFT, border=5
+            title, pos=(0, 0), span=(0, 4), flag=wx.ALIGN_CENTER_HORIZONTAL | wx.LEFT, border=0
         )
         image_sizer.Add(
-            self.monitor_bitmap, pos=(1, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.LEFT, border=5
+            self.monitor_bitmap, pos=(1, 0), span=(0, 4), flag=wx.ALIGN_LEFT | wx.LEFT, border=0
         )
         self.SetSizer(image_sizer)
 
         self.Bind(wx.EVT_PAINT, self.on_paint)
-        self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase)
         self.Bind(wx.EVT_SIZE, self.on_size)
 
         self.image: numpy.ndarray | None = None
         self.prev_image: numpy.ndarray | None = None
         self.update_screen()
         self.on_paint()
-        self.monitor_bitmap.Fit()
         self.Layout()
 
     def update_screen(self) -> None:
@@ -87,6 +85,3 @@ class MonitorPanel(wx.Panel):
     def on_size(self, event: wx.Event) -> None:
         self.Refresh()
         event.Skip()
-
-    def on_erase(self, event: wx.Event) -> None:
-        pass  # keep me, prevent flickering
