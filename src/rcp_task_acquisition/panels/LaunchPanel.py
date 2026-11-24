@@ -198,7 +198,7 @@ class LaunchPanel:
             part = None
         else:
             part = combo.GetClientData(idx)
-        logger.info("selected participant: %s", part)
+        logger.verbose("selected participant: %s", part)
 
         def doit():
             # for some reason on Windows the SetValue has to be done outside this event handler,
