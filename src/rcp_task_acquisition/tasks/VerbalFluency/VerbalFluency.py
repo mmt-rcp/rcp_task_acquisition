@@ -42,27 +42,25 @@ class VerbalFluency(bases.StimulusBase):
         self.display.flip()
         self.play_tone()
 
-    def update_data(self, data: str) -> None:
+    def update_data(self, data: str | tuple[str, str, str]) -> None:
         choices = data
-        logger.debug("choices: %s", choices)
         if isinstance(choices, str):
             self.trial_word = choices
             return
-        # NB: todo: following code looks unused,
-        #   given panel get data only returns str instance...
-        if len(choices) == 1:
-            if choices[0] == "None":
-                return
-            else:
-                self.trial_word = choices[0]
-                return
-        logger.debug(choices)
-        self.phonemic_list = choices[0].split(".")
-        self.semantic = choices[1]
-        self.trial_word = choices[2]
-        self.instructions_dict = VERBAL_FLUENCY_PATHS[choices[0]]
-        self.instructions_dict[self.semantic] = VERBAL_FLUENCY_PATHS["Semantic"][self.semantic]
-        logger.debug(self.instructions_dict)
+        # if len(choices) == 1:
+        #     # NB: todo: following code looks unused,
+        #     if choices[0] == "None":
+        #         return
+        #     else:
+        #         self.trial_word = choices[0]
+        #         return
+        phonetic_list, semantic, trial_word = choices
+        self.phonemic_list = phonetic_list.split(".")
+        self.semantic = semantic
+        self.trial_word = trial_word
+        self.instructions_dict = VERBAL_FLUENCY_PATHS[phonetic_list]
+        self.instructions_dict[semantic] = VERBAL_FLUENCY_PATHS["Semantic"][semantic]
+        logger.debug("instructions_dict: %s", self.instructions_dict)
 
     def get_trial(self) -> tuple[str, str, str]:
         return self.trial_word, self.trial_type, self.trial_name

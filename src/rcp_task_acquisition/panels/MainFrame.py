@@ -603,6 +603,9 @@ class MainFrame(wx.Frame):
         geo = event.GetEventObject()
         assert isinstance(geo, wx.ToggleButton)
         if geo.GetValue():
+            if isinstance(self.trial_panel, VerbalFluencyPanel):
+                data = self.trial_panel.get_trials()
+                self._update_data(data)
             result = self.trial_panel.get_instruction(self.count)
             logger.debug("putting PLAY_INSTRUCTIONS %r to process", result)
             # self.thread.play_video()
@@ -768,7 +771,6 @@ class MainFrame(wx.Frame):
             self.put_to_stimulus(StimulusMessage.HARDWARE_TEST)
             if not self.task_active:
                 is_success = self.lj.start_labjack()
-
                 if not is_success:
                     logger.error("Error loading labjack_stream")
                 else:

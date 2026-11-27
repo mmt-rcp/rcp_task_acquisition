@@ -147,7 +147,7 @@ class TrialPanel(wx.Panel):
         for but in (
             self.repeat_trial_button,
             self.start_video_button,
-            self.pause_video_button,
+            # self.pause_video_button,
         ):
             if but is not None:
                 but.Enable(enabled)
@@ -281,7 +281,7 @@ class TrialPanelWithInstructPlayback(TrialPanel):
         for group in self.video_buttons, self.other_buttons:
             if len(group) > 1:
                 group[0].Enable(enabled)
-                group[1].Enable(False)
+                group[1].Disable()
 
     def set_trial_running(self, running: bool) -> None:
         super().set_trial_running(running)
